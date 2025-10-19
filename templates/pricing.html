@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing - Binance Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pricing.css') }}">
+</head>
+
+<body>
+    <div class="pricing-page">
+        <!-- Header -->
+        <header class="pricing-header">
+            <div class="pricing-header-content">
+                <a href="{{ url_for('index') if current_user.is_authenticated else url_for('auth.login') }}"
+                    class="back-link">
+                    <span class="back-icon">←</span>
+                    <span class="back-text">Back to Dashboard</span>
+                </a>
+
+                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+                    <span id="themeIcon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <div class="pricing-hero">
+            <div class="hero-badge">💎 Choose Your Plan</div>
+            <h1 class="hero-title">Simple, Transparent Pricing</h1>
+            <p class="hero-subtitle">Start free, upgrade when you need more power</p>
+
+            {% if current_user.is_authenticated %}
+            <div class="current-plan-banner">
+                <span class="current-plan-icon">✨</span>
+                You're currently on the <strong>{{ current_user.tier_name }} Plan</strong>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Pricing Cards -->
+        <div class="pricing-container">
+            <!-- FREE TIER -->
+            <div
+                class="pricing-card {% if current_user.is_authenticated and current_user.tier == 0 %}current-tier{% endif %}">
+                {% if current_user.is_authenticated and current_user.tier == 0 %}
+                <div class="current-badge">Current Plan</div>
+                {% endif %}
+
+                <div class="tier-header">
+                    <div class="tier-icon">🌱</div>
+                    <h2 class="tier-name">Free</h2>
+                    <div class="tier-price">
+                        <span class="price-amount">$0</span>
+                        <span class="price-period">/month</span>
+                    </div>
+                    <p class="tier-description">Perfect for getting started</p>
+                </div>
+
+                <div class="tier-features">
+                    <div class="feature-item">
+                        <span class="feature-icon">✅</span>
+                        <span class="feature-text">Core dashboard access</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✅</span>
+                        <span class="feature-text">Auto-refresh every <strong>15 minutes</strong></span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✅</span>
+                        <span class="feature-text">Last <strong>10 volume alerts</strong></span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✅</span>
+                        <span class="feature-text">TradingView export (top 50)</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✅</span>
+                        <span class="feature-text">Dark/Light theme</span>
+                    </div>
+                    <div class="feature-item disabled">
+                        <span class="feature-icon">❌</span>
+                        <span class="feature-text">Email alerts</span>
+                    </div>
+                    <div class="feature-item disabled">
+                        <span class="feature-icon">❌</span>
+                        <span class="feature-text">Custom thresholds</span>
+                    </div>
+                    <div class="feature-item disabled">
+                        <span class="feature-icon">❌</span>
+                        <span class="feature-text">Additional metrics</span>
+                    </div>
+                </div>
+
+                <div class="tier-cta">
+                    {% if current_user.is_authenticated %}
+                    {% if current_user.tier == 0 %}
+                    <button class="cta-btn current" disabled>Your Current Plan</button>
+                    {% else %}
+                    <a href="{{ url_for('downgrade', tier=0) }}" class="cta-btn secondary">Downgrade</a>
+                    {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('auth.register') }}" class="cta-btn primary">Get Started Free</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- PRO TIER -->
+            <div
+                class="pricing-card featured {% if current_user.is_authenticated and current_user.tier == 1 %}current-tier{% endif %}">
+                <div class="popular-badge">Most Popular</div>
+
+                {% if current_user.is_authenticated and current_user.tier == 1 %}
+                <div class="current-badge">Current Plan</div>
+                {% endif %}
+
+                <div class="tier-header">
+                    <div class="tier-icon">🚀</div>
+                    <h2 class="tier-name">Pro</h2>
+                    <div class="tier-price">
+                        <span class="price-amount">$9.99</span>
+                        <span class="price-period">/month</span>
+                    </div>
+                    <p class="tier-description">For active traders</p>
+                </div>
+
+                <div class="tier-features">
+                    <div class="feature-item highlighted">
+                        <span class="feature-icon">✨</span>
+                        <span class="feature-text"><strong>Everything in Free, plus:</strong></span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">⚡</span>
+                        <span class="feature-text">Faster refresh: <strong>5 minutes</strong></span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📧</span>
+                        <span class="feature-text"><strong>Email alerts</strong> for volume spikes</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <span class="feature-text"><strong>Custom alert thresholds</strong></span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📊</span>
+                        <span class="feature-text">Additional metrics (OI, liquidations)</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📈</span>
+                        <span class="feature-text">Last <strong>30 alerts</strong> history</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💾</span>
+                        <span class="feature-text">CSV/JSON export (unlimited)</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🚫</span>
+                        <span class="feature-text"><strong>Ad-free</strong> experience</span>
+                    </div>
+                </div>
+
+                <div class="tier-cta">
+                    {% if current_user.is_authenticated %}
+                    {% if current_user.tier == 1 %}
+                    <button class="cta-btn current" disabled>Your Current Plan</button>
+                    {% elif current_user.tier < 1 %} <a href="{{ url_for('upgrade', tier=1) }}" class="cta-btn primary">
+                        Upgrade to Pro</a>
+                        {% else %}
+                        <a href="{{ url_for('downgrade', tier=1) }}" class="cta-btn secondary">Downgrade to Pro</a>
+                        {% endif %}
+                        {% else %}
+                        <a href="{{ url_for('auth.register') }}" class="cta-btn primary">Start Free Trial</a>
+                        {% endif %}
+                </div>
+
+                <div class="tier-note">or $99/year (save $20)</div>
+            </div>
+
+            <!-- ELITE TIER -->
+            <div
+                class="pricing-card premium {% if current_user.is_authenticated and current_user.tier == 2 %}current-tier{% endif %}">
+                {% if current_user.is_authenticated and current_user.tier == 2 %}
+                <div class="current-badge">Current Plan</div>
+                {% endif %}
+
+                <div class="tier-header">
+                    <div class="tier-icon">👑</div>
+                    <h2 class="tier-name">Elite</h2>
+                    <div class="tier-price">
+                        <span class="price-amount">$29.99</span>
+                        <span class="price-period">/month</span>
+                    </div>
+                    <p class="tier-description">For professional traders</p>
+                </div>
+
+                <div class="tier-features">
+                    <div class="feature-item highlighted">
+                        <span class="feature-icon">💎</span>
+                        <span class="feature-text"><strong>Everything in Pro, plus:</strong></span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">⚡</span>
+                        <span class="feature-text"><strong>Real-time updates</strong> (30 seconds)</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📱</span>
+                        <span class="feature-text"><strong>SMS + Telegram</strong> alerts</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💬</span>
+                        <span class="feature-text"><strong>Discord</strong> webhook integration</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">♾️</span>
+                        <span class="feature-text"><strong>Unlimited</strong> alert history</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📊</span>
+                        <span class="feature-text">Integrated charts & analytics</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📜</span>
+                        <span class="feature-text"><strong>7-day historical</strong> data</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🔌</span>
+                        <span class="feature-text"><strong>API access</strong> for automation</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🌐</span>
+                        <span class="feature-text">Multi-exchange support (coming soon)</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎫</span>
+                        <span class="feature-text"><strong>Priority support</strong></span>
+                    </div>
+                </div>
+
+                <div class="tier-cta">
+                    {% if current_user.is_authenticated %}
+                    {% if current_user.tier == 2 %}
+                    <button class="cta-btn current" disabled>Your Current Plan</button>
+                    {% elif current_user.tier < 2 %} <a href="{{ url_for('upgrade', tier=2) }}" class="cta-btn primary">
+                        Upgrade to Elite</a>
+                        {% endif %}
+                        {% else %}
+                        <a href="{{ url_for('auth.register') }}" class="cta-btn primary">Start Free Trial</a>
+                        {% endif %}
+                </div>
+
+                <div class="tier-note">or $299/year (save $60)</div>
+            </div>
+        </div>
+
+        <!-- Feature Comparison Table -->
+        <div class="comparison-section">
+            <h2 class="comparison-title">Feature Comparison</h2>
+
+            <div class="comparison-table-container">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th class="feature-col">Feature</th>
+                            <th class="tier-col">Free</th>
+                            <th class="tier-col featured-col">Pro</th>
+                            <th class="tier-col premium-col">Elite</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="feature-name">Auto-refresh interval</td>
+                            <td>15 min</td>
+                            <td class="featured-cell">5 min</td>
+                            <td class="premium-cell">30 sec</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Volume alerts shown</td>
+                            <td>Last 10</td>
+                            <td class="featured-cell">Last 30</td>
+                            <td class="premium-cell">Unlimited</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Watchlist export limit</td>
+                            <td>Top 50</td>
+                            <td class="featured-cell">Unlimited</td>
+                            <td class="premium-cell">Unlimited</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Email alerts</td>
+                            <td>❌</td>
+                            <td class="featured-cell">✅</td>
+                            <td class="premium-cell">✅</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">SMS alerts</td>
+                            <td>❌</td>
+                            <td class="featured-cell">❌</td>
+                            <td class="premium-cell">✅</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Telegram/Discord alerts</td>
+                            <td>❌</td>
+                            <td class="featured-cell">❌</td>
+                            <td class="premium-cell">✅</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Additional metrics (OI, liquidations)</td>
+                            <td>❌</td>
+                            <td class="featured-cell">✅</td>
+                            <td class="premium-cell">✅</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">CSV/JSON export</td>
+                            <td>❌</td>
+                            <td class="featured-cell">✅</td>
+                            <td class="premium-cell">✅</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Historical data</td>
+                            <td>❌</td>
+                            <td class="featured-cell">❌</td>
+                            <td class="premium-cell">7 days</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">API access</td>
+                            <td>❌</td>
+                            <td class="featured-cell">❌</td>
+                            <td class="premium-cell">✅</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Priority support</td>
+                            <td>❌</td>
+                            <td class="featured-cell">❌</td>
+                            <td class="premium-cell">✅</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- FAQ Section -->
+        <div class="faq-section">
+            <h2 class="faq-title">Frequently Asked Questions</h2>
+
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h3 class="faq-question">Can I switch plans anytime?</h3>
+                    <p class="faq-answer">Yes! You can upgrade or downgrade your plan at any time. Changes take effect
+                        immediately.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3 class="faq-question">Do you offer refunds?</h3>
+                    <p class="faq-answer">We offer a 14-day money-back guarantee for all paid plans. No questions asked.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <h3 class="faq-question">What payment methods do you accept?</h3>
+                    <p class="faq-answer">We accept all major credit cards (Visa, Mastercard, AmEx), PayPal, and
+                        cryptocurrency.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3 class="faq-question">Is there a free trial for paid plans?</h3>
+                    <p class="faq-answer">Start with the Free plan to test the dashboard. Upgrade anytime when you're
+                        ready for more features.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3 class="faq-question">Can I cancel my subscription?</h3>
+                    <p class="faq-answer">Yes, you can cancel anytime from your account settings. You'll retain access
+                        until the end of your billing period.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3 class="faq-question">Do you offer team/enterprise plans?</h3>
+                    <p class="faq-answer">Yes! Contact us for custom enterprise pricing with multi-user accounts and
+                        dedicated support.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer CTA -->
+        <div class="pricing-footer-cta">
+            <h2 class="footer-cta-title">Ready to get started?</h2>
+            <p class="footer-cta-text">Join thousands of traders using Binance Dashboard</p>
+            <div class="footer-cta-buttons">
+                {% if not current_user.is_authenticated %}
+                <a href="{{ url_for('auth.register') }}" class="cta-btn primary large">Start Free</a>
+                <a href="{{ url_for('auth.login') }}" class="cta-btn secondary large">Sign In</a>
+                {% else %}
+                <a href="{{ url_for('index') }}" class="cta-btn primary large">Go to Dashboard</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme handling
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            document.getElementById('themeIcon').textContent = isLight ? '☀️' : '🌙';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
+
+        // Load saved theme
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                document.getElementById('themeIcon').textContent = '☀️';
+            }
+        });
+    </script>
+</body>
+
+</html>

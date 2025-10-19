@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Binance Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+
+<body>
+    <div class="auth-container">
+        <!-- Theme Toggle (top right) -->
+        <button class="theme-toggle auth-theme-toggle" id="themeToggle" onclick="toggleTheme()">
+            <span id="themeIcon">🌙</span>
+        </button>
+
+        <div class="auth-card">
+            <!-- Logo/Icon -->
+            <div class="auth-header">
+                <svg class="auth-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 20H21" stroke="#00ff88" stroke-width="2" stroke-linecap="round" />
+                    <path d="M6 16L9 12L13 17L17 8L20 12" stroke="#00ff88" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+                <h1 class="auth-title">Binance Dashboard</h1>
+                <p class="auth-subtitle">Sign in to access your dashboard</p>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                <div class="flash-message flash-{{ category }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <!-- Login Form -->
+            <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form">
+                <div class="form-group">
+                    <label for="email" class="form-label">
+                        <span class="label-icon">📧</span>
+                        Email Address
+                    </label>
+                    <input type="email" id="email" name="email" class="form-input" placeholder="you@example.com"
+                        value="{{ email or '' }}" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">
+                        <span class="label-icon">🔒</span>
+                        Password
+                    </label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="••••••••"
+                        required>
+                </div>
+
+                <div class="form-group form-checkbox">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="remember" id="remember">
+                        <span class="checkbox-text">Remember me for 30 days</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-primary">
+                    <span class="btn-icon">🚀</span>
+                    Sign In
+                </button>
+            </form>
+
+            <!-- Divider -->
+            <div class="auth-divider">
+                <span class="divider-text">or</span>
+            </div>
+
+            <!-- Register Link -->
+            <div class="auth-footer">
+                <p class="footer-text">
+                    Don't have an account?
+                    <a href="{{ url_for('auth.register') }}" class="footer-link">Sign up for free</a>
+                </p>
+            </div>
+
+            <!-- Test Accounts Info (for development) -->
+            <div class="test-accounts-info">
+                <details>
+                    <summary class="test-summary">🔧 Test Accounts</summary>
+                    <div class="test-content">
+                        <p><strong>Free:</strong> test-free@example.com</p>
+                        <p><strong>Pro:</strong> test-pro@example.com</p>
+                        <p><strong>Elite:</strong> test-elite@example.com</p>
+                        <p><em>Password for all: password123</em></p>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="auth-bottom">
+            <p class="bottom-text">
+                🚀 Start with <strong>Free tier</strong> • Upgrade anytime
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Theme handling
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            document.getElementById('themeIcon').textContent = isLight ? '☀️' : '🌙';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
+
+        // Load saved theme
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                document.getElementById('themeIcon').textContent = '☀️';
+            }
+        });
+
+        // Auto-hide flash messages after 5 seconds
+        document.addEventListener('DOMContentLoaded', () => {
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(message => {
+                setTimeout(() => {
+                    message.style.animation = 'slideOutRight 0.5s ease forwards';
+                    setTimeout(() => message.remove(), 500);
+                }, 5000);
+            });
+        });
+    </script>
+</body>
+
+</html>

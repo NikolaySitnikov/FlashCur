@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500 - Server Error</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/error.css') }}">
+</head>
+
+<body>
+    <div class="error-container">
+        <!-- Theme Toggle -->
+        <button class="theme-toggle error-theme-toggle" id="themeToggle" onclick="toggleTheme()">
+            <span id="themeIcon">🌙</span>
+        </button>
+
+        <div class="error-content">
+            <!-- Error Icon -->
+            <div class="error-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="error-svg">
+                    <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" stroke="#ff4757"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M12 8v4M12 16h.01" stroke="#ff4757" stroke-width="2" stroke-linecap="round" />
+                </svg>
+            </div>
+
+            <!-- Error Code -->
+            <h1 class="error-code error-500">500</h1>
+
+            <!-- Error Title -->
+            <h2 class="error-title">Internal Server Error</h2>
+
+            <!-- Error Message -->
+            <p class="error-message">
+                Something went wrong on our end. We're working to fix it!
+            </p>
+
+            <!-- Action Buttons -->
+            <div class="error-actions">
+                <a href="{{ url_for('index') if current_user.is_authenticated else url_for('auth.login') }}"
+                    class="error-btn primary">
+                    <span class="btn-icon">🏠</span>
+                    Back to Dashboard
+                </a>
+                <a href="javascript:window.location.reload()" class="error-btn secondary">
+                    <span class="btn-icon">🔄</span>
+                    Try Again
+                </a>
+            </div>
+
+            <!-- Help Text -->
+            <p class="error-help">
+                If this persists, <a href="mailto:support@binancedashboard.com" class="help-link">contact our support
+                    team</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Theme handling
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            document.getElementById('themeIcon').textContent = isLight ? '☀️' : '🌙';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
+
+        // Load saved theme
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                document.getElementById('themeIcon').textContent = '☀️';
+            }
+        });
+    </script>
+</body>
+
+</html>

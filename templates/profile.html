@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Binance Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+</head>
+
+<body>
+    <div class="profile-page">
+        <!-- Header -->
+        <header class="profile-header">
+            <div class="profile-header-content">
+                <a href="{{ url_for('index') }}" class="back-link">
+                    <span class="back-icon">←</span>
+                    <span class="back-text">Back to Dashboard</span>
+                </a>
+
+                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+                    <span id="themeIcon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="profile-container">
+            <!-- Page Title -->
+            <div class="profile-hero">
+                <div class="user-avatar">
+                    <span class="avatar-icon">👤</span>
+                </div>
+                <h1 class="profile-title">Account Settings</h1>
+                <p class="profile-subtitle">{{ current_user.email }}</p>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                <div class="flash-message flash-{{ category }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <div class="profile-grid">
+                <!-- Account Information Card -->
+                <div class="profile-card">
+                    <h2 class="card-title">
+                        <span class="title-icon">📊</span>
+                        Account Information
+                    </h2>
+
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <span class="info-label">Email</span>
+                            <span class="info-value">{{ current_user.email }}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Current Plan</span>
+                            <span class="info-value">
+                                <span class="user-tier tier-{{ current_user.tier }}">
+                                    {{ current_user.tier_name }}
+                                </span>
+                            </span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Member Since</span>
+                            <span class="info-value">{{ current_user.created_at.strftime('%B %d, %Y') }}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Account Status</span>
+                            <span class="info-value status-active">
+                                {% if current_user.is_active %}
+                                ✅ Active
+                                {% else %}
+                                ❌ Inactive
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Theme Preference</span>
+                            <span class="info-value">{{ current_user.theme_preference|title }}</span>
+                        </div>
+                    </div>
+
+                    <div class="card-actions">
+                        <a href="{{ url_for('pricing') }}" class="action-btn primary">
+                            <span class="btn-icon">💎</span>
+                            {% if current_user.tier == 0 %}
+                            Upgrade to Pro
+                            {% elif current_user.tier == 1 %}
+                            Upgrade to Elite
+                            {% else %}
+                            View Pricing
+                            {% endif %}
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Current Plan Features -->
+                <div class="profile-card">
+                    <h2 class="card-title">
+                        <span class="title-icon">✨</span>
+                        Your {{ current_user.tier_name }} Plan Features
+                    </h2>
+
+                    <div class="features-list">
+                        {% if current_user.tier == 0 %}
+                        <div class="feature-row">
+                            <span class="feature-icon">🔄</span>
+                            <span class="feature-text">Auto-refresh every <strong>15 minutes</strong></span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">🚨</span>
+                            <span class="feature-text">Last <strong>10 volume alerts</strong></span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">📊</span>
+                            <span class="feature-text">Top <strong>50 assets</strong> by volume</span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">📥</span>
+                            <span class="feature-text">Watchlist export (top 50)</span>
+                        </div>
+                        {% elif current_user.tier == 1 %}
+                        <div class="feature-row">
+                            <span class="feature-icon">⚡</span>
+                            <span class="feature-text">Auto-refresh every <strong>5 minutes</strong></span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">🚨</span>
+                            <span class="feature-text">Last <strong>30 volume alerts</strong></span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">📊</span>
+                            <span class="feature-text"><strong>Unlimited</strong> assets</span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">📧</span>
+                            <span class="feature-text">Email notifications</span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">📥</span>
+                            <span class="feature-text">CSV/JSON export</span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">🚫</span>
+                            <span class="feature-text">Ad-free experience</span>
+                        </div>
+                        {% else %}
+                        <div class="feature-row">
+                            <span class="feature-icon">⚡</span>
+                            <span class="feature-text">Real-time updates (<strong>30 seconds</strong>)</span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">♾️</span>
+                            <span class="feature-text"><strong>Unlimited</strong> alert history</span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">📱</span>
+                            <span class="feature-text">SMS + Telegram + Discord alerts</span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">📈</span>
+                            <span class="feature-text">Historical data & charts</span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">🔌</span>
+                            <span class="feature-text">API access</span>
+                        </div>
+                        <div class="feature-row">
+                            <span class="feature-icon">🎫</span>
+                            <span class="feature-text">Priority support</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if current_user.tier < 2 %} <div class="upgrade-hint">
+                        <p class="hint-text">
+                            {% if current_user.tier == 0 %}
+                            🚀 Upgrade to Pro for faster refresh, email alerts, and more!
+                            {% else %}
+                            👑 Upgrade to Elite for real-time updates and advanced features!
+                            {% endif %}
+                        </p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Change Password Card -->
+            <div class="profile-card">
+                <h2 class="card-title">
+                    <span class="title-icon">🔒</span>
+                    Change Password
+                </h2>
+
+                <form method="POST" action="{{ url_for('change_password') }}" class="profile-form">
+                    <div class="form-group">
+                        <label for="current_password" class="form-label">Current Password</label>
+                        <input type="password" id="current_password" name="current_password" class="form-input"
+                            placeholder="••••••••" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="new_password" class="form-label">New Password</label>
+                        <input type="password" id="new_password" name="new_password" class="form-input"
+                            placeholder="••••••••" minlength="8" required>
+                        <p class="form-hint">Minimum 8 characters</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm_password" class="form-label">Confirm New Password</label>
+                        <input type="password" id="confirm_password" name="confirm_password" class="form-input"
+                            placeholder="••••••••" minlength="8" required>
+                    </div>
+
+                    <button type="submit" class="action-btn primary">
+                        <span class="btn-icon">💾</span>
+                        Update Password
+                    </button>
+                </form>
+            </div>
+
+            <!-- Theme Preference Card -->
+            <div class="profile-card">
+                <h2 class="card-title">
+                    <span class="title-icon">🎨</span>
+                    Appearance
+                </h2>
+
+                <form method="POST" action="{{ url_for('update_theme_preference') }}" class="profile-form">
+                    <div class="form-group">
+                        <label for="theme_preference" class="form-label">Preferred Theme</label>
+                        <select id="theme_preference" name="theme_preference" class="form-select">
+                            <option value="dark" {% if current_user.theme_preference=='dark' %}selected{% endif %}>
+                                🌙 Dark Mode
+                            </option>
+                            <option value="light" {% if current_user.theme_preference=='light' %}selected{% endif %}>
+                                ☀️ Light Mode
+                            </option>
+                        </select>
+                        <p class="form-hint">This will be applied automatically when you log in</p>
+                    </div>
+
+                    <button type="submit" class="action-btn primary">
+                        <span class="btn-icon">💾</span>
+                        Save Preference
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Danger Zone (for future: delete account) -->
+        <div class="danger-zone">
+            <h2 class="danger-title">⚠️ Danger Zone</h2>
+            <p class="danger-text">
+                Need to delete your account or have issues?
+                <a href="mailto:support@binancedashboard.com" class="danger-link">Contact Support</a>
+            </p>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        // Theme handling
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            document.getElementById('themeIcon').textContent = isLight ? '☀️' : '🌙';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
+
+        // Load saved theme
+        window.addEventListener('DOMContentLoaded', () => {
+            // Use user's saved preference
+            const userTheme = '{{ current_user.theme_preference }}';
+            if (userTheme === 'light') {
+                document.body.classList.add('light-theme');
+                document.getElementById('themeIcon').textContent = '☀️';
+            }
+        });
+
+        // Password match validation
+        document.getElementById('confirm_password').addEventListener('input', function () {
+            const newPassword = document.getElementById('new_password').value;
+            const confirm = this.value;
+
+            if (confirm && newPassword !== confirm) {
+                this.setCustomValidity('Passwords do not match');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+
+        // Auto-hide flash messages after 5 seconds
+        document.addEventListener('DOMContentLoaded', () => {
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(message => {
+                setTimeout(() => {
+                    message.style.animation = 'slideOutRight 0.5s ease forwards';
+                    setTimeout(() => message.remove(), 500);
+                }, 5000);
+            });
+        });
+    </script>
+</body>
+
+</html>

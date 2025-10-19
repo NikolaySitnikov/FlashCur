@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binance USDT-Perpetual Pairs Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <svg class="title-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 20H21" stroke="#00ff88" stroke-width="2" stroke-linecap="round" />
+                        <path d="M6 16L9 12L13 17L17 8L20 12" stroke="#00ff88" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <div class="header-center">
+                    <h1 class="main-title desktop-only">Binance USDT-Perpetual Pairs Dashboard</h1>
+                    <h1 class="mobile-title mobile-only">BD</h1>
+                    <p class="last-updated" id="lastUpdated">Loading...</p>
+                </div>
+                <div class="header-right">
+                    <!-- Pricing Link -->
+                    <a href="{{ url_for('pricing') }}" class="pricing-link desktop-only" title="View Pricing">
+                        <span class="pricing-icon">💎</span>
+                        <span class="pricing-text">Pricing</span>
+                    </a>
+
+                    <!-- User Info (if authenticated) -->
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('profile') }}" class="profile-link desktop-only" title="Profile & Settings">
+                        <span class="profile-icon">⚙️</span>
+                    </a>
+
+                    <div class="user-info desktop-only">
+                        <div class="user-details">
+                            <span class="user-email">{{ current_user.email }}</span>
+                            <span class="user-tier tier-{{ current_user.tier }}">{{ current_user.tier_name }}</span>
+                        </div>
+                        <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Logout">
+                            <span>🚪</span>
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+                        <span id="themeIcon">🌙</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Ads Banner for Free Tier -->
+        {% if current_user.is_authenticated and current_user.tier == 0 %}
+        <div class="ads-banner">
+            <div class="ads-content">
+                <span class="ads-icon">🚀</span>
+                <span class="ads-text">
+                    {{ config.AD_CONFIG['message']|safe }}
+                </span>
+                <a href="{{ url_for('pricing') }}" class="ads-cta">Upgrade Now</a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Desktop Layout -->
+            <div class="desktop-layout">
+                <!-- Market Data Section -->
+                <div class="market-data">
+                    <h2 class="section-title">📈 Market Data</h2>
+
+                    <!-- Loading Indicator -->
+                    <div class="loading-container" id="loadingContainer">
+                        <div class="loading-spinner"></div>
+                        <span class="loading-text">Loading market data</span>
+                        <div class="loading-dots">
+                            <span>.</span><span>.</span><span>.</span>
+                        </div>
+                    </div>
+
+                    <!-- Data Table -->
+                    <div class="table-container" id="tableContainer" style="display: none;">
+                        <table class="data-table" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-column="asset" onclick="handleSort('asset')">
+                                        Asset <span class="sort-indicator"></span>
+                                    </th>
+                                    <th class="sortable" data-column="volume" onclick="handleSort('volume')">
+                                        Volume<br>(24h, $) <span class="sort-indicator"></span>
+                                    </th>
+                                    <th class="sortable" data-column="funding_rate"
+                                        onclick="handleSort('funding_rate')">
+                                        Funding Rate<br>(%) <span class="sort-indicator"></span>
+                                    </th>
+                                    <th class="sortable" data-column="price" onclick="handleSort('price')">
+                                        Price<br>(USDT) <span class="sort-indicator"></span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <!-- Data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Download Button -->
+                    <div class="download-section" id="downloadSection" style="display: none;">
+                        <button class="download-btn" onclick="downloadWatchlist()">
+                            📥 Download TradingView Watchlist
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Alerts Sidebar -->
+                <div class="alerts-sidebar">
+                    <h2 class="section-title">🚨 Volume Alerts</h2>
+                    <div class="alerts-content">
+                        <div class="alerts-container" id="alertsContainer">
+                            <div class="no-alerts">No recent alerts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Layout -->
+            <div class="mobile-layout">
+                <!-- Mobile Tab Buttons -->
+                <div class="mobile-tab-buttons">
+                    <button class="mobile-tab-button active" data-tab="market-data">
+                        <span class="tab-icon">📈</span>
+                        <span class="tab-text">Market Data</span>
+                    </button>
+                    <button class="mobile-tab-button" data-tab="volume-alerts">
+                        <span class="tab-icon">🚨</span>
+                        <span class="tab-text">Volume Alerts</span>
+                        <div class="notification-badge" id="notificationBadge" style="display: none;">
+                            <span class="badge-count">0</span>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="tab-content">
+                    <!-- Market Data Tab -->
+                    <div class="tab-panel active" id="market-data-panel">
+                        <div class="mobile-market-data">
+                            <!-- Loading Indicator -->
+                            <div class="loading-container" id="mobileLoadingContainer">
+                                <div class="loading-spinner"></div>
+                                <span class="loading-text">Loading market data</span>
+                                <div class="loading-dots">
+                                    <span>.</span><span>.</span><span>.</span>
+                                </div>
+                            </div>
+
+                            <!-- Data Table -->
+                            <div class="table-container" id="mobileTableContainer" style="display: none;">
+                                <table class="data-table" id="mobileDataTable">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" data-column="asset" onclick="handleSort('asset')">
+                                                Asset <span class="sort-indicator"></span>
+                                            </th>
+                                            <th class="sortable" data-column="volume" onclick="handleSort('volume')">
+                                                Volume<br>(24h, $) <span class="sort-indicator"></span>
+                                            </th>
+                                            <th class="sortable" data-column="funding_rate"
+                                                onclick="handleSort('funding_rate')">
+                                                Funding Rate<br>(%) <span class="sort-indicator"></span>
+                                            </th>
+                                            <th class="sortable" data-column="price" onclick="handleSort('price')">
+                                                Price<br>(USDT) <span class="sort-indicator"></span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mobileTableBody">
+                                        <!-- Data will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Download Button -->
+                            <div class="download-section" id="mobileDownloadSection" style="display: none;">
+                                <button class="download-btn" onclick="downloadWatchlist()">
+                                    📥 Download TradingView Watchlist
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Volume Alerts Tab -->
+                    <div class="tab-panel" id="volume-alerts-panel">
+                        <div class="mobile-alerts">
+                            <div class="alerts-container" id="mobileAlertsContainer">
+                                <div class="no-alerts">No recent alerts</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+
+</html>
