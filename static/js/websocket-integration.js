@@ -45,7 +45,13 @@ class WebSocketIntegration {
                 console.log('🎨 Elite tier update triggered');
                 this.updateDashboard();
             } else {
-                console.log('📊 Free/Pro tier - no update (firstPaintDone=true, userTier<2)');
+                // Free/Pro tier: force update when we have real data (not just connection state)
+                if (state.lastUpdate && state.bySymbol && Object.keys(state.bySymbol).length > 0) {
+                    console.log('🎨 Free/Pro tier - forcing update with real data');
+                    this.updateDashboard();
+                } else {
+                    console.log('📊 Free/Pro tier - no update (no real data yet)');
+                }
             }
         });
         console.log('✅ Subscribed. unsubscribe is function?', typeof this.unsubscribe === 'function');
