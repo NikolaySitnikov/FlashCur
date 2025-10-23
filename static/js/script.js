@@ -740,8 +740,18 @@ function handleSort(column) {
     saveSortState();
 
     // Apply sorting and redisplay - use fresh copy of original data
-    dataCache = applySorting([...originalDataCache]);
-    displayDataProgressive(dataCache);
+    if (window.originalDataCache && window.originalDataCache.length > 0) {
+        // WebSocket data available - use WebSocket sorting
+        window.dataCache = window.wsIntegration ? window.wsIntegration.applySorting([...window.originalDataCache]) : [...window.originalDataCache];
+        if (window.wsIntegration && window.wsIntegration.updateTable) {
+            window.wsIntegration.updateTable('tableBody', window.dataCache);
+            window.wsIntegration.updateTable('mobileTableBody', window.dataCache);
+        }
+    } else {
+        // Fallback to original system
+        dataCache = applySorting([...originalDataCache]);
+        displayDataProgressive(dataCache);
+    }
     updateSortIndicators();
 }
 

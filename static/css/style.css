@@ -2652,25 +2652,25 @@ th.pro-column {
         overflow: visible !important;
         touch-action: auto !important;
     }
-    
+
     /* Fix mobile table layout gap */
     .mobile-market-data {
         padding: 0 !important;
         margin: 0 !important;
     }
-    
+
     .mobile-market-data .table-container {
         margin: 0 !important;
         padding: 0 !important;
     }
-    
+
     /* Mobile table column fixes for Free tier (4 columns) */
     .mobile-layout .data-table {
         font-size: 0.8rem;
         table-layout: fixed;
         width: 100%;
     }
-    
+
     .mobile-layout .data-table th,
     .mobile-layout .data-table td {
         padding: 0.6rem 0.4rem;
@@ -2678,23 +2678,23 @@ th.pro-column {
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    
+
     /* Free tier mobile columns: Asset(20%), Volume(25%), Funding(25%), Price(30%) */
     .mobile-layout .data-table th:nth-child(1),
     .mobile-layout .data-table td:nth-child(1) {
         width: 20%;
     }
-    
+
     .mobile-layout .data-table th:nth-child(2),
     .mobile-layout .data-table td:nth-child(2) {
         width: 25%;
     }
-    
+
     .mobile-layout .data-table th:nth-child(3),
     .mobile-layout .data-table td:nth-child(3) {
         width: 25%;
     }
-    
+
     .mobile-layout .data-table th:nth-child(4),
     .mobile-layout .data-table td:nth-child(4) {
         width: 30%;

@@ -37,7 +37,7 @@ class WebSocketIntegration {
             this.updateConnectionIndicator(state.connectionState);
             this.updateDashboard();
         });
-        
+
         // Set initial connection state to connected since WebSocket is working
         this.store.setConnectionState('connected');
 
@@ -133,12 +133,12 @@ class WebSocketIntegration {
         // Format volume with $ symbol (like working version)
         const formatVolume = (n) => {
             if (!n) return '-';
-            if (n >= 1e9) return `$${(n/1e9).toFixed(2)}B`;
-            if (n >= 1e6) return `$${(n/1e6).toFixed(2)}M`;
-            if (n >= 1e3) return `$${(n/1e3).toFixed(2)}K`;
+            if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+            if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+            if (n >= 1e3) return `$${(n / 1e3).toFixed(2)}K`;
             return `$${n.toLocaleString()}`;
         };
-        
+
         // Format price with $ symbol (like working version)
         const formatPrice = (p) => {
             if (!p) return '-';
@@ -148,7 +148,7 @@ class WebSocketIntegration {
             if (price < 100) return `$${price.toFixed(3)}`;
             return `$${price.toFixed(2)}`;
         };
-        
+
         // Format funding rate (like working version)
         const formatFunding = (r) => {
             if (r == null || r == undefined) return 'N/A';
@@ -237,14 +237,77 @@ class WebSocketIntegration {
             if (mobileContainer) mobileContainer.style.display = 'block';
         }
 
-        // Map to display format and update tables
+        // Map to display format and store in global cache for sorting
         const displayItems = this.mapToDisplayItems(filteredSymbols);
+        
+        // Store data in global cache for sorting (like working version)
+        window.originalDataCache = [...displayItems];
+        window.dataCache = this.applySorting([...displayItems]);
 
-        // Update desktop table with mapped data
-        this.updateTable('tableBody', displayItems);
+        // Update tables with sorted data
+        this.updateTable('tableBody', window.dataCache);
+        this.updateTable('mobileTableBody', window.dataCache);
+        
+        // Update sort indicators
+        if (window.updateSortIndicators) {
+            window.updateSortIndicators();
+        }
+    }
 
-        // Update mobile table with mapped data
-        this.updateTable('mobileTableBody', displayItems);
+    // Apply sorting to data array (like working version)
+    applySorting(data) {
+        if (!window.sortState || !window.sortState.column || !window.sortState.direction) {
+            // No sorting - return original order
+            return data;
+        }
+
+        const sorted = [...data];
+
+        sorted.sort((a, b) => {
+            let aVal, bVal;
+
+            switch (window.sortState.column) {
+                case 'asset':
+                    aVal = a.asset;
+                    bVal = b.asset;
+                    break;
+                case 'volume':
+                    aVal = a.volume_formatted ? parseFloat(a.volume_formatted.replace(/[$,BMK]/g, '')) : 0;
+                    bVal = b.volume_formatted ? parseFloat(b.volume_formatted.replace(/[$,BMK]/g, '')) : 0;
+                    break;
+                case 'price_change_pct':
+                    aVal = a.price_change_pct !== undefined ? a.price_change_pct : -Infinity;
+                    bVal = b.price_change_pct !== undefined ? b.price_change_pct : -Infinity;
+                    break;
+                case 'funding_rate':
+                    aVal = a.funding_rate !== null ? a.funding_rate : -Infinity;
+                    bVal = b.funding_rate !== null ? b.funding_rate : -Infinity;
+                    break;
+                case 'price':
+                    aVal = a.price_formatted ? parseFloat(a.price_formatted.replace(/[$,]/g, '')) : 0;
+                    bVal = b.price_formatted ? parseFloat(b.price_formatted.replace(/[$,]/g, '')) : 0;
+                    break;
+                case 'open_interest':
+                    aVal = a.open_interest_formatted ? parseFloat(a.open_interest_formatted.replace(/[$,BMK]/g, '')) : -Infinity;
+                    bVal = b.open_interest_formatted ? parseFloat(b.open_interest_formatted.replace(/[$,BMK]/g, '')) : -Infinity;
+                    break;
+                default:
+                    return 0;
+            }
+
+            // Compare values
+            let comparison = 0;
+            if (typeof aVal === 'string') {
+                comparison = aVal.localeCompare(bVal);
+            } else {
+                comparison = aVal - bVal;
+            }
+
+            // Apply direction
+            return window.sortState.direction === 'asc' ? comparison : -comparison;
+        });
+
+        return sorted;
     }
 
     // Show sample data when WebSocket is not working
