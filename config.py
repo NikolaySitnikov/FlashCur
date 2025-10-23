@@ -26,14 +26,17 @@ TIERS = {
 # BINANCE API SETTINGS
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Primary API endpoint - use data.binance.com for unrestricted market data access
-# This endpoint bypasses regional 451 restrictions for public market data
-API_BASE = os.getenv('BINANCE_API_BASE', "https://data.binance.com")
+# CORS Proxy to bypass Railway's blocked IPs
+# Railway's data center IPs are blocked by Binance, so we route through a proxy
+CORS_PROXY = os.getenv('CORS_PROXY', "https://corsproxy.io/?")
 
-# Fallback to futures API endpoints (may be blocked in some regions)
-API_BASE_ALT1 = "https://fapi.binance.com"
-API_BASE_ALT2 = "https://fapi1.binance.com"
-API_BASE_ALT3 = "https://fapi2.binance.com"
+# Primary API endpoint - using proxy to bypass 451 errors
+API_BASE = os.getenv('BINANCE_API_BASE', f"{CORS_PROXY}https://fapi.binance.com")
+
+# Alternative endpoints (all proxied)
+API_BASE_ALT1 = f"{CORS_PROXY}https://fapi1.binance.com"
+API_BASE_ALT2 = f"{CORS_PROXY}https://fapi2.binance.com" 
+API_BASE_ALT3 = f"{CORS_PROXY}https://fapi3.binance.com"
 
 VOLUME_URL = f"{API_BASE}/fapi/v1/ticker/24hr"
 FUNDING_URL = f"{API_BASE}/fapi/v1/premiumIndex"
