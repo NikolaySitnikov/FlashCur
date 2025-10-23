@@ -21,8 +21,15 @@ class MarketStore {
 
     // Subscribe to state changes
     subscribe(fn) {
+        console.log('🧷 MarketStore.subscribe called. Current size BEFORE add:', this.listeners.size);
         this.listeners.add(fn);
-        return () => this.listeners.delete(fn);
+        console.log('🧷 MarketStore.subscribe AFTER add. Size:', this.listeners.size);
+        
+        return () => {
+            console.log('🧷 MarketStore.unsubscribe called. Size BEFORE delete:', this.listeners.size);
+            this.listeners.delete(fn);
+            console.log('🧷 MarketStore.unsubscribe AFTER delete. Size:', this.listeners.size);
+        };
     }
 
     // Get current state
@@ -200,7 +207,14 @@ class MarketStore {
 
     // Notify all listeners of state changes
     notify() {
-        this.listeners.forEach(fn => fn(this.getState()));
+        console.log('📣 MarketStore.notify firing. Listener count:', this.listeners.size);
+        this.listeners.forEach((fn, idx) => {
+            try {
+                fn(this.getState());
+            } catch (e) {
+                console.error('❌ Listener threw in notify:', e);
+            }
+        });
     }
 
     // Get spike alerts (for notifications)

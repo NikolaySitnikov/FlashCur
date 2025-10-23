@@ -9,6 +9,8 @@ class WebSocketIntegration {
     constructor() {
         this.ws = null;
         this.store = window.marketStore;
+        console.log('🔗 wsIntegration.store === window.marketStore ?',
+                    this.store === window.marketStore, this.store);
         this.isConnected = false;
         this.reconnectTimeout = null;
         this.updateInterval = null;   // tier-paced UI paint timer (Free/Pro)
@@ -21,12 +23,14 @@ class WebSocketIntegration {
     // Initialize WebSocket connection
     init() {
         console.log('🚀 Initializing WebSocket integration...');
+        console.log('🚀 init() starting. About to subscribe…', this.store);
 
         // Get user tier and set appropriate refresh rate
         this.getUserTierAndSetupRefresh();
 
         // Subscribe to store changes for real-time updates
         this.unsubscribe = this.store.subscribe((state) => {
+            console.log('📥 Store subscription callback ENTERED. state.lastUpdate:', state.lastUpdate);
             // Update connection indicator based on store state
             this.updateConnectionIndicator(state.connectionState);
 
@@ -40,8 +44,10 @@ class WebSocketIntegration {
                 this.updateDashboard();
             }
         });
+        console.log('✅ Subscribed. unsubscribe is function?', typeof this.unsubscribe === 'function');
 
         // Set initial connection state to connected since WebSocket is working
+        console.log('🧪 Forcing a connection state ping to trigger notify');
         this.store.setConnectionState('connected');
 
         // Note: For Free/Pro, initial paint is triggered after first data arrives
@@ -134,6 +140,15 @@ class WebSocketIntegration {
 
     // Handle incoming WebSocket messages
     handleMessage(message) {
+        if (!this.store) {
+            console.error('❌ this.store is undefined in handleMessage!');
+            return;
+        }
+        // sanity: prove it's the same object
+        if (this.store !== window.marketStore) {
+            console.warn('⚠️ this.store !== window.marketStore (possible double instance)');
+        }
+        
         try {
             console.log('📨 Received WebSocket message:', message.stream, message.data?.length || 0, 'items');
 
