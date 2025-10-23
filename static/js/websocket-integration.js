@@ -54,13 +54,19 @@ class WebSocketIntegration {
             const hasFundingRates = hasSymbols && Object.values(state.bySymbol)
                 .some(s => s.fundingRate !== undefined && s.fundingRate !== null);
 
-            // Ensure the UI unblocks and shows complete data (with funding) on the first paint
-            // This means the loader stays on longer, but no N/A flash for funding rates.
-            if (!this.firstPaintDone && hasSymbols && hasFundingRates) {
-                console.log('🎨 Free/Pro tier - first paint with complete data (including funding rates)');
-                this.updateDashboard();          // render with funding rates
+            // 1) Ensure the UI unblocks quickly (first paint of any kind)
+            if (!this.firstPaintDone && hasSymbols) {
+                console.log('🎨 Free/Pro tier - first paint (symbols only, funding may be N/A)');
+                this.updateDashboard();          // can render N/A for funding at first
                 this.firstPaintDone = true;      // loader gone
-                this.hasShownCompleteData = true; // Mark as complete data shown
+            }
+
+            // 2) Ensure we paint once when COMPLETE data (with funding) arrives
+            //    This must NOT be gated by firstPaintDone
+            if (hasFundingRates && !this.hasShownCompleteData) {
+                console.log('🎨 Free/Pro tier - complete data paint (with funding rates)');
+                this.updateDashboard();          // upgrade the UI with funding
+                this.hasShownCompleteData = true;
             }
 
             // After that, Free/Pro rely on the tier timer (startUIUpdates) you already have
