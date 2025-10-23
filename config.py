@@ -26,13 +26,14 @@ TIERS = {
 # BINANCE API SETTINGS
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Primary API endpoint
-API_BASE = os.getenv('BINANCE_API_BASE', "https://fapi.binance.com")
+# Primary API endpoint - use data.binance.com for unrestricted market data access
+# This endpoint bypasses regional 451 restrictions for public market data
+API_BASE = os.getenv('BINANCE_API_BASE', "https://data.binance.com")
 
-# Alternative endpoints for regions with restrictions
-API_BASE_ALT1 = "https://fapi1.binance.com"
-API_BASE_ALT2 = "https://fapi2.binance.com"
-API_BASE_ALT3 = "https://fapi3.binance.com"
+# Fallback to futures API endpoints (may be blocked in some regions)
+API_BASE_ALT1 = "https://fapi.binance.com"
+API_BASE_ALT2 = "https://fapi1.binance.com"
+API_BASE_ALT3 = "https://fapi2.binance.com"
 
 VOLUME_URL = f"{API_BASE}/fapi/v1/ticker/24hr"
 FUNDING_URL = f"{API_BASE}/fapi/v1/premiumIndex"
