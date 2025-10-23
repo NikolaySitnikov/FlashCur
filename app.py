@@ -290,10 +290,11 @@ def create_robust_session():
         'Upgrade-Insecure-Requests': '1'
     })
     
+    # Don't retry 451 errors automatically - we'll handle those in fallback
     retry_strategy = Retry(
-        total=5,
-        backoff_factor=2,
-        status_forcelist=[429, 451, 500, 502, 503, 504],
+        total=2,  # Reduced retries since we have multiple endpoints
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],  # Removed 451 from retry list
         raise_on_status=False
     )
     adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -307,20 +308,32 @@ def fetch_with_fallback(session, urls, timeout=15, params=None):
     Try multiple URLs in sequence until one succeeds.
     Returns response object on success, None on failure.
     """
-    for url in urls:
+    last_error = None
+    for i, url in enumerate(urls, 1):
         try:
             response = session.get(url, timeout=timeout, params=params)
             if response.status_code == 200:
+                if i > 1:  # Only log if we used a fallback
+                    print(f"✅ Successfully fetched from fallback endpoint #{i}: {url}")
                 return response
             elif response.status_code == 451:
                 # Try next endpoint
+                print(f"❌ Endpoint {i}/{len(urls)} blocked (451): {url}")
+                last_error = f"451 Client Error for {url}"
                 continue
             else:
-                response.raise_for_status()
+                # Other error, try to get more info but continue to next endpoint
+                print(f"❌ Endpoint {i}/{len(urls)} error ({response.status_code}): {url}")
+                last_error = f"{response.status_code} Error for {url}"
+                continue
         except Exception as e:
             # Log and try next endpoint
-            print(f"Failed to fetch from {url}: {e}")
+            print(f"❌ Endpoint {i}/{len(urls)} failed: {url} - {str(e)[:100]}")
+            last_error = str(e)
             continue
+    
+    # All endpoints failed
+    print(f"🚨 All {len(urls)} endpoints failed. Last error: {last_error}")
     return None
 
 # ──────────────────────────────────────────────────────────────
@@ -350,13 +363,14 @@ class DataManager:
                 config.EXCHANGE_INFO_URL_ALT2,
                 config.EXCHANGE_INFO_URL_ALT3
             ]
-            
-            response = fetch_with_fallback(self.session, exchange_urls, timeout=15)
-            
+
+            response = fetch_with_fallback(
+                self.session, exchange_urls, timeout=15)
+
             if not response:
                 print("Failed to fetch active symbols from all endpoints")
                 return set()
-            
+
             data = response.json()
 
             symbols = {
@@ -403,12 +417,14 @@ class DataManager:
                 config.VOLUME_URL_ALT2,
                 config.VOLUME_URL_ALT3
             ]
-            volume_response = fetch_with_fallback(self.session, volume_urls, timeout=15)
-            
+            volume_response = fetch_with_fallback(
+                self.session, volume_urls, timeout=15)
+
             if not volume_response:
-                app.logger.error("Failed to fetch data from all volume endpoints")
+                app.logger.error(
+                    "Failed to fetch data from all volume endpoints")
                 return []
-            
+
             volume_data = volume_response.json()
 
             # Fetch funding data with fallback
@@ -418,12 +434,14 @@ class DataManager:
                 config.FUNDING_URL_ALT2,
                 config.FUNDING_URL_ALT3
             ]
-            funding_response = fetch_with_fallback(self.session, funding_urls, timeout=15)
-            
+            funding_response = fetch_with_fallback(
+                self.session, funding_urls, timeout=15)
+
             if not funding_response:
-                app.logger.error("Failed to fetch funding data from all endpoints")
+                app.logger.error(
+                    "Failed to fetch funding data from all endpoints")
                 return []
-            
+
             funding_data = funding_response.json()
 
             # Create funding rate lookup
