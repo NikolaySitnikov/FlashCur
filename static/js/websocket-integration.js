@@ -32,7 +32,9 @@ class WebSocketIntegration {
         this.isConnected = true;
 
         // Subscribe to store changes for real-time updates
-        this.unsubscribe = this.store.subscribe(() => {
+        this.unsubscribe = this.store.subscribe((state) => {
+            // Update connection indicator based on store state
+            this.updateConnectionIndicator(state.connectionState);
             this.updateDashboard();
         });
 
@@ -66,14 +68,12 @@ class WebSocketIntegration {
                 console.log('📊 First ticker sample:', message.data?.[0]);
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
-                this.updateConnectionIndicator('connected');
 
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
                 console.log('💰 Processing mark price data:', message.data?.length || 0, 'prices');
                 console.log('💰 First mark price sample:', message.data?.[0]);
                 this.store.updateMarkPrices(message.data);
-                this.updateConnectionIndicator('connected');
 
             } else {
                 console.log('❓ Unknown stream:', message.stream);
@@ -121,8 +121,8 @@ class WebSocketIntegration {
         indicator.textContent = status.text;
         indicator.className = `text-sm font-medium ${status.class}`;
 
-        // Update the connection state in the store
-        this.store.setConnectionState(state);
+        // Don't update store state here to avoid circular dependency
+        // The store state is updated in the WebSocket message handlers
     }
 
     // Update market data table
@@ -193,7 +193,7 @@ class WebSocketIntegration {
 
         // Update desktop table
         this.updateTable('tableBody', filteredSymbols);
-        
+
         // Update mobile table
         this.updateTable('mobileTableBody', filteredSymbols);
     }
