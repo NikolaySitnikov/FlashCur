@@ -859,6 +859,7 @@ def debug_upstreams():
         "EXCHANGE_INFO_URL": config.EXCHANGE_INFO_URL
     }, 200
 
+
 @app.route('/debug/users')
 def debug_users():
     """Debug route to check Railway database users"""
@@ -878,6 +879,67 @@ def debug_users():
             "users": user_data,
             "database_uri": app.config.get('DATABASE_URI', 'Not set')
         }, 200
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+@app.route('/populate-db')
+def populate_database():
+    """Populate Railway database with test users"""
+    try:
+        from werkzeug.security import generate_password_hash
+        
+        # Create test accounts
+        test_accounts = [
+            {"email": "test-free@example.com", "tier": 0, "password": "password123"},
+            {"email": "test-pro@example.com", "tier": 1, "password": "password123"},
+            {"email": "test-elite@example.com", "tier": 2, "password": "password123"},
+        ]
+        
+        created_count = 0
+        
+        for account in test_accounts:
+            # Check if user already exists
+            existing_user = User.query.filter_by(email=account["email"]).first()
+            
+            if existing_user:
+                continue
+            else:
+                try:
+                    new_user = User(
+                        email=account["email"],
+                        password_hash=generate_password_hash(account["password"]),
+                        tier=account["tier"],
+                        is_active=True,
+                        email_confirmed=True
+                    )
+                    db.session.add(new_user)
+                    created_count += 1
+                except Exception as e:
+                    return {"error": f"Failed to create {account['email']}: {str(e)}"}, 500
+        
+        if created_count > 0:
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                return {"error": f"Failed to commit: {str(e)}"}, 500
+        
+        # Return current users
+        users = User.query.all()
+        user_data = []
+        for user in users:
+            user_data.append({
+                "email": user.email,
+                "tier": user.tier,
+                "is_active": user.is_active
+            })
+        
+        return {
+            "message": f"Successfully created {created_count} test accounts",
+            "total_users": len(users),
+            "users": user_data
+        }, 200
+        
     except Exception as e:
         return {"error": str(e)}, 500
 
