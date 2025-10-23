@@ -184,7 +184,7 @@ MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
 MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'apikey')
 MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')  # SendGrid API key goes here
 MAIL_DEFAULT_SENDER = os.getenv(
-    'MAIL_DEFAULT_SENDER', 'noreply@binancedashboard.com')
+    'MAIL_DEFAULT_SENDER', 'noreply@volspike.com')
 
 # Email confirmation settings
 EMAIL_CONFIRMATION_SALT = os.getenv(
