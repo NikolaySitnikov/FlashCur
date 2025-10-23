@@ -143,6 +143,10 @@ class WebSocketIntegration {
                 console.log('📊 Processing ticker data:', message.data?.length || 0, 'tickers');
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
+                if (!this.firstPaintDone) {
+                    this.updateDashboard();
+                    this.firstPaintDone = true;
+                }
 
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
@@ -155,6 +159,10 @@ class WebSocketIntegration {
                     console.log('💰 markPrice sample log failed:', e);
                 }
                 this.store.updateMarkPrices(message.data);
+                if (!this.firstPaintDone) {
+                    this.updateDashboard();
+                    this.firstPaintDone = true;
+                }
 
             } else {
                 console.log('❓ Unknown stream:', message.stream);
@@ -296,6 +304,8 @@ class WebSocketIntegration {
 
     // Update market data table
     updateMarketTable() {
+        console.log('🧭 updateMarketTable() tick at', new Date().toISOString());
+        
         const symbols = this.store.getSymbols({
             endsWith: 'USDT',
             limit: 200,
@@ -309,25 +319,8 @@ class WebSocketIntegration {
 
         console.log('📊 Market table update - symbols count:', symbols.length);
         console.log('📊 After $100M filter - symbols count:', filteredSymbols.length);
-        console.log('📊 Volume filter threshold: $100M (100,000,000)');
-        console.log('📊 Will show table if filteredSymbols.length > 0:', filteredSymbols.length > 0);
-
-        // Debug: Show first few symbols and their volumes
-        if (symbols.length > 0) {
-            console.log('📊 First 5 symbols with volumes:', symbols.slice(0, 5).map(s => ({
-                symbol: s.symbol,
-                volume: s.vol24hQuote,
-                volumeFormatted: s.vol24hQuote ? (s.vol24hQuote / 1000000).toFixed(1) + 'M' : 'N/A'
-            })));
-        }
-
-        if (filteredSymbols.length > 0) {
-            console.log('📊 First 5 filtered symbols:', filteredSymbols.slice(0, 5).map(s => ({
-                symbol: s.symbol,
-                volume: s.vol24hQuote,
-                volumeFormatted: s.vol24hQuote ? (s.vol24hQuote / 1000000).toFixed(1) + 'M' : 'N/A'
-            })));
-        }
+        console.log('≥$100M first 5:', symbols.filter(s => Number(s.vol24hQuote) >= 1e8).slice(0,5)
+            .map(s => [s.symbol, s.vol24hQuote]));
 
         // If no data from WebSocket, show sample data after 3 seconds
         if (symbols.length === 0) {
@@ -349,28 +342,40 @@ class WebSocketIntegration {
             return;
         }
 
-        // Show table containers when data exists (like original displayDataProgressive)
-        const desktopLoading = document.getElementById('loadingContainer');
-        const desktopContainer = document.getElementById('tableContainer');
-        const mobileLoading = document.getElementById('mobileLoadingContainer');
-        const mobileContainer = document.getElementById('mobileTableContainer');
+        // Resilient DOM queries - try multiple known IDs
+        const q = (ids) => ids.map(id => document.getElementById(id)).find(Boolean);
+        const desktopLoading = q(['loadingContainer','loading-container']);
+        const desktopContainer = q(['tableContainer','marketTableContainer','dataContainer']);
+        const mobileLoading = q(['mobileLoadingContainer','mobile-loading']);
+        const mobileContainer = q(['mobileTableContainer','mobile-table']);
 
-        if (filteredSymbols.length > 0) {
-            console.log('📊 Showing table with', filteredSymbols.length, 'filtered symbols');
+        console.log('🧩 containers:', { desktopLoading, desktopContainer, mobileLoading, mobileContainer });
+
+        // Check for missing DOM nodes
+        ['loadingContainer','tableContainer','mobileLoadingContainer','mobileTableContainer'].forEach(id=>{
+            if (!document.getElementById(id)) console.warn('⚠️ Missing DOM node:', id);
+        });
+
+        // Unhide as soon as we have *any* symbols; choose rows to render below
+        if (symbols.length > 0) {
+            console.log('📊 Showing table with', symbols.length, 'total symbols');
             if (desktopLoading) desktopLoading.style.display = 'none';
             if (mobileLoading) mobileLoading.style.display = 'none';
-            if (desktopContainer) desktopContainer.style.display = 'block';
-            if (mobileContainer) mobileContainer.style.display = 'block';
+            if (desktopContainer) desktopContainer.style.removeProperty('display'); // let CSS decide (flex/grid)
+            if (mobileContainer) mobileContainer.style.removeProperty('display');
         } else {
-            console.log('📊 No symbols pass the $100M filter - keeping loading state');
+            // keep previous behavior only when *no* symbols at all
+            if (desktopLoading) desktopLoading.style.display = 'flex';
+            if (mobileLoading) mobileLoading.style.display = 'flex';
         }
 
         // Debug: Check which symbols are missing funding rates
         const missingFunding = filteredSymbols.filter(s => s.fundingRate == null).slice(0, 5).map(s => s.symbol);
         console.log('🔎 symbols missing fundingRate (first 5):', missingFunding);
 
-        // Map to display format and store in global cache for sorting
-        const displayItems = this.mapToDisplayItems(filteredSymbols);
+        // Keep your filter for the rows, but don't gate the loader on it
+        const rows = filteredSymbols.length ? filteredSymbols : symbols.slice(0, 50);
+        const displayItems = this.mapToDisplayItems(rows);
 
         // Store data in global cache for sorting (like working version)
         window.originalDataCache = [...displayItems];
@@ -465,7 +470,7 @@ class WebSocketIntegration {
         console.log(`📊 updateTable called for ${tableId} with ${symbols.length} symbols`);
         const tbody = document.getElementById(tableId);
         if (!tbody) {
-            console.error(`❌ Table body not found: ${tableId}`);
+            console.warn('⚠️ Missing table body:', tableId);
             return;
         }
 
