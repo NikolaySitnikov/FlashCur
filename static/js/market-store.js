@@ -54,6 +54,7 @@ class MarketStore {
 
     // Update ticker data from !ticker@arr stream
     updateTickers(tickers) {
+        console.log('📊 MarketStore: updateTickers called with', tickers?.length || 0, 'tickers');
         const now = Date.now();
         let hasChanges = false;
 
@@ -93,6 +94,7 @@ class MarketStore {
 
         if (hasChanges) {
             this.state.lastUpdate = now;
+            console.log('📊 MarketStore: Notifying listeners, total symbols:', Object.keys(this.state.bySymbol).length);
             this.notify();
         }
     }

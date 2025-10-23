@@ -50,23 +50,28 @@ class WebSocketIntegration {
     handleMessage(message) {
         try {
             console.log('📨 Received WebSocket message:', message.stream, message.data?.length || 0, 'items');
-            
+            console.log('📨 Full message structure:', message);
+
             if (message.stream === '!ticker@arr') {
                 // Update ticker data
                 console.log('📊 Processing ticker data:', message.data?.length || 0, 'tickers');
+                console.log('📊 First ticker sample:', message.data?.[0]);
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
-                
+
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
                 console.log('💰 Processing mark price data:', message.data?.length || 0, 'prices');
+                console.log('💰 First mark price sample:', message.data?.[0]);
                 this.store.updateMarkPrices(message.data);
-                
+
             } else {
                 console.log('❓ Unknown stream:', message.stream);
+                console.log('❓ Unknown message structure:', message);
             }
         } catch (error) {
             console.error('❌ Error handling WebSocket message:', error);
+            console.error('❌ Message that caused error:', message);
         }
     }
 
@@ -109,10 +114,10 @@ class WebSocketIntegration {
 
     // Update market data table
     updateMarketTable() {
-        const symbols = this.store.getSymbols({ 
-            endsWith: 'USDT', 
-            limit: 200, 
-            sortBy: 'vol24hQuote' 
+        const symbols = this.store.getSymbols({
+            endsWith: 'USDT',
+            limit: 200,
+            sortBy: 'vol24hQuote'
         });
 
         console.log('📊 Market table update - symbols count:', symbols.length);
@@ -122,10 +127,10 @@ class WebSocketIntegration {
             // Only show sample data if we've been trying for a while
             if (!this.sampleDataShown) {
                 setTimeout(() => {
-                    const currentSymbols = this.store.getSymbols({ 
-                        endsWith: 'USDT', 
-                        limit: 200, 
-                        sortBy: 'vol24hQuote' 
+                    const currentSymbols = this.store.getSymbols({
+                        endsWith: 'USDT',
+                        limit: 200,
+                        sortBy: 'vol24hQuote'
                     });
                     if (currentSymbols.length === 0) {
                         console.log('⏰ No real data after 5 seconds, showing sample data');
@@ -139,7 +144,7 @@ class WebSocketIntegration {
 
         // Update desktop table
         this.updateTable('marketTableBody', symbols);
-        
+
         // Update mobile table
         this.updateTable('mobileMarketTableBody', symbols);
     }
