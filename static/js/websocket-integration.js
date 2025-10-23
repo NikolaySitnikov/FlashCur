@@ -125,16 +125,38 @@ class WebSocketIntegration {
         // The store state is updated in the WebSocket message handlers
     }
 
+    // Map raw WebSocket data to display format (like working version)
+    mapToDisplayItems(symbols) {
+        const formatVolume = (n) => !n ? '-' : n >= 1e9 ? (n/1e9).toFixed(1)+'B'
+                                     : n >= 1e6 ? (n/1e6).toFixed(1)+'M'
+                                     : Math.round(n).toLocaleString();
+        const formatPrice = (p) => !p ? '-' : p >= 1000 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p.toFixed(6);
+        const formatFunding = (r) => r == null ? '-' : (r*100).toFixed(4) + '%';
+
+        return symbols.map(s => ({
+            // names the working code expects:
+            asset: s.symbol.replace('USDT',''),
+            volume_formatted: formatVolume(s.vol24hQuote),
+            funding_formatted: formatFunding(s.fundingRate),
+            price_formatted: formatPrice(s.lastPrice),
+            // also keep raw if you need coloring/sorting
+            funding_rate: s.fundingRate ?? null,
+            price_change_pct: s.changePct ?? null,
+            open_interest_formatted: s.openInterest ? formatVolume(s.openInterest) : '-',
+            liquidation_risk: s.liquidationRisk ?? null
+        }));
+    }
+
     // Update market data table
     updateMarketTable() {
-        const symbols = this.store.getSymbols({
-            endsWith: 'USDT',
-            limit: 200,
-            sortBy: 'vol24hQuote'
+        const symbols = this.store.getSymbols({ 
+            endsWith: 'USDT', 
+            limit: 200, 
+            sortBy: 'vol24hQuote' 
         });
 
         // Filter to only show tokens with >$100M volume
-        const filteredSymbols = symbols.filter(symbol =>
+        const filteredSymbols = symbols.filter(symbol => 
             symbol.vol24hQuote && symbol.vol24hQuote >= 100000000
         );
 
@@ -191,11 +213,14 @@ class WebSocketIntegration {
             if (mobileContainer) mobileContainer.style.display = 'block';
         }
 
-        // Update desktop table
-        this.updateTable('tableBody', filteredSymbols);
-
-        // Update mobile table
-        this.updateTable('mobileTableBody', filteredSymbols);
+        // Map to display format and update tables
+        const displayItems = this.mapToDisplayItems(filteredSymbols);
+        
+        // Update desktop table with mapped data
+        this.updateTable('tableBody', displayItems);
+        
+        // Update mobile table with mapped data
+        this.updateTable('mobileTableBody', displayItems);
     }
 
     // Show sample data when WebSocket is not working
@@ -230,30 +255,13 @@ class WebSocketIntegration {
 
         console.log(`📊 Adding ${symbols.length} rows to ${tableId}`);
 
-        // Add new rows - match HTML template column order
-        symbols.forEach(({ symbol, lastPrice, changePct, vol24hQuote, vol1hQuote, fundingRate, spike3x, markPrice, openInterest, liquidationRisk }) => {
+        // Add new rows using mapped data format
+        symbols.forEach((item) => {
             const row = document.createElement('tr');
-            row.className = spike3x ? 'bg-yellow-50 border-l-4 border-yellow-400' : '';
 
             // Check if user is Pro tier (has access to additional columns)
             const isPro = document.querySelector('.pro-column') !== null;
-
-            // Format volume with M/B suffixes
-            const formatVolume = (volume) => {
-                if (!volume) return '-';
-                if (volume >= 1000000000) return (volume / 1000000000).toFixed(1) + 'B';
-                if (volume >= 1000000) return (volume / 1000000).toFixed(1) + 'M';
-                return Math.round(volume).toLocaleString();
-            };
-
-            // Format price with appropriate decimals
-            const formatPrice = (price) => {
-                if (!price) return '-';
-                if (price >= 1000) return price.toFixed(2);
-                if (price >= 1) return price.toFixed(4);
-                return price.toFixed(6);
-            };
-
+            
             // Format funding rate with colors
             const formatFundingRate = (rate) => {
                 if (!rate) return '-';
@@ -263,13 +271,13 @@ class WebSocketIntegration {
             };
 
             row.innerHTML = `
-                <td class="px-4 py-2 font-medium">${symbol}</td>
-                <td class="px-4 py-2">${formatVolume(vol24hQuote)}</td>
-                ${isPro ? `<td class="px-4 py-2 ${changePct >= 0 ? 'text-green-600' : 'text-red-600'}">${changePct ? changePct.toFixed(2) + '%' : '-'}</td>` : ''}
-                <td class="px-4 py-2">${formatFundingRate(fundingRate)}</td>
-                <td class="px-4 py-2">${formatPrice(lastPrice)}</td>
-                ${isPro ? `<td class="px-4 py-2">${openInterest ? formatVolume(openInterest) : '-'}</td>` : ''}
-                ${isPro ? `<td class="px-4 py-2">${liquidationRisk ? liquidationRisk.toFixed(2) : '-'}</td>` : ''}
+                <td class="px-4 py-2 font-medium">${item.asset}</td>
+                <td class="px-4 py-2">${item.volume_formatted}</td>
+                ${isPro ? `<td class="px-4 py-2 ${item.price_change_pct >= 0 ? 'text-green-600' : 'text-red-600'}">${item.price_change_pct ? item.price_change_pct.toFixed(2) + '%' : '-'}</td>` : ''}
+                <td class="px-4 py-2">${formatFundingRate(item.funding_rate)}</td>
+                <td class="px-4 py-2">${item.price_formatted}</td>
+                ${isPro ? `<td class="px-4 py-2">${item.open_interest_formatted}</td>` : ''}
+                ${isPro ? `<td class="px-4 py-2">${item.liquidation_risk ? item.liquidation_risk.toFixed(2) : '-'}</td>` : ''}
             `;
 
             tbody.appendChild(row);
