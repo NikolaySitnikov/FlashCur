@@ -143,6 +143,7 @@ class WebSocketIntegration {
                 console.log('📊 Processing ticker data:', message.data?.length || 0, 'tickers');
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
+                console.log('🎨 firstPaintDone:', this.firstPaintDone, 'calling updateDashboard from ticker');
                 if (!this.firstPaintDone) {
                     this.updateDashboard();
                     this.firstPaintDone = true;
@@ -159,6 +160,7 @@ class WebSocketIntegration {
                     console.log('💰 markPrice sample log failed:', e);
                 }
                 this.store.updateMarkPrices(message.data);
+                console.log('🎨 firstPaintDone:', this.firstPaintDone, 'calling updateDashboard from markPrice');
                 if (!this.firstPaintDone) {
                     this.updateDashboard();
                     this.firstPaintDone = true;
@@ -295,10 +297,10 @@ class WebSocketIntegration {
         };
 
         // Debug: Check what funding rates we're receiving
-        console.log('🔍 mapToDisplayItems - sample symbol funding rates:', 
-            symbols.slice(0, 3).map(s => ({ 
-                symbol: s.symbol, 
-                fundingRate: s.fundingRate, 
+        console.log('🔍 mapToDisplayItems - sample symbol funding rates:',
+            symbols.slice(0, 3).map(s => ({
+                symbol: s.symbol,
+                fundingRate: s.fundingRate,
                 type: typeof s.fundingRate,
                 raw: s.fundingRate
             }))
