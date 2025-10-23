@@ -147,6 +147,13 @@ class WebSocketIntegration {
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
                 console.log('💰 Processing mark price data:', message.data?.length || 0, 'prices');
+                try {
+                    const sample = Array.isArray(message.data) ? message.data[0] : message.data;
+                    console.log('💰 markPrice sample keys:', sample && Object.keys(sample));
+                    console.log('💰 markPrice sample record:', JSON.stringify(sample));
+                } catch (e) {
+                    console.log('💰 markPrice sample log failed:', e);
+                }
                 this.store.updateMarkPrices(message.data);
 
             } else {
@@ -266,7 +273,7 @@ class WebSocketIntegration {
 
         // Format funding rate (like working version)
         const formatFunding = (r) => {
-            if (r == null || r == undefined) return 'N/A';
+            if (r === null || r === undefined) return 'N/A';
             // Handle zero funding rate (show 0.0000% instead of N/A)
             const ratePercent = r * 100;
             return `${ratePercent.toFixed(4)}%`;

@@ -104,10 +104,17 @@ class MarketStore {
         const now = Date.now();
         let hasChanges = false;
 
+        console.log('📊 MarketStore: updateMarkPrices called with', markPrices?.length || 0, 'mark prices');
+        if (markPrices && markPrices.length > 0) {
+            console.log('📊 MarketStore: Sample mark price object:', markPrices[0]);
+        }
+
         for (const mark of markPrices) {
             const symbol = mark.s;
             const markPrice = parseFloat(mark.p);
-            const fundingRate = mark.r ? parseFloat(mark.r) : null;
+            const fundingRate = (mark.r !== undefined && mark.r !== null) ? Number(mark.r) : null;
+
+            console.log(`📊 MarketStore: Processing ${symbol} - markPrice: ${markPrice}, fundingRate: ${fundingRate}, raw mark.r: ${mark.r}`);
 
             if (!this.state.bySymbol[symbol]) {
                 this.state.bySymbol[symbol] = {};
