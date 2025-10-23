@@ -481,14 +481,6 @@ class WebSocketIntegration {
             // Check if user is Pro tier (has access to additional columns)
             const isPro = document.querySelector('.pro-column') !== null;
 
-            // Format funding rate with colors (like working version)
-            const formatFundingRate = (rate) => {
-                if (rate == null || rate == undefined) return 'N/A';
-                const ratePercent = rate * 100;
-                const colorClass = ratePercent > 0.03 ? 'funding-positive' : ratePercent < -0.03 ? 'funding-negative' : '';
-                return `<span class="${colorClass}">${ratePercent.toFixed(4)}%</span>`;
-            };
-
             row.innerHTML = `
                 <td class="px-4 py-2 font-medium">${item.asset}</td>
                 <td class="px-4 py-2">${item.volume_formatted}</td>
