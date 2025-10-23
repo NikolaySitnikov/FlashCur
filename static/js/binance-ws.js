@@ -40,7 +40,7 @@ class BinanceWS {
 
         try {
             this.ws = new WebSocket(this.url);
-            
+
             this.ws.onopen = () => {
                 console.log('🔌 Binance WebSocket connected');
                 this.backoff = 1000; // reset backoff on successful connection
@@ -82,15 +82,15 @@ class BinanceWS {
 
         this.reconnectAttempts++;
         const wait = this.backoff + Math.floor(Math.random() * 500); // add jitter
-        
+
         console.log(`🔄 Reconnecting in ${wait}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-        
+
         setTimeout(() => {
             if (!this.stopped) {
                 this.connect();
             }
         }, wait);
-        
+
         // Exponential backoff with max of 15s
         this.backoff = Math.min(this.backoff * 2, 15000);
     }

@@ -13,7 +13,7 @@ class MarketStore {
             lastUpdate: null
         };
         this.listeners = new Set();
-        
+
         // Volume calculation buffers
         this.volumeBuffers = {}; // last 60 deltas per symbol
         this.lastQuoteVolume = {}; // last 24h quote volume per symbol
@@ -33,7 +33,7 @@ class MarketStore {
     // Get symbols filtered by criteria
     getSymbols(filter = {}) {
         const { endsWith = 'USDT', limit = 200, sortBy = 'vol24hQuote' } = filter;
-        
+
         return Object.entries(this.state.bySymbol)
             .filter(([symbol, data]) => symbol.endsWith(endsWith))
             .sort(([, a], [, b]) => {
@@ -137,7 +137,7 @@ class MarketStore {
 
         const buffer = this.volumeBuffers[symbol];
         buffer.push(Math.max(0, delta));
-        
+
         // Keep only last 60 updates (assuming ~1/min tick cadence)
         if (buffer.length > 60) {
             buffer.shift();
@@ -145,7 +145,7 @@ class MarketStore {
 
         // Calculate 1h volume
         const vol1hQuote = buffer.reduce((sum, val) => sum + val, 0);
-        
+
         // Calculate spike detection
         const spike3x = this.calculateSpike(symbol, vol1hQuote);
 
@@ -167,7 +167,7 @@ class MarketStore {
         // Group into 10-minute blocks
         const blockSize = 10;
         const blocks = [];
-        
+
         for (let i = 0; i + blockSize <= buffer.length; i += blockSize) {
             const blockSum = buffer.slice(i, i + blockSize).reduce((sum, val) => sum + val, 0);
             blocks.push(blockSum);

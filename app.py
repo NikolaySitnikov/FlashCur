@@ -599,32 +599,33 @@ def background_cache_refresher():
     """
     import time
 
-    # Initial cache population
-    app.logger.info("🔄 Populating initial cache...")
-    try:
-        data_manager.refresh_cache_background()
-        app.logger.info("✅ Initial cache populated")
-    except Exception as e:
-        app.logger.error(f"❌ Initial cache population failed: {e}")
+    # Initial cache population (disabled for WebSocket implementation)
+    # app.logger.info("🔄 Populating initial cache...")
+    # try:
+    #     data_manager.refresh_cache_background()
+    #     app.logger.info("✅ Initial cache populated")
+    # except Exception as e:
+    #     app.logger.error(f"❌ Initial cache population failed: {e}")
 
     # Continuous refresh loop
-    while True:
-        try:
-            time.sleep(CACHE_MINUTES * 60)  # Wait for cache interval
-            app.logger.info(
-                f"🔄 Scheduled cache refresh (every {CACHE_MINUTES} min)")
-            data_manager.refresh_cache_background()
-        except Exception as e:
-            app.logger.error(f"❌ Background cache refresh error: {e}")
-            time.sleep(60)  # Wait 1 minute before retrying
+    # Continuous refresh loop (disabled for WebSocket implementation)
+    # while True:
+    #     try:
+    #         time.sleep(CACHE_MINUTES * 60)  # Wait for cache interval
+    #         app.logger.info(
+    #             f"🔄 Scheduled cache refresh (every {CACHE_MINUTES} min)")
+    #         data_manager.refresh_cache_background()
+    #     except Exception as e:
+    #         app.logger.error(f"❌ Background cache refresh error: {e}")
+    #         time.sleep(60)  # Wait 1 minute before retrying
 
 
-# Start background cache refresher
-cache_refresh_thread = threading.Thread(
-    target=background_cache_refresher, daemon=True)
-cache_refresh_thread.start()
-app.logger.info(
-    f"🚀 Background cache refresher started (interval: {CACHE_MINUTES} min)")
+# Start background cache refresher (disabled for WebSocket implementation)
+# cache_refresh_thread = threading.Thread(
+#     target=background_cache_refresher, daemon=True)
+# cache_refresh_thread.start()
+# app.logger.info(
+#     f"🚀 Background cache refresher started (interval: {CACHE_MINUTES} min)")
 
 # Alert system
 alerts = []
@@ -809,13 +810,14 @@ def alert_scanner():
         time.sleep(60)  # Check every minute
 
 
-# Start the alert scanner thread
-alert_thread = threading.Thread(target=alert_scanner, daemon=True)
-alert_thread.start()
+# Start the alert scanner thread (disabled for WebSocket implementation)
+# alert_thread = threading.Thread(target=alert_scanner, daemon=True)
+# alert_thread.start()
 
 # ──────────────────────────────────────────────────────────────
 # Security Headers
 # ──────────────────────────────────────────────────────────────
+
 
 @app.after_request
 def after_request(response):
@@ -823,7 +825,7 @@ def after_request(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
-    
+
     # Add CSP for WebSocket connections to Binance
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
@@ -834,7 +836,7 @@ def after_request(response):
         "img-src 'self' data:; "
         "frame-ancestors 'none';"
     )
-    
+
     return response
 
 # ──────────────────────────────────────────────────────────────

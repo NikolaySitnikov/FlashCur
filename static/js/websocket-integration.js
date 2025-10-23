@@ -17,10 +17,10 @@ class WebSocketIntegration {
     // Initialize WebSocket connection
     init() {
         console.log('🚀 Initializing WebSocket integration...');
-        
+
         // Create WebSocket connection
         this.ws = new BinanceWS(['!ticker@arr', '!markPrice@arr']);
-        
+
         // Set up message handling
         this.ws.on((message) => {
             this.handleMessage(message);
@@ -52,11 +52,11 @@ class WebSocketIntegration {
                 // Update ticker data
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
-                
+
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
                 this.store.updateMarkPrices(message.data);
-                
+
             } else {
                 console.log('Unknown stream:', message.stream);
             }
@@ -75,13 +75,13 @@ class WebSocketIntegration {
     // Update dashboard with latest data
     updateDashboard() {
         const state = this.store.getState();
-        
+
         // Update connection indicator
         this.updateConnectionIndicator(state.connectionState);
-        
+
         // Update market data table
         this.updateMarketTable();
-        
+
         // Check for spike alerts
         this.checkSpikeAlerts();
     }
@@ -104,15 +104,15 @@ class WebSocketIntegration {
 
     // Update market data table
     updateMarketTable() {
-        const symbols = this.store.getSymbols({ 
-            endsWith: 'USDT', 
-            limit: 200, 
-            sortBy: 'vol24hQuote' 
+        const symbols = this.store.getSymbols({
+            endsWith: 'USDT',
+            limit: 200,
+            sortBy: 'vol24hQuote'
         });
 
         // Update desktop table
         this.updateTable('marketTableBody', symbols);
-        
+
         // Update mobile table
         this.updateTable('mobileMarketTableBody', symbols);
     }
@@ -129,7 +129,7 @@ class WebSocketIntegration {
         symbols.forEach(({ symbol, lastPrice, changePct, vol24hQuote, vol1hQuote, fundingRate, spike3x }) => {
             const row = document.createElement('tr');
             row.className = spike3x ? 'bg-yellow-50 border-l-4 border-yellow-400' : '';
-            
+
             row.innerHTML = `
                 <td class="px-4 py-2 font-medium">${symbol}</td>
                 <td class="px-4 py-2">${lastPrice ? lastPrice.toFixed(4) : '-'}</td>
@@ -141,7 +141,7 @@ class WebSocketIntegration {
                 <td class="px-4 py-2">${vol24hQuote ? Math.round(vol24hQuote).toLocaleString() : '-'}</td>
                 <td class="px-4 py-2">${spike3x ? '🔥 3×' : ''}</td>
             `;
-            
+
             tbody.appendChild(row);
         });
     }
@@ -149,7 +149,7 @@ class WebSocketIntegration {
     // Check for spike alerts
     checkSpikeAlerts() {
         const alerts = this.store.getSpikeAlerts();
-        
+
         if (alerts.length > 0) {
             // Show spike notifications
             alerts.forEach(alert => {
@@ -173,9 +173,9 @@ class WebSocketIntegration {
                 <button class="ml-4 text-yellow-600 hover:text-yellow-800" onclick="this.parentElement.parentElement.remove()">×</button>
             </div>
         `;
-        
+
         document.body.appendChild(notification);
-        
+
         // Auto-remove after 5 seconds
         setTimeout(() => {
             if (notification.parentElement) {
@@ -205,12 +205,12 @@ class WebSocketIntegration {
             this.ws.stop();
             this.ws = null;
         }
-        
+
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
         }
-        
+
         this.isConnected = false;
         console.log('🔌 WebSocket integration disconnected');
     }
@@ -219,11 +219,11 @@ class WebSocketIntegration {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Starting VolSpike WebSocket integration...');
-    
+
     // Create global instance
     window.wsIntegration = new WebSocketIntegration();
     window.wsIntegration.init();
-    
+
     console.log('✅ VolSpike WebSocket integration started');
 });
 
