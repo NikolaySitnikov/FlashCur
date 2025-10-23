@@ -26,7 +26,11 @@ class WebSocketIntegration {
         this.unsubscribe = this.store.subscribe((state) => {
             // Update connection indicator based on store state
             this.updateConnectionIndicator(state.connectionState);
-            this.updateDashboard();
+            
+            // Only update dashboard immediately for Elite tier
+            if (this.userTier >= 2) {
+                this.updateDashboard();
+            }
         });
 
         // Set initial connection state to connected since WebSocket is working
@@ -34,6 +38,11 @@ class WebSocketIntegration {
 
         // Force an immediate first render
         this.updateDashboard();
+        
+        // Load initial data for Free/Pro tiers
+        if (this.userTier < 2) {
+            this.loadInitialData();
+        }
 
         // Handle page visibility changes
         document.addEventListener('visibilitychange', () => {
@@ -79,7 +88,7 @@ class WebSocketIntegration {
     setupRefreshBasedOnTier() {
         // All tiers use WebSocket (because Binance blocks server-side API)
         console.log(`🚀 Tier ${this.userTier} - Using WebSocket with ${this.refreshInterval / 1000 / 60} minute UI updates`);
-        
+
         // Create WebSocket connection for all tiers
         this.ws = new BinanceWS(['!ticker@arr', '!markPrice@arr']);
         this.ws.on((message) => {
@@ -110,20 +119,10 @@ class WebSocketIntegration {
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
 
-                // Only update UI immediately for Elite tier
-                if (this.userTier >= 2) {
-                    this.updateMarketTable();
-                }
-
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
                 console.log('💰 Processing mark price data:', message.data?.length || 0, 'prices');
                 this.store.updateMarkPrices(message.data);
-
-                // Only update UI immediately for Elite tier
-                if (this.userTier >= 2) {
-                    this.updateMarketTable();
-                }
 
             } else {
                 console.log('❓ Unknown stream:', message.stream);
@@ -141,6 +140,16 @@ class WebSocketIntegration {
         }, this.refreshInterval || 15 * 60 * 1000); // Use tier-based refresh rate
     }
 
+    // Load initial data for Free/Pro tiers (from WebSocket store)
+    loadInitialData() {
+        console.log('📊 Loading initial data for Free/Pro tier from WebSocket store...');
+        
+        // Wait a bit for WebSocket data to arrive
+        setTimeout(() => {
+            this.updateMarketTable();
+        }, 2000); // Wait 2 seconds for WebSocket data
+    }
+
     // Load data for Free/Pro tiers (server-side API)
     async loadDataForFreePro() {
         try {
@@ -156,7 +165,7 @@ class WebSocketIntegration {
                 // Update tables with sorted data
                 this.updateTable('tableBody', window.dataCache);
                 this.updateTable('mobileTableBody', window.dataCache);
-
+                
                 // Update sort indicators
                 if (window.updateSortIndicators) {
                     window.updateSortIndicators();
