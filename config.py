@@ -53,22 +53,22 @@ else:
     API_BASE_ALT2 = "https://fapi2.binance.com"
     API_BASE_ALT3 = "https://fapi3.binance.com"
 
-VOLUME_URL         = f"{API_BASE}/fapi/v1/ticker/24hr"
-FUNDING_URL        = f"{API_BASE}/fapi/v1/premiumIndex"
-EXCHANGE_INFO_URL  = f"{API_BASE}/fapi/v1/exchangeInfo"
-KLINES_URL         = f"{API_BASE}/fapi/v1/klines"
+VOLUME_URL = f"{API_BASE}/fapi/v1/ticker/24hr"
+FUNDING_URL = f"{API_BASE}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL = f"{API_BASE}/fapi/v1/exchangeInfo"
+KLINES_URL = f"{API_BASE}/fapi/v1/klines"
 
-VOLUME_URL_ALT1         = f"{API_BASE_ALT1}/fapi/v1/ticker/24hr"
-FUNDING_URL_ALT1        = f"{API_BASE_ALT1}/fapi/v1/premiumIndex"
-EXCHANGE_INFO_URL_ALT1  = f"{API_BASE_ALT1}/fapi/v1/exchangeInfo"
+VOLUME_URL_ALT1 = f"{API_BASE_ALT1}/fapi/v1/ticker/24hr"
+FUNDING_URL_ALT1 = f"{API_BASE_ALT1}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL_ALT1 = f"{API_BASE_ALT1}/fapi/v1/exchangeInfo"
 
-VOLUME_URL_ALT2         = f"{API_BASE_ALT2}/fapi/v1/ticker/24hr"
-FUNDING_URL_ALT2        = f"{API_BASE_ALT2}/fapi/v1/premiumIndex"
-EXCHANGE_INFO_URL_ALT2  = f"{API_BASE_ALT2}/fapi/v1/exchangeInfo"
+VOLUME_URL_ALT2 = f"{API_BASE_ALT2}/fapi/v1/ticker/24hr"
+FUNDING_URL_ALT2 = f"{API_BASE_ALT2}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL_ALT2 = f"{API_BASE_ALT2}/fapi/v1/exchangeInfo"
 
-VOLUME_URL_ALT3         = f"{API_BASE_ALT3}/fapi/v1/ticker/24hr"
-FUNDING_URL_ALT3        = f"{API_BASE_ALT3}/fapi/v1/premiumIndex"
-EXCHANGE_INFO_URL_ALT3  = f"{API_BASE_ALT3}/fapi/v1/exchangeInfo"
+VOLUME_URL_ALT3 = f"{API_BASE_ALT3}/fapi/v1/ticker/24hr"
+FUNDING_URL_ALT3 = f"{API_BASE_ALT3}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL_ALT3 = f"{API_BASE_ALT3}/fapi/v1/exchangeInfo"
 
 
 # ══════════════════════════════════════════════════════════════════════════════

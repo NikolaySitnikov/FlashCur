@@ -8,6 +8,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=7.8">
+    <!-- WebSocket Integration Scripts -->
+    <script src="{{ url_for('static', filename='js/binance-ws.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/market-store.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/websocket-integration.js') }}"></script>
 </head>
 
 <body>
@@ -25,7 +29,10 @@
                 <div class="header-center">
                     <h1 class="main-title desktop-only">VolSpike - Cryptocurrency Volume Alerts</h1>
                     <h1 class="mobile-title mobile-only">VS</h1>
-                    <p class="last-updated" id="lastUpdated">Loading...</p>
+                    <div class="connection-status">
+                        <span id="connection-indicator" class="text-sm font-medium text-yellow-500">🟡 Connecting...</span>
+                        <span class="text-xs text-gray-500 ml-2">Live from Binance WebSocket</span>
+                    </div>
                 </div>
                 <div class="header-right">
                     <!-- Pricing Link -->

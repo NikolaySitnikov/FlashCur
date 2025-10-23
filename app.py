@@ -814,6 +814,30 @@ alert_thread = threading.Thread(target=alert_scanner, daemon=True)
 alert_thread.start()
 
 # ──────────────────────────────────────────────────────────────
+# Security Headers
+# ──────────────────────────────────────────────────────────────
+
+@app.after_request
+def after_request(response):
+    """Add security headers including CSP for WebSocket connections"""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    
+    # Add CSP for WebSocket connections to Binance
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "connect-src 'self' wss://fstream.binance.com https://fstream.binance.com; "
+        "img-src 'self' data:; "
+        "frame-ancestors 'none';"
+    )
+    
+    return response
+
+# ──────────────────────────────────────────────────────────────
 # Routes
 # ──────────────────────────────────────────────────────────────
 
@@ -822,6 +846,7 @@ alert_thread.start()
 def health_check():
     """Health check endpoint for Railway deployment"""
     return {'status': 'healthy', 'service': 'VolSpike'}, 200
+
 
 @app.route('/debug/upstreams')
 def debug_upstreams():
