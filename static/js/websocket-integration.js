@@ -366,7 +366,7 @@ class WebSocketIntegration {
         }
 
         // Debug: Check which symbols are missing funding rates
-        const missingFunding = filteredSymbols.filter(s => s.fundingRate == null).slice(0,5).map(s => s.symbol);
+        const missingFunding = filteredSymbols.filter(s => s.fundingRate == null).slice(0, 5).map(s => s.symbol);
         console.log('🔎 symbols missing fundingRate (first 5):', missingFunding);
 
         // Map to display format and store in global cache for sorting

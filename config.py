@@ -198,6 +198,15 @@ _default_db_path = f'sqlite:///{_os.path.join(_basedir, "instance", "binance_das
 DATABASE_URI = os.getenv('DATABASE_URL') or os.getenv(
     'DATABASE_URI', _default_db_path)
 
+# SQLAlchemy connection pool configuration to prevent timeout errors
+SQLALCHEMY_ENGINE_OPTIONS = {
+    'pool_size': 10,           # Number of connections to maintain in the pool
+    'max_overflow': 20,        # Additional connections that can be created on demand
+    'pool_timeout': 30,        # Seconds to wait for a connection from the pool
+    'pool_recycle': 3600,      # Recycle connections after 1 hour
+    'pool_pre_ping': True,     # Verify connections before use
+}
+
 # Secret key for sessions (MUST be changed in production!)
 # Can be overridden with environment variable
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')

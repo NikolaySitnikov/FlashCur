@@ -112,7 +112,7 @@ class MarketStore {
         for (const mark of markPrices) {
             const symbol = mark.s;
             const markPrice = Number(mark.p);
-            
+
             console.log(`📊 MarketStore: Processing ${symbol} - markPrice: ${markPrice}, raw mark.r: ${mark.r}`);
 
             if (!this.state.bySymbol[symbol]) {
