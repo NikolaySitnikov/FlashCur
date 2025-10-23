@@ -37,11 +37,14 @@ class WebSocketIntegration {
             this.updateConnectionIndicator(state.connectionState);
             this.updateDashboard();
         });
+        
+        // Set initial connection state to connected since WebSocket is working
+        this.store.setConnectionState('connected');
 
         // Force an immediate first render
         this.updateDashboard();
 
-        // Set up periodic UI updates (reduced from 5 minutes to 5 seconds)
+        // Set up periodic UI updates (5 minutes like working version)
         this.startUIUpdates();
 
         // Handle page visibility changes
@@ -89,7 +92,7 @@ class WebSocketIntegration {
     startUIUpdates() {
         this.updateInterval = setInterval(() => {
             this.updateDashboard();
-        }, 5000); // Update every 5 seconds (5000ms) for UI resiliency
+        }, 300000); // Update every 5 minutes (300000ms) like working version
     }
 
     // Update dashboard with latest data
@@ -125,17 +128,38 @@ class WebSocketIntegration {
         // The store state is updated in the WebSocket message handlers
     }
 
-    // Map raw WebSocket data to display format (like working version)
+    // Map raw WebSocket data to display format (exactly like working version)
     mapToDisplayItems(symbols) {
-        const formatVolume = (n) => !n ? '-' : n >= 1e9 ? (n/1e9).toFixed(1)+'B'
-                                     : n >= 1e6 ? (n/1e6).toFixed(1)+'M'
-                                     : Math.round(n).toLocaleString();
-        const formatPrice = (p) => !p ? '-' : p >= 1000 ? p.toFixed(2) : p >= 1 ? p.toFixed(4) : p.toFixed(6);
-        const formatFunding = (r) => r == null ? '-' : (r*100).toFixed(4) + '%';
+        // Format volume with $ symbol (like working version)
+        const formatVolume = (n) => {
+            if (!n) return '-';
+            if (n >= 1e9) return `$${(n/1e9).toFixed(2)}B`;
+            if (n >= 1e6) return `$${(n/1e6).toFixed(2)}M`;
+            if (n >= 1e3) return `$${(n/1e3).toFixed(2)}K`;
+            return `$${n.toLocaleString()}`;
+        };
+        
+        // Format price with $ symbol (like working version)
+        const formatPrice = (p) => {
+            if (!p) return '-';
+            const price = parseFloat(p);
+            if (price < 0.01) return `$${price.toFixed(6)}`;
+            if (price < 1) return `$${price.toFixed(4)}`;
+            if (price < 100) return `$${price.toFixed(3)}`;
+            return `$${price.toFixed(2)}`;
+        };
+        
+        // Format funding rate (like working version)
+        const formatFunding = (r) => {
+            if (r == null || r == undefined) return 'N/A';
+            // Handle zero funding rate (show 0.0000% instead of N/A)
+            const ratePercent = r * 100;
+            return `${ratePercent.toFixed(4)}%`;
+        };
 
         return symbols.map(s => ({
             // names the working code expects:
-            asset: s.symbol.replace('USDT',''),
+            asset: s.symbol.replace('USDT', ''),
             volume_formatted: formatVolume(s.vol24hQuote),
             funding_formatted: formatFunding(s.fundingRate),
             price_formatted: formatPrice(s.lastPrice),
@@ -149,14 +173,14 @@ class WebSocketIntegration {
 
     // Update market data table
     updateMarketTable() {
-        const symbols = this.store.getSymbols({ 
-            endsWith: 'USDT', 
-            limit: 200, 
-            sortBy: 'vol24hQuote' 
+        const symbols = this.store.getSymbols({
+            endsWith: 'USDT',
+            limit: 200,
+            sortBy: 'vol24hQuote'
         });
 
         // Filter to only show tokens with >$100M volume
-        const filteredSymbols = symbols.filter(symbol => 
+        const filteredSymbols = symbols.filter(symbol =>
             symbol.vol24hQuote && symbol.vol24hQuote >= 100000000
         );
 
@@ -215,10 +239,10 @@ class WebSocketIntegration {
 
         // Map to display format and update tables
         const displayItems = this.mapToDisplayItems(filteredSymbols);
-        
+
         // Update desktop table with mapped data
         this.updateTable('tableBody', displayItems);
-        
+
         // Update mobile table with mapped data
         this.updateTable('mobileTableBody', displayItems);
     }
@@ -261,12 +285,12 @@ class WebSocketIntegration {
 
             // Check if user is Pro tier (has access to additional columns)
             const isPro = document.querySelector('.pro-column') !== null;
-            
-            // Format funding rate with colors
+
+            // Format funding rate with colors (like working version)
             const formatFundingRate = (rate) => {
-                if (!rate) return '-';
+                if (rate == null || rate == undefined) return 'N/A';
                 const ratePercent = rate * 100;
-                const colorClass = ratePercent > 0.01 ? 'text-red-600' : ratePercent < -0.01 ? 'text-green-600' : 'text-gray-600';
+                const colorClass = ratePercent > 0.03 ? 'funding-positive' : ratePercent < -0.03 ? 'funding-negative' : '';
                 return `<span class="${colorClass}">${ratePercent.toFixed(4)}%</span>`;
             };
 
@@ -431,9 +455,9 @@ function showFallbackData() {
     };
 
     const formatFundingRate = (rate) => {
-        if (!rate) return '-';
+        if (rate == null || rate == undefined) return 'N/A';
         const ratePercent = rate * 100;
-        const colorClass = ratePercent > 0.01 ? 'text-red-600' : ratePercent < -0.01 ? 'text-green-600' : 'text-gray-600';
+        const colorClass = ratePercent > 0.03 ? 'funding-positive' : ratePercent < -0.03 ? 'funding-negative' : '';
         return `<span class="${colorClass}">${ratePercent.toFixed(4)}%</span>`;
     };
 
