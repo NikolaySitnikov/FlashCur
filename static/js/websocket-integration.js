@@ -19,17 +19,8 @@ class WebSocketIntegration {
     init() {
         console.log('🚀 Initializing WebSocket integration...');
 
-        // Create WebSocket connection
-        this.ws = new BinanceWS(['!ticker@arr', '!markPrice@arr']);
-
-        // Set up message handling
-        this.ws.on((message) => {
-            this.handleMessage(message);
-        });
-
-        // Start connection
-        this.ws.start();
-        this.isConnected = true;
+        // Get user tier and set appropriate refresh rate
+        this.getUserTierAndSetupRefresh();
 
         // Subscribe to store changes for real-time updates
         this.unsubscribe = this.store.subscribe((state) => {
@@ -37,15 +28,12 @@ class WebSocketIntegration {
             this.updateConnectionIndicator(state.connectionState);
             this.updateDashboard();
         });
-
+        
         // Set initial connection state to connected since WebSocket is working
         this.store.setConnectionState('connected');
 
         // Force an immediate first render
         this.updateDashboard();
-
-        // Set up periodic UI updates (5 minutes like working version)
-        this.startUIUpdates();
 
         // Handle page visibility changes
         document.addEventListener('visibilitychange', () => {
@@ -57,6 +45,54 @@ class WebSocketIntegration {
         });
 
         console.log('✅ WebSocket integration initialized');
+    }
+
+    // Get user tier and setup appropriate refresh rate (like working version)
+    async getUserTierAndSetupRefresh() {
+        try {
+            const response = await fetch('/api/user');
+            const result = await response.json();
+
+            if (result.authenticated) {
+                this.userTier = result.tier;
+                this.refreshInterval = result.refresh_interval;
+                console.log(`User tier: ${result.tier_name} (${this.userTier})`);
+                console.log(`Refresh interval: ${this.refreshInterval / 1000 / 60} minutes`);
+            } else {
+                // Guest user - default to Free tier settings
+                this.userTier = 0;
+                this.refreshInterval = 15 * 60 * 1000; // 15 minutes
+                console.log('Guest user - using Free tier limits');
+            }
+        } catch (error) {
+            console.error('Error fetching user tier:', error);
+            // Default to Free tier on error
+            this.userTier = 0;
+            this.refreshInterval = 15 * 60 * 1000;
+        }
+
+        // Setup refresh based on tier
+        this.setupRefreshBasedOnTier();
+    }
+
+    // Setup refresh based on user tier (like working version)
+    setupRefreshBasedOnTier() {
+        if (this.userTier >= 2) {
+            // Elite tier - Real-time WebSocket
+            console.log('🚀 Elite tier - Using real-time WebSocket');
+            this.ws = new BinanceWS(['!ticker@arr', '!markPrice@arr']);
+            this.ws.on((message) => {
+                this.handleMessage(message);
+            });
+            this.ws.start();
+            this.isConnected = true;
+        } else {
+            // Free/Pro tier - Periodic updates
+            console.log(`📊 Tier ${this.userTier} - Using ${this.refreshInterval / 1000 / 60} minute updates`);
+            this.startUIUpdates();
+            // Load initial data for Free/Pro tiers
+            this.loadDataForFreePro();
+        }
     }
 
     // Handle incoming WebSocket messages
@@ -88,11 +124,41 @@ class WebSocketIntegration {
         }
     }
 
-    // Start periodic UI updates
+    // Start periodic UI updates (tier-based refresh rate)
     startUIUpdates() {
         this.updateInterval = setInterval(() => {
             this.updateDashboard();
-        }, 300000); // Update every 5 minutes (300000ms) like working version
+        }, this.refreshInterval || 15 * 60 * 1000); // Use tier-based refresh rate
+    }
+
+    // Load data for Free/Pro tiers (server-side API)
+    async loadDataForFreePro() {
+        try {
+            console.log('📊 Loading data for Free/Pro tier...');
+            const response = await fetch('/api/data');
+            const result = await response.json();
+
+            if (result.success) {
+                // Store data in global cache for sorting (like working version)
+                window.originalDataCache = [...result.data];
+                window.dataCache = this.applySorting([...result.data]);
+
+                // Update tables with sorted data
+                this.updateTable('tableBody', window.dataCache);
+                this.updateTable('mobileTableBody', window.dataCache);
+                
+                // Update sort indicators
+                if (window.updateSortIndicators) {
+                    window.updateSortIndicators();
+                }
+
+                console.log('✅ Free/Pro tier data loaded successfully');
+            } else {
+                console.error('❌ Failed to load data:', result.error);
+            }
+        } catch (error) {
+            console.error('❌ Error loading data for Free/Pro tier:', error);
+        }
     }
 
     // Update dashboard with latest data
@@ -102,8 +168,13 @@ class WebSocketIntegration {
         // Update connection indicator
         this.updateConnectionIndicator(state.connectionState);
 
-        // Update market data table
-        this.updateMarketTable();
+        if (this.userTier >= 2) {
+            // Elite tier - Use WebSocket data
+            this.updateMarketTable();
+        } else {
+            // Free/Pro tier - Reload from server
+            this.loadDataForFreePro();
+        }
 
         // Check for spike alerts
         this.checkSpikeAlerts();
@@ -239,7 +310,7 @@ class WebSocketIntegration {
 
         // Map to display format and store in global cache for sorting
         const displayItems = this.mapToDisplayItems(filteredSymbols);
-        
+
         // Store data in global cache for sorting (like working version)
         window.originalDataCache = [...displayItems];
         window.dataCache = this.applySorting([...displayItems]);
@@ -247,7 +318,7 @@ class WebSocketIntegration {
         // Update tables with sorted data
         this.updateTable('tableBody', window.dataCache);
         this.updateTable('mobileTableBody', window.dataCache);
-        
+
         // Update sort indicators
         if (window.updateSortIndicators) {
             window.updateSortIndicators();
