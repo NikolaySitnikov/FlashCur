@@ -309,6 +309,8 @@ class WebSocketIntegration {
 
         console.log('📊 Market table update - symbols count:', symbols.length);
         console.log('📊 After $100M filter - symbols count:', filteredSymbols.length);
+        console.log('📊 Volume filter threshold: $100M (100,000,000)');
+        console.log('📊 Will show table if filteredSymbols.length > 0:', filteredSymbols.length > 0);
 
         // Debug: Show first few symbols and their volumes
         if (symbols.length > 0) {
@@ -354,10 +356,13 @@ class WebSocketIntegration {
         const mobileContainer = document.getElementById('mobileTableContainer');
 
         if (filteredSymbols.length > 0) {
+            console.log('📊 Showing table with', filteredSymbols.length, 'filtered symbols');
             if (desktopLoading) desktopLoading.style.display = 'none';
             if (mobileLoading) mobileLoading.style.display = 'none';
             if (desktopContainer) desktopContainer.style.display = 'block';
             if (mobileContainer) mobileContainer.style.display = 'block';
+        } else {
+            console.log('📊 No symbols pass the $100M filter - keeping loading state');
         }
 
         // Map to display format and store in global cache for sorting
