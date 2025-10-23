@@ -144,7 +144,7 @@ class WebSocketIntegration {
 
         // Update desktop table
         this.updateTable('tableBody', symbols);
-        
+
         // Update mobile table
         this.updateTable('mobileTableBody', symbols);
     }
@@ -152,17 +152,17 @@ class WebSocketIntegration {
     // Show sample data when WebSocket is not working
     showSampleData() {
         const sampleData = [
-            { symbol: 'BTCUSDT', lastPrice: 43250.50, changePct: 2.45, vol24hQuote: 1250000000, vol1hQuote: 52000000, fundingRate: 0.0001, spike3x: false },
-            { symbol: 'ETHUSDT', lastPrice: 2650.75, changePct: -1.23, vol24hQuote: 890000000, vol1hQuote: 37000000, fundingRate: 0.0002, spike3x: true },
-            { symbol: 'ADAUSDT', lastPrice: 0.4850, changePct: 3.67, vol24hQuote: 450000000, vol1hQuote: 19000000, fundingRate: 0.0003, spike3x: false },
-            { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, vol1hQuote: 15000000, fundingRate: 0.0004, spike3x: true }
+            { symbol: 'BTCUSDT', lastPrice: 43250.50, changePct: 2.45, vol24hQuote: 1250000000, vol1hQuote: 52000000, fundingRate: 0.0001, spike3x: false, openInterest: 1500000000, liquidationRisk: 0.15 },
+            { symbol: 'ETHUSDT', lastPrice: 2650.75, changePct: -1.23, vol24hQuote: 890000000, vol1hQuote: 37000000, fundingRate: 0.0002, spike3x: true, openInterest: 1200000000, liquidationRisk: 0.22 },
+            { symbol: 'ADAUSDT', lastPrice: 0.4850, changePct: 3.67, vol24hQuote: 450000000, vol1hQuote: 19000000, fundingRate: 0.0003, spike3x: false, openInterest: 800000000, liquidationRisk: 0.18 },
+            { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, vol1hQuote: 15000000, fundingRate: 0.0004, spike3x: true, openInterest: 600000000, liquidationRisk: 0.25 }
         ];
 
         console.log('📊 Showing sample data (WebSocket not connected)');
 
         // Update desktop table
         this.updateTable('tableBody', sampleData);
-        
+
         // Update mobile table
         this.updateTable('mobileTableBody', sampleData);
     }
@@ -175,21 +175,22 @@ class WebSocketIntegration {
         // Clear existing rows
         tbody.innerHTML = '';
 
-        // Add new rows
-        symbols.forEach(({ symbol, lastPrice, changePct, vol24hQuote, vol1hQuote, fundingRate, spike3x }) => {
+        // Add new rows - match HTML template column order
+        symbols.forEach(({ symbol, lastPrice, changePct, vol24hQuote, vol1hQuote, fundingRate, spike3x, markPrice, openInterest, liquidationRisk }) => {
             const row = document.createElement('tr');
             row.className = spike3x ? 'bg-yellow-50 border-l-4 border-yellow-400' : '';
 
+            // Check if user is Pro tier (has access to additional columns)
+            const isPro = document.querySelector('.pro-column') !== null;
+            
             row.innerHTML = `
                 <td class="px-4 py-2 font-medium">${symbol}</td>
-                <td class="px-4 py-2">${lastPrice ? lastPrice.toFixed(4) : '-'}</td>
-                <td class="px-4 py-2 ${changePct >= 0 ? 'text-green-600' : 'text-red-600'}">
-                    ${changePct ? changePct.toFixed(2) + '%' : '-'}
-                </td>
-                <td class="px-4 py-2">${fundingRate ? (fundingRate * 100).toFixed(4) + '%' : '-'}</td>
-                <td class="px-4 py-2">${vol1hQuote ? Math.round(vol1hQuote).toLocaleString() : '-'}</td>
                 <td class="px-4 py-2">${vol24hQuote ? Math.round(vol24hQuote).toLocaleString() : '-'}</td>
-                <td class="px-4 py-2">${spike3x ? '🔥 3×' : ''}</td>
+                ${isPro ? `<td class="px-4 py-2 ${changePct >= 0 ? 'text-green-600' : 'text-red-600'}">${changePct ? changePct.toFixed(2) + '%' : '-'}</td>` : ''}
+                <td class="px-4 py-2">${fundingRate ? (fundingRate * 100).toFixed(4) + '%' : '-'}</td>
+                <td class="px-4 py-2">${lastPrice ? lastPrice.toFixed(4) : '-'}</td>
+                ${isPro ? `<td class="px-4 py-2">${openInterest ? Math.round(openInterest).toLocaleString() : '-'}</td>` : ''}
+                ${isPro ? `<td class="px-4 py-2">${liquidationRisk ? liquidationRisk.toFixed(2) : '-'}</td>` : ''}
             `;
 
             tbody.appendChild(row);
@@ -316,10 +317,10 @@ document.addEventListener('DOMContentLoaded', () => {
 function showFallbackData() {
     console.log('📊 Showing fallback data due to WebSocket failure');
     const sampleData = [
-        { symbol: 'BTCUSDT', lastPrice: 43250.50, changePct: 2.45, vol24hQuote: 1250000000, vol1hQuote: 52000000, fundingRate: 0.0001, spike3x: false },
-        { symbol: 'ETHUSDT', lastPrice: 2650.75, changePct: -1.23, vol24hQuote: 980000000, vol1hQuote: 41000000, fundingRate: 0.0002, spike3x: true },
-        { symbol: 'ADAUSDT', lastPrice: 0.4850, changePct: 3.67, vol24hQuote: 450000000, vol1hQuote: 18000000, fundingRate: 0.0001, spike3x: false },
-        { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, vol1hQuote: 15000000, fundingRate: 0.0003, spike3x: true }
+        { symbol: 'BTCUSDT', lastPrice: 43250.50, changePct: 2.45, vol24hQuote: 1250000000, vol1hQuote: 52000000, fundingRate: 0.0001, spike3x: false, openInterest: 1500000000, liquidationRisk: 0.15 },
+        { symbol: 'ETHUSDT', lastPrice: 2650.75, changePct: -1.23, vol24hQuote: 980000000, vol1hQuote: 41000000, fundingRate: 0.0002, spike3x: true, openInterest: 1200000000, liquidationRisk: 0.22 },
+        { symbol: 'ADAUSDT', lastPrice: 0.4850, changePct: 3.67, vol24hQuote: 450000000, vol1hQuote: 18000000, fundingRate: 0.0001, spike3x: false, openInterest: 800000000, liquidationRisk: 0.18 },
+        { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, vol1hQuote: 15000000, fundingRate: 0.0003, spike3x: true, openInterest: 600000000, liquidationRisk: 0.25 }
     ];
 
     // Update desktop table
@@ -337,7 +338,7 @@ function showFallbackData() {
             </tr>
         `).join('');
     }
-    
+
     // Update mobile table
     const mobileTable = document.getElementById('mobileTableBody');
     if (mobileTable) {
