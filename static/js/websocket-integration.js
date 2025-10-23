@@ -36,46 +36,66 @@ class WebSocketIntegration {
             // Update connection indicator based on store state
             this.updateConnectionIndicator(state.connectionState);
 
-            // Elite: paint every store change after first paint
-            if (this.userTier >= 2) {
-                if (!this.firstPaintDone) {
-                    console.log('🎨 Elite tier - first paint triggered by store subscription');
-                    this.updateDashboard();
-                    this.firstPaintDone = true;
-                } else {
-                    console.log('🎨 Elite tier - real-time update triggered');
-                    this.updateDashboard();
-                }
-                return;
-            }
-
-            // Free/Pro tiers
             const hasSymbols = state.bySymbol && Object.keys(state.bySymbol).length > 0;
             const hasFundingRates = hasSymbols && Object.values(state.bySymbol)
                 .some(s => s.fundingRate !== undefined && s.fundingRate !== null);
 
-            // 1) Ensure the UI unblocks quickly (first paint of any kind)
-            if (!this.firstPaintDone && hasSymbols) {
-                console.log('🎨 Free/Pro tier - first paint (symbols only, funding may be N/A)');
-                this.updateDashboard();          // can render N/A for funding at first
-                this.firstPaintDone = true;      // loader gone
-            }
-
-            // 2) Ensure we paint once when COMPLETE data (with funding) arrives
-            //    This must NOT be gated by firstPaintDone
-            if (hasFundingRates && !this.hasShownCompleteData) {
-                console.log('🎨 Free/Pro tier - complete data paint (with funding rates)');
-                this.updateDashboard();          // upgrade the UI with funding
+            // ✅ First paint must wait for funding to avoid "N/A" flash
+            if (!this.firstPaintDone) {
+                if (!hasFundingRates) {
+                    // Keep the loader visible; do nothing until funding arrives.
+                    console.log('📊 Waiting for funding rates before first paint...');
+                    return;
+                }
+                // We have funding — do the initial paint now
+                console.log('🎨 First complete paint (with funding rates)');
+                this.updateDashboard();
+                this.firstPaintDone = true;
                 this.hasShownCompleteData = true;
+
+                // Clear the fallback timer since we got complete data
+                if (this.initialFallbackTimer) {
+                    clearTimeout(this.initialFallbackTimer);
+                    this.initialFallbackTimer = null;
+                }
+
+                // Start the tier timer only AFTER the complete first paint (Free/Pro only)
+                if (this.userTier < 2 && !this.updateInterval) {
+                    console.log('⏰ Starting tier-based timer after complete first paint');
+                    this.startUIUpdates();
+                }
+
+                // Elite continues below (realtime after first complete paint)
             }
 
-            // After that, Free/Pro rely on the tier timer (startUIUpdates) you already have
+            // After initial complete paint:
+            if (this.userTier >= 2) {
+                // Elite -> real-time updates on every store change
+                console.log('🎨 Elite tier - real-time update triggered');
+                this.updateDashboard();
+            } else {
+                // Free/Pro -> rely on tier timer (no-op here)
+                console.log('📊 Free/Pro tier - relying on tier timer for updates');
+            }
         });
         console.log('✅ Subscribed. unsubscribe is function?', typeof this.unsubscribe === 'function');
 
         // Set initial connection state to connected since WebSocket is working
         console.log('🧪 Forcing a connection state ping to trigger notify');
         this.store.setConnectionState('connected');
+
+        // Optional safety valve: If funding is delayed, do a fallback paint after 8 seconds
+        this.initialFallbackTimer = setTimeout(() => {
+            if (!this.firstPaintDone) {
+                console.warn('⏳ Funding delayed — doing a fallback initial paint without funding');
+                this.updateDashboard();
+                this.firstPaintDone = true;
+                // For Free/Pro, also start timers so UI isn't stuck
+                if (this.userTier < 2 && !this.updateInterval) {
+                    this.startUIUpdates();
+                }
+            }
+        }, 8000);
 
         // Note: For Free/Pro, initial paint is triggered after first data arrives
         // inside setupRefreshBasedOnTier(); Elite already paints via subscription.
@@ -140,14 +160,8 @@ class WebSocketIntegration {
         } else {
             // Free/Pro → subscription handles first paint, timer handles subsequent updates
             console.log(`📊 Tier ${this.userTier} - WebSocket data + ${this.refreshInterval / 1000 / 60} minute UI updates`);
-            this.waitForFirstData()
-                .then(() => {
-                    this.startUIUpdates();
-                })
-                .catch(() => {
-                    // If no data arrives quickly, still start timer to avoid blank UI forever
-                    this.startUIUpdates();
-                });
+            // Do NOT start timers here. We start them after the first complete paint
+            // inside the store subscription once funding is present.
         }
     }
 
