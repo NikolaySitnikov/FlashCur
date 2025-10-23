@@ -111,10 +111,9 @@ class MarketStore {
 
         for (const mark of markPrices) {
             const symbol = mark.s;
-            const markPrice = parseFloat(mark.p);
-            const fundingRate = (mark.r !== undefined && mark.r !== null) ? Number(mark.r) : null;
-
-            console.log(`📊 MarketStore: Processing ${symbol} - markPrice: ${markPrice}, fundingRate: ${fundingRate}, raw mark.r: ${mark.r}`);
+            const markPrice = Number(mark.p);
+            
+            console.log(`📊 MarketStore: Processing ${symbol} - markPrice: ${markPrice}, raw mark.r: ${mark.r}`);
 
             if (!this.state.bySymbol[symbol]) {
                 this.state.bySymbol[symbol] = {};
@@ -124,9 +123,16 @@ class MarketStore {
             const updated = {
                 ...current,
                 markPrice,
-                fundingRate,
                 lastUpdate: now
             };
+
+            // Only set fundingRate when Binance includes 'r'; otherwise keep the last known good value
+            if (mark.r !== undefined && mark.r !== null) {
+                updated.fundingRate = Number(mark.r);
+                console.log(`📊 MarketStore: Updated fundingRate for ${symbol}: ${updated.fundingRate}`);
+            } else {
+                console.log(`📊 MarketStore: No 'r' field for ${symbol}, keeping existing fundingRate: ${current.fundingRate}`);
+            }
 
             this.state.bySymbol[symbol] = updated;
             hasChanges = true;
