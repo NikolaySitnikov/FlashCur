@@ -11,8 +11,11 @@ class WebSocketIntegration {
         this.store = window.marketStore;
         this.isConnected = false;
         this.reconnectTimeout = null;
-        this.updateInterval = null;
+        this.updateInterval = null;   // tier-paced UI paint timer (Free/Pro)
+        this.firstPaintDone = false;  // track one-time initial paint for Free/Pro
         this.sampleDataShown = false;
+        this.userTier = 0;            // 0=Free,1=Pro,2=Elite
+        this.refreshInterval = 15 * 60 * 1000;
     }
 
     // Initialize WebSocket connection
@@ -26,8 +29,8 @@ class WebSocketIntegration {
         this.unsubscribe = this.store.subscribe((state) => {
             // Update connection indicator based on store state
             this.updateConnectionIndicator(state.connectionState);
-            
-            // Only update dashboard immediately for Elite tier
+
+            // Only Elite paints on every change; Free/Pro paint on timer.
             if (this.userTier >= 2) {
                 this.updateDashboard();
             }
@@ -36,13 +39,8 @@ class WebSocketIntegration {
         // Set initial connection state to connected since WebSocket is working
         this.store.setConnectionState('connected');
 
-        // Force an immediate first render
-        this.updateDashboard();
-        
-        // Load initial data for Free/Pro tiers
-        if (this.userTier < 2) {
-            this.loadInitialData();
-        }
+        // Note: For Free/Pro, initial paint is triggered after first data arrives
+        // inside setupRefreshBasedOnTier(); Elite already paints via subscription.
 
         // Handle page visibility changes
         document.addEventListener('visibilitychange', () => {
@@ -97,15 +95,42 @@ class WebSocketIntegration {
         this.ws.start();
         this.isConnected = true;
 
-        // Set up UI refresh based on tier
+        // UI refresh by tier
         if (this.userTier >= 2) {
-            // Elite tier - Real-time updates (WebSocket data updates UI immediately)
+            // Elite → nothing else to do; subscription paints in real-time.
             console.log('🚀 Elite tier - Real-time WebSocket updates');
+            // One immediate paint so the user isn't waiting for first WS tick:
+            this.updateDashboard();
         } else {
-            // Free/Pro tier - Periodic UI updates (WebSocket data + tier-based refresh)
+            // Free/Pro → paint on schedule; do ONE immediate paint after first data arrives
             console.log(`📊 Tier ${this.userTier} - WebSocket data + ${this.refreshInterval / 1000 / 60} minute UI updates`);
-            this.startUIUpdates();
+            this.waitForFirstData()
+                .then(() => {
+                    if (!this.firstPaintDone) {
+                        this.updateDashboard();
+                        this.firstPaintDone = true;
+                    }
+                    this.startUIUpdates();
+                })
+                .catch(() => {
+                    // If no data arrives quickly, still start timer to avoid blank UI forever
+                    this.startUIUpdates();
+                });
         }
+    }
+
+    // Resolve when the websocket store has symbols (first usable dataset)
+    waitForFirstData(timeoutMs = 4000) {
+        return new Promise((resolve, reject) => {
+            const start = performance.now();
+            const check = () => {
+                const symbols = this.store.getSymbols({ endsWith: 'USDT', limit: 10 });
+                if (symbols && symbols.length) return resolve();
+                if (performance.now() - start > timeoutMs) return reject(new Error('timeout'));
+                requestAnimationFrame(check);
+            };
+            check();
+        });
     }
 
     // Handle incoming WebSocket messages
@@ -135,20 +160,19 @@ class WebSocketIntegration {
 
     // Start periodic UI updates (tier-based refresh rate)
     startUIUpdates() {
+        if (this.updateInterval) clearInterval(this.updateInterval);
+        // Paint immediately if not painted yet (e.g., timeout path)
+        if (!this.firstPaintDone) {
+            this.updateDashboard();
+            this.firstPaintDone = true;
+        }
         this.updateInterval = setInterval(() => {
             this.updateDashboard();
-        }, this.refreshInterval || 15 * 60 * 1000); // Use tier-based refresh rate
+        }, this.refreshInterval || 15 * 60 * 1000);
     }
 
-    // Load initial data for Free/Pro tiers (from WebSocket store)
-    loadInitialData() {
-        console.log('📊 Loading initial data for Free/Pro tier from WebSocket store...');
-        
-        // Wait a bit for WebSocket data to arrive
-        setTimeout(() => {
-            this.updateMarketTable();
-        }, 2000); // Wait 2 seconds for WebSocket data
-    }
+    // (Legacy methods that fetched server data are no longer needed for tier pacing)
+    // loadDataForFreePro() remains available but unused.
 
     // Load data for Free/Pro tiers (server-side API)
     async loadDataForFreePro() {
@@ -165,7 +189,7 @@ class WebSocketIntegration {
                 // Update tables with sorted data
                 this.updateTable('tableBody', window.dataCache);
                 this.updateTable('mobileTableBody', window.dataCache);
-                
+
                 // Update sort indicators
                 if (window.updateSortIndicators) {
                     window.updateSortIndicators();
