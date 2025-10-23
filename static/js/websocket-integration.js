@@ -45,16 +45,19 @@ class WebSocketIntegration {
                 console.log('🎨 Elite tier update triggered');
                 this.updateDashboard();
             } else {
-                // Free/Pro tier: force update when we have COMPLETE data (both ticker and funding rates)
+                // Free/Pro tier: force update ONLY for first paint when we have COMPLETE data
                 if (state.lastUpdate && state.bySymbol && Object.keys(state.bySymbol).length > 0) {
                     // Check if we have funding rate data (not just ticker data)
                     const hasFundingRates = Object.values(state.bySymbol).some(symbol => 
                         symbol.fundingRate !== undefined && symbol.fundingRate !== null
                     );
                     
-                    if (hasFundingRates) {
-                        console.log('🎨 Free/Pro tier - forcing update with COMPLETE data (including funding rates)');
+                    if (hasFundingRates && !this.firstPaintDone) {
+                        console.log('🎨 Free/Pro tier - forcing FIRST update with COMPLETE data (including funding rates)');
                         this.updateDashboard();
+                        this.firstPaintDone = true;
+                    } else if (hasFundingRates && this.firstPaintDone) {
+                        console.log('📊 Free/Pro tier - skipping update (first paint done, use tier-based timer)');
                     } else {
                         console.log('📊 Free/Pro tier - skipping update (ticker data only, no funding rates yet)');
                     }
