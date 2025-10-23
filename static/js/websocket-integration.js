@@ -28,7 +28,7 @@ class WebSocketIntegration {
             this.updateConnectionIndicator(state.connectionState);
             this.updateDashboard();
         });
-        
+
         // Set initial connection state to connected since WebSocket is working
         this.store.setConnectionState('connected');
 
@@ -75,23 +75,27 @@ class WebSocketIntegration {
         this.setupRefreshBasedOnTier();
     }
 
-    // Setup refresh based on user tier (like working version)
+    // Setup refresh based on user tier (WebSocket for all, different intervals)
     setupRefreshBasedOnTier() {
+        // All tiers use WebSocket (because Binance blocks server-side API)
+        console.log(`🚀 Tier ${this.userTier} - Using WebSocket with ${this.refreshInterval / 1000 / 60} minute UI updates`);
+        
+        // Create WebSocket connection for all tiers
+        this.ws = new BinanceWS(['!ticker@arr', '!markPrice@arr']);
+        this.ws.on((message) => {
+            this.handleMessage(message);
+        });
+        this.ws.start();
+        this.isConnected = true;
+
+        // Set up UI refresh based on tier
         if (this.userTier >= 2) {
-            // Elite tier - Real-time WebSocket
-            console.log('🚀 Elite tier - Using real-time WebSocket');
-            this.ws = new BinanceWS(['!ticker@arr', '!markPrice@arr']);
-            this.ws.on((message) => {
-                this.handleMessage(message);
-            });
-            this.ws.start();
-            this.isConnected = true;
+            // Elite tier - Real-time updates (WebSocket data updates UI immediately)
+            console.log('🚀 Elite tier - Real-time WebSocket updates');
         } else {
-            // Free/Pro tier - Periodic updates
-            console.log(`📊 Tier ${this.userTier} - Using ${this.refreshInterval / 1000 / 60} minute updates`);
+            // Free/Pro tier - Periodic UI updates (WebSocket data + tier-based refresh)
+            console.log(`📊 Tier ${this.userTier} - WebSocket data + ${this.refreshInterval / 1000 / 60} minute UI updates`);
             this.startUIUpdates();
-            // Load initial data for Free/Pro tiers
-            this.loadDataForFreePro();
         }
     }
 
@@ -99,24 +103,30 @@ class WebSocketIntegration {
     handleMessage(message) {
         try {
             console.log('📨 Received WebSocket message:', message.stream, message.data?.length || 0, 'items');
-            console.log('📨 Full message structure:', message);
 
             if (message.stream === '!ticker@arr') {
                 // Update ticker data
                 console.log('📊 Processing ticker data:', message.data?.length || 0, 'tickers');
-                console.log('📊 First ticker sample:', message.data?.[0]);
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
+
+                // Only update UI immediately for Elite tier
+                if (this.userTier >= 2) {
+                    this.updateMarketTable();
+                }
 
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
                 console.log('💰 Processing mark price data:', message.data?.length || 0, 'prices');
-                console.log('💰 First mark price sample:', message.data?.[0]);
                 this.store.updateMarkPrices(message.data);
+
+                // Only update UI immediately for Elite tier
+                if (this.userTier >= 2) {
+                    this.updateMarketTable();
+                }
 
             } else {
                 console.log('❓ Unknown stream:', message.stream);
-                console.log('❓ Unknown message structure:', message);
             }
         } catch (error) {
             console.error('❌ Error handling WebSocket message:', error);
@@ -146,7 +156,7 @@ class WebSocketIntegration {
                 // Update tables with sorted data
                 this.updateTable('tableBody', window.dataCache);
                 this.updateTable('mobileTableBody', window.dataCache);
-                
+
                 // Update sort indicators
                 if (window.updateSortIndicators) {
                     window.updateSortIndicators();
@@ -168,12 +178,13 @@ class WebSocketIntegration {
         // Update connection indicator
         this.updateConnectionIndicator(state.connectionState);
 
+        // All tiers use WebSocket data, but different update frequencies
         if (this.userTier >= 2) {
-            // Elite tier - Use WebSocket data
+            // Elite tier - Real-time updates (WebSocket data updates UI immediately)
             this.updateMarketTable();
         } else {
-            // Free/Pro tier - Reload from server
-            this.loadDataForFreePro();
+            // Free/Pro tier - Use WebSocket data but only update UI at tier intervals
+            this.updateMarketTable();
         }
 
         // Check for spike alerts
