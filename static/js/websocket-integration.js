@@ -13,12 +13,40 @@ class WebSocketIntegration {
             this.store === window.marketStore, this.store);
         this.isConnected = false;
         this.reconnectTimeout = null;
+        
+        // B) Paint scheduler properties
+        this._paintScheduled = false;
+        this._paintToken = 0;
+        
+        // C) Last non-empty rows cache
+        this._lastNonEmptyRows = [];
         this.updateInterval = null;   // tier-paced UI paint timer (Free/Pro)
         this.firstPaintDone = false;  // track one-time initial paint for Free/Pro
         this.hasShownCompleteData = false;  // track whether we've painted with funding rates
         this.sampleDataShown = false;
         this.userTier = 0;            // 0=Free,1=Pro,2=Elite
         this.refreshInterval = 15 * 60 * 1000;
+    }
+
+    // B) Paint scheduler to coalesce concurrent paints
+    scheduleDashboardPaint() {
+        if (this._paintScheduled) return;
+        this._paintScheduled = true;
+        const token = ++this._paintToken;
+        // Use rAF for smoother DOM work
+        requestAnimationFrame(() => {
+            // Only the latest token paints
+            if (token === this._paintToken) {
+                try { 
+                    this.updateDashboard(); 
+                } finally { 
+                    this._paintScheduled = false; 
+                }
+            } else {
+                // a newer paint superseded this one
+                this._paintScheduled = false;
+            }
+        });
     }
 
     // Initialize WebSocket connection
@@ -40,18 +68,20 @@ class WebSocketIntegration {
             const values = Object.values(state.bySymbol);
             const total = values.length;
             const withFunding = values.filter(s => s.fundingRate != null).length;
-            const withPrice   = values.filter(s => Number.isFinite(s.lastPrice)).length;
-            const withVol     = values.filter(s => Number.isFinite(s.vol24hQuote)).length;
+            const withPrice = values.filter(s => Number.isFinite(s.lastPrice)).length;
+            const withVol = values.filter(s => Number.isFinite(s.vol24hQuote)).length;
 
             const pctPrice = total ? withPrice / total : 0;
-            const pctVol   = total ? withVol   / total : 0;
+            const pctVol = total ? withVol / total : 0;
             const hasFundingRates = withFunding > 0;
             const datasetComplete = hasFundingRates && (pctPrice >= 0.6) && (pctVol >= 0.6);
 
             // F) Add focused diagnostics
             console.log('🧮 completeness',
-                { total, withFunding, withPrice, withVol,
-                    pctPrice: pctPrice.toFixed(2), pctVol: pctVol.toFixed(2) });
+                {
+                    total, withFunding, withPrice, withVol,
+                    pctPrice: pctPrice.toFixed(2), pctVol: pctVol.toFixed(2)
+                });
 
             // ✅ First paint must wait for COMPLETE data (both streams)
             if (!this.firstPaintDone) {
@@ -61,7 +91,7 @@ class WebSocketIntegration {
                     return;
                 }
                 console.log('🎨 First complete paint (funding + ticker)');
-                this.updateDashboard();
+                this.scheduleDashboardPaint();
                 this.firstPaintDone = true;
                 this.hasShownCompleteData = true;
 
@@ -83,11 +113,11 @@ class WebSocketIntegration {
             // B) One-time hydration repaint for Free/Pro
             this._lastCompleteness = this._lastCompleteness || { pctPrice: 0, pctVol: 0 };
             const improved = (pctPrice - this._lastCompleteness.pctPrice >= 0.2) ||
-                             (pctVol   - this._lastCompleteness.pctVol   >= 0.2);
+                (pctVol - this._lastCompleteness.pctVol >= 0.2);
 
             if (this.firstPaintDone && this.userTier < 2 && improved) {
                 console.log('💧 Hydration repaint (Free/Pro): ticker completeness significantly improved.');
-                this.updateDashboard();
+                this.scheduleDashboardPaint();
                 this._lastCompleteness = { pctPrice, pctVol };
             }
 
@@ -95,7 +125,7 @@ class WebSocketIntegration {
             if (this.userTier >= 2) {
                 // Elite -> real-time updates on every store change
                 console.log('🎨 Elite tier - real-time update triggered');
-                this.updateDashboard();
+                this.scheduleDashboardPaint();
             } else {
                 // Free/Pro -> rely on tier timer (no-op here)
                 console.log('📊 Free/Pro tier - relying on tier timer for updates');
@@ -114,16 +144,16 @@ class WebSocketIntegration {
                 const values = Object.values(this.store.getState().bySymbol);
                 const total = values.length;
                 const withFunding = values.filter(s => s.fundingRate != null).length;
-                const withPrice   = values.filter(s => Number.isFinite(s.lastPrice)).length;
-                const withVol     = values.filter(s => Number.isFinite(s.vol24hQuote)).length;
+                const withPrice = values.filter(s => Number.isFinite(s.lastPrice)).length;
+                const withVol = values.filter(s => Number.isFinite(s.vol24hQuote)).length;
                 const pctPrice = total ? withPrice / total : 0;
-                const pctVol   = total ? withVol   / total : 0;
+                const pctVol = total ? withVol / total : 0;
                 const hasFundingRates = withFunding > 0;
                 const enoughTicker = pctPrice >= 0.4 && pctVol >= 0.4;
-                
+
                 if (hasFundingRates && enoughTicker) {
                     console.warn('⏳ Fallback: close enough, painting.');
-                    this.updateDashboard();
+                    this.scheduleDashboardPaint();
                     this.firstPaintDone = true;
                     if (this.userTier < 2 && !this.updateInterval) {
                         this.startUIUpdates();
@@ -263,11 +293,11 @@ class WebSocketIntegration {
         if (this.updateInterval) clearInterval(this.updateInterval);
         // Paint immediately if not painted yet (e.g., timeout path)
         if (!this.firstPaintDone) {
-            this.updateDashboard();
+            this.scheduleDashboardPaint();
             this.firstPaintDone = true;
         }
         this.updateInterval = setInterval(() => {
-            this.updateDashboard();
+            this.scheduleDashboardPaint();
         }, this.refreshInterval || 15 * 60 * 1000);
     }
 
@@ -333,7 +363,7 @@ class WebSocketIntegration {
             { symbol: 'ETHUSDT', lastPrice: 3000, vol24hQuote: 1500000000, fundingRate: -0.0002 },
             { symbol: 'BNBUSDT', lastPrice: 300, vol24hQuote: 800000000, fundingRate: 0.0003 }
         ];
-        
+
         // Update store with sample data temporarily
         sampleData.forEach(item => {
             this.store.state.bySymbol[item.symbol] = {
@@ -344,7 +374,7 @@ class WebSocketIntegration {
                 lastUpdate: Date.now()
             };
         });
-        
+
         // Trigger a single update
         this.updateDashboard();
     }
@@ -510,14 +540,18 @@ class WebSocketIntegration {
         window.dataCache = this.applySorting([...displayItems]);
 
         // F) Add focused diagnostics right before painting
-        const preview = rows.slice(0,5).map(x => ({
+        const preview = rows.slice(0, 5).map(x => ({
             s: x.symbol, p: x.lastPrice, qv: x.vol24hQuote, r: x.fundingRate
         }));
         console.log('🎛️ sample rows before paint:', preview);
 
-        // Update tables with sorted data
-        this.updateTable('tableBody', window.dataCache);
-        this.updateTable('mobileTableBody', window.dataCache);
+        // C) Guard against transient empties - use last good rows if current is empty
+        const rowsForPaint = (window.dataCache && window.dataCache.length) ? window.dataCache : this._lastNonEmptyRows;
+        if (rowsForPaint.length) {
+            this._lastNonEmptyRows = rowsForPaint;
+            this.updateTable('tableBody', rowsForPaint);
+            this.updateTable('mobileTableBody', rowsForPaint);
+        }
 
         // Update sort indicators
         if (window.updateSortIndicators) {
@@ -602,9 +636,15 @@ class WebSocketIntegration {
     // Update specific table
     updateTable(tableId, symbols) {
         console.log(`📊 updateTable called for ${tableId} with ${symbols.length} symbols`);
-        const tbody = document.getElementById(tableId);
-        if (!tbody) {
-            console.warn('⚠️ Missing table body:', tableId);
+        const table = document.getElementById(tableId);
+        if (!table) {
+            console.warn('⚠️ Missing table:', tableId);
+            return;
+        }
+        
+        const oldTbody = table.querySelector('tbody');
+        if (!oldTbody) {
+            console.warn('⚠️ Missing tbody in table:', tableId);
             return;
         }
 
@@ -614,19 +654,18 @@ class WebSocketIntegration {
             return; // Keep existing rows
         }
 
-        // Clear existing rows
-        tbody.innerHTML = '';
+        // A) Build new tbody off-DOM
+        const newTbody = document.createElement('tbody');
+        const isPro = document.querySelector('.pro-column') !== null;
 
-        console.log(`📊 Adding ${symbols.length} rows to ${tableId}`);
+        console.log(`📊 Building ${symbols.length} rows for ${tableId}`);
 
         // Add new rows using mapped data format
         symbols.forEach((item) => {
-            const row = document.createElement('tr');
+            const tr = document.createElement('tr');
+            tr.dataset.symbol = item.asset; // stable key
 
-            // Check if user is Pro tier (has access to additional columns)
-            const isPro = document.querySelector('.pro-column') !== null;
-
-            row.innerHTML = `
+            tr.innerHTML = `
                 <td class="px-4 py-2 font-medium">${item.asset}</td>
                 <td class="px-4 py-2">${item.volume_formatted}</td>
                 ${isPro ? `<td class="px-4 py-2 ${item.price_change_pct >= 0 ? 'text-green-600' : 'text-red-600'}">${item.price_change_pct ? item.price_change_pct.toFixed(2) + '%' : '-'}</td>` : ''}
@@ -636,8 +675,11 @@ class WebSocketIntegration {
                 ${isPro ? `<td class="px-4 py-2">${item.liquidation_risk ? item.liquidation_risk.toFixed(2) : '-'}</td>` : ''}
             `;
 
-            tbody.appendChild(row);
+            newTbody.appendChild(tr);
         });
+
+        // A) Atomic swap to avoid any blank state on screen
+        oldTbody.replaceWith(newTbody);
     }
 
     // Check for spike alerts
