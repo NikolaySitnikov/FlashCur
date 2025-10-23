@@ -281,12 +281,28 @@ class WebSocketIntegration {
 
         // Format funding rate (like working version)
         const formatFunding = (r) => {
-            if (r === null || r === undefined) return 'N/A';
+            console.log('🔍 formatFunding called with:', r, 'type:', typeof r);
+            if (r === null || r === undefined) {
+                console.log('🔍 formatFunding returning N/A for:', r);
+                return 'N/A';
+            }
             // Handle zero funding rate (show 0.0000% instead of N/A)
             const ratePercent = r * 100;
             const colorClass = ratePercent > 0.03 ? 'funding-positive' : ratePercent < -0.03 ? 'funding-negative' : '';
-            return `<span class="${colorClass}">${ratePercent.toFixed(4)}%</span>`;
+            const result = `<span class="${colorClass}">${ratePercent.toFixed(4)}%</span>`;
+            console.log('🔍 formatFunding returning:', result);
+            return result;
         };
+
+        // Debug: Check what funding rates we're receiving
+        console.log('🔍 mapToDisplayItems - sample symbol funding rates:', 
+            symbols.slice(0, 3).map(s => ({ 
+                symbol: s.symbol, 
+                fundingRate: s.fundingRate, 
+                type: typeof s.fundingRate,
+                raw: s.fundingRate
+            }))
+        );
 
         return symbols.map(s => ({
             // names the working code expects:
@@ -305,7 +321,7 @@ class WebSocketIntegration {
     // Update market data table
     updateMarketTable() {
         console.log('🧭 updateMarketTable() tick at', new Date().toISOString());
-        
+
         const symbols = this.store.getSymbols({
             endsWith: 'USDT',
             limit: 200,
@@ -319,7 +335,7 @@ class WebSocketIntegration {
 
         console.log('📊 Market table update - symbols count:', symbols.length);
         console.log('📊 After $100M filter - symbols count:', filteredSymbols.length);
-        console.log('≥$100M first 5:', symbols.filter(s => Number(s.vol24hQuote) >= 1e8).slice(0,5)
+        console.log('≥$100M first 5:', symbols.filter(s => Number(s.vol24hQuote) >= 1e8).slice(0, 5)
             .map(s => [s.symbol, s.vol24hQuote]));
 
         // If no data from WebSocket, show sample data after 3 seconds
@@ -344,15 +360,15 @@ class WebSocketIntegration {
 
         // Resilient DOM queries - try multiple known IDs
         const q = (ids) => ids.map(id => document.getElementById(id)).find(Boolean);
-        const desktopLoading = q(['loadingContainer','loading-container']);
-        const desktopContainer = q(['tableContainer','marketTableContainer','dataContainer']);
-        const mobileLoading = q(['mobileLoadingContainer','mobile-loading']);
-        const mobileContainer = q(['mobileTableContainer','mobile-table']);
+        const desktopLoading = q(['loadingContainer', 'loading-container']);
+        const desktopContainer = q(['tableContainer', 'marketTableContainer', 'dataContainer']);
+        const mobileLoading = q(['mobileLoadingContainer', 'mobile-loading']);
+        const mobileContainer = q(['mobileTableContainer', 'mobile-table']);
 
         console.log('🧩 containers:', { desktopLoading, desktopContainer, mobileLoading, mobileContainer });
 
         // Check for missing DOM nodes
-        ['loadingContainer','tableContainer','mobileLoadingContainer','mobileTableContainer'].forEach(id=>{
+        ['loadingContainer', 'tableContainer', 'mobileLoadingContainer', 'mobileTableContainer'].forEach(id => {
             if (!document.getElementById(id)) console.warn('⚠️ Missing DOM node:', id);
         });
 
