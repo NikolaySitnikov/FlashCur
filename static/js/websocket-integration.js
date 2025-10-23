@@ -58,12 +58,14 @@ class WebSocketIntegration {
                 console.log('📊 First ticker sample:', message.data?.[0]);
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
+                this.updateConnectionIndicator('connected');
 
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
                 console.log('💰 Processing mark price data:', message.data?.length || 0, 'prices');
                 console.log('💰 First mark price sample:', message.data?.[0]);
                 this.store.updateMarkPrices(message.data);
+                this.updateConnectionIndicator('connected');
 
             } else {
                 console.log('❓ Unknown stream:', message.stream);
@@ -110,23 +112,26 @@ class WebSocketIntegration {
         const status = states[state] || states['disconnected'];
         indicator.textContent = status.text;
         indicator.className = `text-sm font-medium ${status.class}`;
+        
+        // Update the connection state in the store
+        this.store.setConnectionState(state);
     }
 
     // Update market data table
     updateMarketTable() {
-        const symbols = this.store.getSymbols({ 
-            endsWith: 'USDT', 
-            limit: 200, 
-            sortBy: 'vol24hQuote' 
+        const symbols = this.store.getSymbols({
+            endsWith: 'USDT',
+            limit: 200,
+            sortBy: 'vol24hQuote'
         });
 
-        // Filter to only show tokens with >$100M volume
+        // Filter to only show tokens with >$10M volume (less restrictive)
         const filteredSymbols = symbols.filter(symbol => 
-            symbol.vol24hQuote && symbol.vol24hQuote >= 100000000
+            symbol.vol24hQuote && symbol.vol24hQuote >= 10000000
         );
 
         console.log('📊 Market table update - symbols count:', symbols.length);
-        console.log('📊 After $100M filter - symbols count:', filteredSymbols.length);
+        console.log('📊 After $10M filter - symbols count:', filteredSymbols.length);
 
         // If no data from WebSocket, show sample data after 3 seconds
         if (symbols.length === 0) {
@@ -150,7 +155,7 @@ class WebSocketIntegration {
 
         // Update desktop table
         this.updateTable('tableBody', filteredSymbols);
-        
+
         // Update mobile table
         this.updateTable('mobileTableBody', filteredSymbols);
     }
@@ -387,7 +392,7 @@ function showFallbackData() {
             </tr>
         `).join('');
     }
-    
+
     // Update mobile table
     const mobileTable = document.getElementById('mobileTableBody');
     if (mobileTable) {
