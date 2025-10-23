@@ -31,7 +31,15 @@ class WebSocketIntegration {
         this.ws.start();
         this.isConnected = true;
 
-        // Set up periodic UI updates
+        // Subscribe to store changes for real-time updates
+        this.unsubscribe = this.store.subscribe(() => {
+            this.updateDashboard();
+        });
+
+        // Force an immediate first render
+        this.updateDashboard();
+
+        // Set up periodic UI updates (reduced from 5 minutes to 5 seconds)
         this.startUIUpdates();
 
         // Handle page visibility changes
@@ -81,7 +89,7 @@ class WebSocketIntegration {
     startUIUpdates() {
         this.updateInterval = setInterval(() => {
             this.updateDashboard();
-        }, 300000); // Update every 5 minutes (300000ms)
+        }, 5000); // Update every 5 seconds (5000ms) for UI resiliency
     }
 
     // Update dashboard with latest data
@@ -126,13 +134,13 @@ class WebSocketIntegration {
         });
 
         // Filter to only show tokens with >$100M volume
-        const filteredSymbols = symbols.filter(symbol => 
+        const filteredSymbols = symbols.filter(symbol =>
             symbol.vol24hQuote && symbol.vol24hQuote >= 100000000
         );
 
         console.log('📊 Market table update - symbols count:', symbols.length);
         console.log('📊 After $100M filter - symbols count:', filteredSymbols.length);
-        
+
         // Debug: Show first few symbols and their volumes
         if (symbols.length > 0) {
             console.log('📊 First 5 symbols with volumes:', symbols.slice(0, 5).map(s => ({
@@ -141,7 +149,7 @@ class WebSocketIntegration {
                 volumeFormatted: s.vol24hQuote ? (s.vol24hQuote / 1000000).toFixed(1) + 'M' : 'N/A'
             })));
         }
-        
+
         if (filteredSymbols.length > 0) {
             console.log('📊 First 5 filtered symbols:', filteredSymbols.slice(0, 5).map(s => ({
                 symbol: s.symbol,
@@ -170,9 +178,22 @@ class WebSocketIntegration {
             return;
         }
 
+        // Show table containers when data exists (like original displayDataProgressive)
+        const desktopLoading = document.getElementById('loadingContainer');
+        const desktopContainer = document.getElementById('tableContainer');
+        const mobileLoading = document.getElementById('mobileLoadingContainer');
+        const mobileContainer = document.getElementById('mobileTableContainer');
+
+        if (filteredSymbols.length > 0) {
+            if (desktopLoading) desktopLoading.style.display = 'none';
+            if (mobileLoading) mobileLoading.style.display = 'none';
+            if (desktopContainer) desktopContainer.style.display = 'block';
+            if (mobileContainer) mobileContainer.style.display = 'block';
+        }
+
         // Update desktop table
         this.updateTable('tableBody', filteredSymbols);
-
+        
         // Update mobile table
         this.updateTable('mobileTableBody', filteredSymbols);
     }
@@ -318,6 +339,11 @@ class WebSocketIntegration {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
+        }
+
+        if (this.unsubscribe) {
+            this.unsubscribe();
+            this.unsubscribe = null;
         }
 
         this.isConnected = false;
