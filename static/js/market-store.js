@@ -133,12 +133,13 @@ class MarketStore {
                 lastUpdate: now
             };
 
-            // Only set fundingRate when Binance includes 'r'; otherwise keep the last known good value
-            if (mark.r !== undefined && mark.r !== null) {
-                updated.fundingRate = Number(mark.r);
+            // NEW: tolerate multiple key shapes for funding rate
+            const rawFR = mark.r ?? mark.R ?? mark.fr ?? mark.fundingRate ?? null;
+            if (rawFR !== null && rawFR !== undefined && rawFR !== '') {
+                updated.fundingRate = Number(rawFR);
                 console.log(`📊 MarketStore: Updated fundingRate for ${symbol}: ${updated.fundingRate}`);
             } else {
-                console.log(`📊 MarketStore: No 'r' field for ${symbol}, keeping existing fundingRate: ${current.fundingRate}`);
+                console.log(`📊 MarketStore: No funding field for ${symbol}, keeping existing fundingRate: ${current.fundingRate}`);
             }
 
             this.state.bySymbol[symbol] = updated;
@@ -207,6 +208,11 @@ class MarketStore {
 
     // Notify all listeners of state changes
     notify() {
+        const size = Object.keys(this.state.bySymbol).length;
+        if (size === 0) {
+            console.warn('⚠️ MarketStore.notify with bySymbol size=0 — treating as transient. No UI should blank.');
+        }
+        // (no change to behavior; just extra telemetry)
         console.log('📣 MarketStore.notify firing. Listener count:', this.listeners.size);
         this.listeners.forEach((fn, idx) => {
             try {

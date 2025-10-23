@@ -7,7 +7,7 @@
 
 class BinanceWS {
     constructor(streams = ['!ticker@arr', '!markPrice@arr'], base = 'wss://fstream.binance.com/stream?streams=') {
-        this.url = base + streams.join('/');
+        this.url = base + streams.join('&streams=');
         console.log('🔌 BinanceWS constructor - streams:', streams);
         console.log('🔌 BinanceWS constructor - base URL:', base);
         console.log('🔌 BinanceWS constructor - final URL:', this.url);

@@ -13,11 +13,11 @@ class WebSocketIntegration {
             this.store === window.marketStore, this.store);
         this.isConnected = false;
         this.reconnectTimeout = null;
-        
+
         // B) Paint scheduler properties
         this._paintScheduled = false;
         this._paintToken = 0;
-        
+
         // C) Last non-empty rows cache
         this._lastNonEmptyRows = [];
         this.updateInterval = null;   // tier-paced UI paint timer (Free/Pro)
@@ -26,6 +26,8 @@ class WebSocketIntegration {
         this.sampleDataShown = false;
         this.userTier = 0;            // 0=Free,1=Pro,2=Elite
         this.refreshInterval = 15 * 60 * 1000;
+        this.tickerSeen = false;
+        this.markSeen = false;
     }
 
     // B) Paint scheduler to coalesce concurrent paints
@@ -37,10 +39,10 @@ class WebSocketIntegration {
         requestAnimationFrame(() => {
             // Only the latest token paints
             if (token === this._paintToken) {
-                try { 
-                    this.updateDashboard(); 
-                } finally { 
-                    this._paintScheduled = false; 
+                try {
+                    this.updateDashboard();
+                } finally {
+                    this._paintScheduled = false;
                 }
             } else {
                 // a newer paint superseded this one
@@ -74,7 +76,8 @@ class WebSocketIntegration {
             const pctPrice = total ? withPrice / total : 0;
             const pctVol = total ? withVol / total : 0;
             const hasFundingRates = withFunding > 0;
-            const datasetComplete = hasFundingRates && (pctPrice >= 0.6) && (pctVol >= 0.6);
+            // Paint as soon as both streams have arrived at least once
+            const datasetComplete = this.tickerSeen && this.markSeen;
 
             // F) Add focused diagnostics
             console.log('🧮 completeness',
@@ -84,7 +87,7 @@ class WebSocketIntegration {
                 });
 
             // ✅ First paint must wait for COMPLETE data (both streams)
-            if (!this.firstPaintDone) {
+            if (!this.firstPaintDone || !this.hasShownCompleteData) {
                 if (!datasetComplete) {
                     console.log('⏳ Waiting for COMPLETE data (funding + ticker) before first paint...',
                         { total, withFunding, withPrice, withVol, pctPrice, pctVol });
@@ -159,8 +162,12 @@ class WebSocketIntegration {
                         this.startUIUpdates();
                     }
                 } else {
-                    console.warn('⏳ Fallback: insufficient real data, showing sample instead.');
-                    this.showSampleData(); // don't set firstPaintDone; real data will replace it
+                    console.warn('⏳ Fallback: insufficient completeness; painting partial real data (no sample).');
+                    this.scheduleDashboardPaint();
+                    this.firstPaintDone = true;            // let tier timer start for Free/Pro
+                    if (this.userTier < 2 && !this.updateInterval) {
+                        this.startUIUpdates();
+                    }
                 }
             }
         }, 8000);
@@ -263,12 +270,14 @@ class WebSocketIntegration {
 
             if (message.stream === '!ticker@arr') {
                 // Update ticker data
+                this.tickerSeen = true;
                 console.log('📊 Processing ticker data:', message.data?.length || 0, 'tickers');
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
 
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
+                this.markSeen = true;
                 console.log('💰 Processing mark price data:', message.data?.length || 0, 'prices');
                 try {
                     const sample = Array.isArray(message.data) ? message.data[0] : message.data;
@@ -291,11 +300,7 @@ class WebSocketIntegration {
     // Start periodic UI updates (tier-based refresh rate)
     startUIUpdates() {
         if (this.updateInterval) clearInterval(this.updateInterval);
-        // Paint immediately if not painted yet (e.g., timeout path)
-        if (!this.firstPaintDone) {
-            this.scheduleDashboardPaint();
-            this.firstPaintDone = true;
-        }
+        // Don't force firstPaintDone here; the subscription sets it when datasetComplete
         this.updateInterval = setInterval(() => {
             this.scheduleDashboardPaint();
         }, this.refreshInterval || 15 * 60 * 1000);
@@ -354,29 +359,21 @@ class WebSocketIntegration {
         this.checkSpikeAlerts();
     }
 
-    // Show sample data when real data is insufficient
+    // Single unified sample-data path that uses the same atomic paint
     showSampleData() {
-        console.log('📊 Showing sample data due to insufficient real data');
-        // Create sample data for display
+        const now = Date.now();
         const sampleData = [
-            { symbol: 'BTCUSDT', lastPrice: 45000, vol24hQuote: 2000000000, fundingRate: 0.0001 },
-            { symbol: 'ETHUSDT', lastPrice: 3000, vol24hQuote: 1500000000, fundingRate: -0.0002 },
-            { symbol: 'BNBUSDT', lastPrice: 300, vol24hQuote: 800000000, fundingRate: 0.0003 }
+            { symbol: 'BTCUSDT', lastPrice: 43250.50, changePct: 2.45, vol24hQuote: 1250000000, fundingRate: 0.0001, lastUpdate: now },
+            { symbol: 'ETHUSDT', lastPrice: 2650.75, changePct: -1.23, vol24hQuote: 980000000, fundingRate: 0.0002, lastUpdate: now },
+            { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, fundingRate: 0.0003, lastUpdate: now },
         ];
 
-        // Update store with sample data temporarily
-        sampleData.forEach(item => {
-            this.store.state.bySymbol[item.symbol] = {
-                symbol: item.symbol,
-                lastPrice: item.lastPrice,
-                vol24hQuote: item.vol24hQuote,
-                fundingRate: item.fundingRate,
-                lastUpdate: Date.now()
-            };
-        });
-
-        // Trigger a single update
-        this.updateDashboard();
+        // Write through the store so the usual mapping/painting path is used
+        for (const item of sampleData) {
+            window.marketStore.state.bySymbol[item.symbol] = item;
+        }
+        window.marketStore.state.lastUpdate = now;
+        window.marketStore.notify(); // triggers the usual subscription path
     }
 
     // Update connection indicator
@@ -468,90 +465,60 @@ class WebSocketIntegration {
             sortBy: 'vol24hQuote'
         });
 
-        // Filter to only show tokens with >$100M volume
-        const filteredSymbols = symbols.filter(symbol =>
-            symbol.vol24hQuote && symbol.vol24hQuote >= 100000000
-        );
+        // Once we've shown the table, never hide it again during the session
+        this._tableShown = this._tableShown || false;
 
-        console.log('📊 Market table update - symbols count:', symbols.length);
-        console.log('📊 After $100M filter - symbols count:', filteredSymbols.length);
-        console.log('≥$100M first 5:', symbols.filter(s => Number(s.vol24hQuote) >= 1e8).slice(0, 5)
-            .map(s => [s.symbol, s.vol24hQuote]));
+        // If we temporarily see 0 symbols but have cached rows, keep rendering those
+        const hasSymbols = symbols && symbols.length > 0;
+        const hasCache = this._lastNonEmptyRows && this._lastNonEmptyRows.length > 0;
 
-        // If no data from WebSocket, show sample data after 3 seconds
+        // Visibility: only transition from loading → table once; never back to loading
+        if ((hasSymbols || hasCache) && !this._tableShown) {
+            const show = (el) => el && el.style && el.style.removeProperty('display');
+            const hide = (el) => el && el.style && (el.style.display = 'none');
+            const q = (ids) => ids.map(id => document.getElementById(id)).find(Boolean);
+
+            const desktopLoading = q(['loadingContainer', 'loading-container']);
+            const desktopContainer = q(['tableContainer', 'marketTableContainer', 'dataContainer']);
+            const mobileLoading = q(['mobileLoadingContainer', 'mobile-loading']);
+            const mobileContainer = q(['mobileTableContainer', 'mobile-table']);
+
+            hide(desktopLoading);
+            hide(mobileLoading);
+            show(desktopContainer);
+            show(mobileContainer);
+            this._tableShown = true;
+        }
+
+        // If no data from WebSocket, skip painting (keep last good rows)
         if (symbols.length === 0) {
-            // Only show sample data if we've been trying for a while
-            if (!this.sampleDataShown) {
-                setTimeout(() => {
-                    const currentSymbols = this.store.getSymbols({
-                        endsWith: 'USDT',
-                        limit: 200,
-                        sortBy: 'vol24hQuote'
-                    });
-                    if (currentSymbols.length === 0) {
-                        console.log('⏰ No real data after 3 seconds, showing sample data');
-                        this.showSampleData();
-                        this.sampleDataShown = true;
-                    }
-                }, 3000);
-            }
+            console.warn('⏸️ No symbols available, keeping previous rows');
             return;
         }
 
-        // Resilient DOM queries - try multiple known IDs
-        const q = (ids) => ids.map(id => document.getElementById(id)).find(Boolean);
-        const desktopLoading = q(['loadingContainer', 'loading-container']);
-        const desktopContainer = q(['tableContainer', 'marketTableContainer', 'dataContainer']);
-        const mobileLoading = q(['mobileLoadingContainer', 'mobile-loading']);
-        const mobileContainer = q(['mobileTableContainer', 'mobile-table']);
-
-        console.log('🧩 containers:', { desktopLoading, desktopContainer, mobileLoading, mobileContainer });
-
-        // Check for missing DOM nodes
-        ['loadingContainer', 'tableContainer', 'mobileLoadingContainer', 'mobileTableContainer'].forEach(id => {
-            if (!document.getElementById(id)) console.warn('⚠️ Missing DOM node:', id);
-        });
-
-        // Unhide as soon as we have *any* symbols; choose rows to render below
-        if (symbols.length > 0) {
-            console.log('📊 Showing table with', symbols.length, 'total symbols');
-            if (desktopLoading) desktopLoading.style.display = 'none';
-            if (mobileLoading) mobileLoading.style.display = 'none';
-            if (desktopContainer) desktopContainer.style.removeProperty('display'); // let CSS decide (flex/grid)
-            if (mobileContainer) mobileContainer.style.removeProperty('display');
-        } else {
-            // keep previous behavior only when *no* symbols at all
-            if (desktopLoading) desktopLoading.style.display = 'flex';
-            if (mobileLoading) mobileLoading.style.display = 'flex';
-        }
-
-        // Debug: Check which symbols are missing funding rates
-        const missingFunding = filteredSymbols.filter(s => s.fundingRate == null).slice(0, 5).map(s => s.symbol);
-        console.log('🔎 symbols missing fundingRate (first 5):', missingFunding);
-
-        // E) Progressive $100M filter during bring-up
+        // Build rows with progressive fallback (never paint empty)
         let rows = symbols.filter(s => Number.isFinite(s.vol24hQuote) && s.vol24hQuote >= 1e8);
         if (rows.length < 20) rows = symbols.filter(s => Number.isFinite(s.vol24hQuote)).slice(0, 50);
         if (rows.length < 20) rows = symbols.slice(0, 50);
-        const displayItems = this.mapToDisplayItems(rows);
 
-        // Store data in global cache for sorting (like working version)
+        // Map & sort
+        const displayItems = this.mapToDisplayItems(rows);
         window.originalDataCache = [...displayItems];
         window.dataCache = this.applySorting([...displayItems]);
 
-        // F) Add focused diagnostics right before painting
-        const preview = rows.slice(0, 5).map(x => ({
-            s: x.symbol, p: x.lastPrice, qv: x.vol24hQuote, r: x.fundingRate
-        }));
-        console.log('🎛️ sample rows before paint:', preview);
-
-        // C) Guard against transient empties - use last good rows if current is empty
+        // Choose rows to paint, falling back to cache if needed
         const rowsForPaint = (window.dataCache && window.dataCache.length) ? window.dataCache : this._lastNonEmptyRows;
-        if (rowsForPaint.length) {
-            this._lastNonEmptyRows = rowsForPaint;
-            this.updateTable('tableBody', rowsForPaint);
-            this.updateTable('mobileTableBody', rowsForPaint);
+
+        // If still empty, skip paint (keeps previous DOM intact)
+        if (!rowsForPaint || rowsForPaint.length === 0) {
+            console.warn('⏸️ Skipping paint: empty selection and no cache; keeping previous rows');
+            return;
         }
+
+        // Cache & paint
+        this._lastNonEmptyRows = rowsForPaint;
+        this.updateTable('tableBody', rowsForPaint);
+        this.updateTable('mobileTableBody', rowsForPaint);
 
         // Update sort indicators
         if (window.updateSortIndicators) {
@@ -615,36 +582,20 @@ class WebSocketIntegration {
         return sorted;
     }
 
-    // Show sample data when WebSocket is not working
-    showSampleData() {
-        const sampleData = [
-            { symbol: 'BTCUSDT', lastPrice: 43250.50, changePct: 2.45, vol24hQuote: 1250000000, vol1hQuote: 52000000, fundingRate: 0.0001, spike3x: false, openInterest: 1500000000, liquidationRisk: 0.15 },
-            { symbol: 'ETHUSDT', lastPrice: 2650.75, changePct: -1.23, vol24hQuote: 980000000, vol1hQuote: 41000000, fundingRate: 0.0002, spike3x: true, openInterest: 1200000000, liquidationRisk: 0.22 },
-            { symbol: 'ADAUSDT', lastPrice: 0.4850, changePct: 3.67, vol24hQuote: 450000000, vol1hQuote: 18000000, fundingRate: 0.0001, spike3x: false, openInterest: 800000000, liquidationRisk: 0.18 },
-            { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, vol1hQuote: 15000000, fundingRate: 0.0003, spike3x: true, openInterest: 600000000, liquidationRisk: 0.25 }
-        ];
-
-        console.log('📊 Showing sample data (WebSocket not connected)');
-
-        // Update desktop table
-        this.updateTable('tableBody', sampleData);
-
-        // Update mobile table
-        this.updateTable('mobileTableBody', sampleData);
-    }
 
     // Update specific table
     updateTable(tableId, symbols) {
         console.log(`📊 updateTable called for ${tableId} with ${symbols.length} symbols`);
-        const table = document.getElementById(tableId);
-        if (!table) {
-            console.warn('⚠️ Missing table:', tableId);
+        const el = document.getElementById(tableId);
+        if (!el) {
+            console.warn('⚠️ Missing element:', tableId);
             return;
         }
-        
-        const oldTbody = table.querySelector('tbody');
+
+        // Accept TABLE or TBODY ids
+        const oldTbody = el.tagName === 'TBODY' ? el : el.querySelector('tbody');
         if (!oldTbody) {
-            console.warn('⚠️ Missing tbody in table:', tableId);
+            console.warn('⚠️ Missing tbody for:', tableId);
             return;
         }
 
@@ -730,6 +681,10 @@ class WebSocketIntegration {
 
     // Resume updates when page is visible
     resumeUpdates() {
+        if (this.userTier >= 2) {
+            // Elite paints on store changes; do NOT start interval
+            return;
+        }
         if (!this.updateInterval) {
             this.startUIUpdates();
         }
@@ -864,3 +819,15 @@ function showFallbackData() {
 
 // Export for use in other modules
 window.WebSocketIntegration = WebSocketIntegration;
+
+// Auto-initialize WebSocket integration (with guard against double initialization)
+document.addEventListener('DOMContentLoaded', () => {
+    if (!window.wsIntegration) {
+        console.log('🚀 Auto-initializing WebSocket integration...');
+        window.wsIntegration = new WebSocketIntegration();
+        window.wsIntegration.init();
+        console.log('✅ WebSocket integration auto-initialized');
+    } else {
+        console.log('⚠️ WebSocket integration already exists, skipping auto-initialization');
+    }
+});
