@@ -154,7 +154,9 @@ ELITE_TIER = {
 # Use absolute path for SQLite to avoid path resolution issues
 _basedir = _os.path.abspath(_os.path.dirname(__file__))
 _default_db_path = f'sqlite:///{_os.path.join(_basedir, "instance", "binance_dashboard.db")}'
-DATABASE_URI = os.getenv('DATABASE_URI', _default_db_path)
+
+# Check for Railway's DATABASE_URL first, then fall back to DATABASE_URI
+DATABASE_URI = os.getenv('DATABASE_URL') or os.getenv('DATABASE_URI', _default_db_path)
 
 # Secret key for sessions (MUST be changed in production!)
 # Can be overridden with environment variable
