@@ -301,6 +301,28 @@ def create_robust_session():
     session.mount("http://", adapter)
     return session
 
+
+def fetch_with_fallback(session, urls, timeout=15, params=None):
+    """
+    Try multiple URLs in sequence until one succeeds.
+    Returns response object on success, None on failure.
+    """
+    for url in urls:
+        try:
+            response = session.get(url, timeout=timeout, params=params)
+            if response.status_code == 200:
+                return response
+            elif response.status_code == 451:
+                # Try next endpoint
+                continue
+            else:
+                response.raise_for_status()
+        except Exception as e:
+            # Log and try next endpoint
+            print(f"Failed to fetch from {url}: {e}")
+            continue
+    return None
+
 # ──────────────────────────────────────────────────────────────
 # Data management
 # ──────────────────────────────────────────────────────────────
@@ -321,8 +343,20 @@ class DataManager:
     def fetch_active_symbols(self) -> set[str]:
         """Fetch and cache active trading symbols."""
         try:
-            response = self.session.get(EXCHANGE_INFO_URL, timeout=15)
-            response.raise_for_status()
+            # Try multiple endpoints
+            exchange_urls = [
+                EXCHANGE_INFO_URL,
+                config.EXCHANGE_INFO_URL_ALT1,
+                config.EXCHANGE_INFO_URL_ALT2,
+                config.EXCHANGE_INFO_URL_ALT3
+            ]
+            
+            response = fetch_with_fallback(self.session, exchange_urls, timeout=15)
+            
+            if not response:
+                print("Failed to fetch active symbols from all endpoints")
+                return set()
+            
             data = response.json()
 
             symbols = {
@@ -362,14 +396,34 @@ class DataManager:
             self.active_syms = self.fetch_active_symbols()
 
         try:
-            # Fetch volume data (includes price change %)
-            volume_response = self.session.get(VOLUME_URL, timeout=15)
-            volume_response.raise_for_status()
+            # Fetch volume data (includes price change %) with fallback
+            volume_urls = [
+                VOLUME_URL,
+                config.VOLUME_URL_ALT1,
+                config.VOLUME_URL_ALT2,
+                config.VOLUME_URL_ALT3
+            ]
+            volume_response = fetch_with_fallback(self.session, volume_urls, timeout=15)
+            
+            if not volume_response:
+                app.logger.error("Failed to fetch data from all volume endpoints")
+                return []
+            
             volume_data = volume_response.json()
 
-            # Fetch funding data
-            funding_response = self.session.get(FUNDING_URL, timeout=15)
-            funding_response.raise_for_status()
+            # Fetch funding data with fallback
+            funding_urls = [
+                FUNDING_URL,
+                config.FUNDING_URL_ALT1,
+                config.FUNDING_URL_ALT2,
+                config.FUNDING_URL_ALT3
+            ]
+            funding_response = fetch_with_fallback(self.session, funding_urls, timeout=15)
+            
+            if not funding_response:
+                app.logger.error("Failed to fetch funding data from all endpoints")
+                return []
+            
             funding_data = funding_response.json()
 
             # Create funding rate lookup

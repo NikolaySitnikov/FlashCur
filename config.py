@@ -26,11 +26,31 @@ TIERS = {
 # BINANCE API SETTINGS
 # ══════════════════════════════════════════════════════════════════════════════
 
-API_BASE = "https://fapi.binance.com"
+# Primary API endpoint
+API_BASE = os.getenv('BINANCE_API_BASE', "https://fapi.binance.com")
+
+# Alternative endpoints for regions with restrictions
+API_BASE_ALT1 = "https://fapi1.binance.com"
+API_BASE_ALT2 = "https://fapi2.binance.com"
+API_BASE_ALT3 = "https://fapi3.binance.com"
+
 VOLUME_URL = f"{API_BASE}/fapi/v1/ticker/24hr"
 FUNDING_URL = f"{API_BASE}/fapi/v1/premiumIndex"
 EXCHANGE_INFO_URL = f"{API_BASE}/fapi/v1/exchangeInfo"
 KLINES_URL = f"{API_BASE}/fapi/v1/klines"
+
+# Alternative URLs
+VOLUME_URL_ALT1 = f"{API_BASE_ALT1}/fapi/v1/ticker/24hr"
+FUNDING_URL_ALT1 = f"{API_BASE_ALT1}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL_ALT1 = f"{API_BASE_ALT1}/fapi/v1/exchangeInfo"
+
+VOLUME_URL_ALT2 = f"{API_BASE_ALT2}/fapi/v1/ticker/24hr"
+FUNDING_URL_ALT2 = f"{API_BASE_ALT2}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL_ALT2 = f"{API_BASE_ALT2}/fapi/v1/exchangeInfo"
+
+VOLUME_URL_ALT3 = f"{API_BASE_ALT3}/fapi/v1/ticker/24hr"
+FUNDING_URL_ALT3 = f"{API_BASE_ALT3}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL_ALT3 = f"{API_BASE_ALT3}/fapi/v1/exchangeInfo"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # COMMON SETTINGS (apply to all tiers by default)
@@ -156,7 +176,8 @@ _basedir = _os.path.abspath(_os.path.dirname(__file__))
 _default_db_path = f'sqlite:///{_os.path.join(_basedir, "instance", "binance_dashboard.db")}'
 
 # Check for Railway's DATABASE_URL first, then fall back to DATABASE_URI
-DATABASE_URI = os.getenv('DATABASE_URL') or os.getenv('DATABASE_URI', _default_db_path)
+DATABASE_URI = os.getenv('DATABASE_URL') or os.getenv(
+    'DATABASE_URI', _default_db_path)
 
 # Secret key for sessions (MUST be changed in production!)
 # Can be overridden with environment variable
