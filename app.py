@@ -201,10 +201,12 @@ payments_logger.setLevel(logging.DEBUG)  # Use DEBUG for detailed webhook logs
 
 # Log startup
 app.logger.info("="*70)
-app.logger.info("🚀 Binance Dashboard Starting Up")
+app.logger.info("🚀 VolSpike Starting Up")
 app.logger.info(f"Database: {config.DATABASE_URI}")
 app.logger.info(
     f"Environment: {'Production' if not app.debug else 'Development'}")
+app.logger.info(f"API Base: {config.API_BASE}")
+app.logger.info(f"Exchange Info URL: {EXCHANGE_INFO_URL}")
 app.logger.info("="*70)
 
 print("📝 Logging system initialized")
@@ -279,7 +281,7 @@ def format_funding_rate(rate: float) -> str:
 def create_robust_session():
     """Create a robust requests session with enhanced retry logic."""
     session = requests.Session()
-    
+
     # Add headers to bypass 451 errors
     session.headers.update({
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -289,12 +291,13 @@ def create_robust_session():
         'Connection': 'keep-alive',
         'Upgrade-Insecure-Requests': '1'
     })
-    
+
     # Don't retry 451 errors automatically - we'll handle those in fallback
     retry_strategy = Retry(
         total=2,  # Reduced retries since we have multiple endpoints
         backoff_factor=1,
-        status_forcelist=[429, 500, 502, 503, 504],  # Removed 451 from retry list
+        # Removed 451 from retry list
+        status_forcelist=[429, 500, 502, 503, 504],
         raise_on_status=False
     )
     adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -314,7 +317,8 @@ def fetch_with_fallback(session, urls, timeout=15, params=None):
             response = session.get(url, timeout=timeout, params=params)
             if response.status_code == 200:
                 if i > 1:  # Only log if we used a fallback
-                    print(f"✅ Successfully fetched from fallback endpoint #{i}: {url}")
+                    print(
+                        f"✅ Successfully fetched from fallback endpoint #{i}: {url}")
                 return response
             elif response.status_code == 451:
                 # Try next endpoint
@@ -323,7 +327,8 @@ def fetch_with_fallback(session, urls, timeout=15, params=None):
                 continue
             else:
                 # Other error, try to get more info but continue to next endpoint
-                print(f"❌ Endpoint {i}/{len(urls)} error ({response.status_code}): {url}")
+                print(
+                    f"❌ Endpoint {i}/{len(urls)} error ({response.status_code}): {url}")
                 last_error = f"{response.status_code} Error for {url}"
                 continue
         except Exception as e:
@@ -331,7 +336,7 @@ def fetch_with_fallback(session, urls, timeout=15, params=None):
             print(f"❌ Endpoint {i}/{len(urls)} failed: {url} - {str(e)[:100]}")
             last_error = str(e)
             continue
-    
+
     # All endpoints failed
     print(f"🚨 All {len(urls)} endpoints failed. Last error: {last_error}")
     return None
