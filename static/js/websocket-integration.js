@@ -79,7 +79,7 @@ class WebSocketIntegration {
     startUIUpdates() {
         this.updateInterval = setInterval(() => {
             this.updateDashboard();
-        }, 1000); // Update every second
+        }, 300000); // Update every 5 minutes (300000ms)
     }
 
     // Update dashboard with latest data
@@ -114,13 +114,19 @@ class WebSocketIntegration {
 
     // Update market data table
     updateMarketTable() {
-        const symbols = this.store.getSymbols({
-            endsWith: 'USDT',
-            limit: 200,
-            sortBy: 'vol24hQuote'
+        const symbols = this.store.getSymbols({ 
+            endsWith: 'USDT', 
+            limit: 200, 
+            sortBy: 'vol24hQuote' 
         });
 
+        // Filter to only show tokens with >$100M volume
+        const filteredSymbols = symbols.filter(symbol => 
+            symbol.vol24hQuote && symbol.vol24hQuote >= 100000000
+        );
+
         console.log('📊 Market table update - symbols count:', symbols.length);
+        console.log('📊 After $100M filter - symbols count:', filteredSymbols.length);
 
         // If no data from WebSocket, show sample data after 3 seconds
         if (symbols.length === 0) {
@@ -143,19 +149,19 @@ class WebSocketIntegration {
         }
 
         // Update desktop table
-        this.updateTable('tableBody', symbols);
-
+        this.updateTable('tableBody', filteredSymbols);
+        
         // Update mobile table
-        this.updateTable('mobileTableBody', symbols);
+        this.updateTable('mobileTableBody', filteredSymbols);
     }
 
     // Show sample data when WebSocket is not working
     showSampleData() {
         const sampleData = [
             { symbol: 'BTCUSDT', lastPrice: 43250.50, changePct: 2.45, vol24hQuote: 1250000000, vol1hQuote: 52000000, fundingRate: 0.0001, spike3x: false, openInterest: 1500000000, liquidationRisk: 0.15 },
-            { symbol: 'ETHUSDT', lastPrice: 2650.75, changePct: -1.23, vol24hQuote: 890000000, vol1hQuote: 37000000, fundingRate: 0.0002, spike3x: true, openInterest: 1200000000, liquidationRisk: 0.22 },
-            { symbol: 'ADAUSDT', lastPrice: 0.4850, changePct: 3.67, vol24hQuote: 450000000, vol1hQuote: 19000000, fundingRate: 0.0003, spike3x: false, openInterest: 800000000, liquidationRisk: 0.18 },
-            { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, vol1hQuote: 15000000, fundingRate: 0.0004, spike3x: true, openInterest: 600000000, liquidationRisk: 0.25 }
+            { symbol: 'ETHUSDT', lastPrice: 2650.75, changePct: -1.23, vol24hQuote: 980000000, vol1hQuote: 41000000, fundingRate: 0.0002, spike3x: true, openInterest: 1200000000, liquidationRisk: 0.22 },
+            { symbol: 'ADAUSDT', lastPrice: 0.4850, changePct: 3.67, vol24hQuote: 450000000, vol1hQuote: 18000000, fundingRate: 0.0001, spike3x: false, openInterest: 800000000, liquidationRisk: 0.18 },
+            { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, vol1hQuote: 15000000, fundingRate: 0.0003, spike3x: true, openInterest: 600000000, liquidationRisk: 0.25 }
         ];
 
         console.log('📊 Showing sample data (WebSocket not connected)');
@@ -182,14 +188,38 @@ class WebSocketIntegration {
 
             // Check if user is Pro tier (has access to additional columns)
             const isPro = document.querySelector('.pro-column') !== null;
-            
+
+            // Format volume with M/B suffixes
+            const formatVolume = (volume) => {
+                if (!volume) return '-';
+                if (volume >= 1000000000) return (volume / 1000000000).toFixed(1) + 'B';
+                if (volume >= 1000000) return (volume / 1000000).toFixed(1) + 'M';
+                return Math.round(volume).toLocaleString();
+            };
+
+            // Format price with appropriate decimals
+            const formatPrice = (price) => {
+                if (!price) return '-';
+                if (price >= 1000) return price.toFixed(2);
+                if (price >= 1) return price.toFixed(4);
+                return price.toFixed(6);
+            };
+
+            // Format funding rate with colors
+            const formatFundingRate = (rate) => {
+                if (!rate) return '-';
+                const ratePercent = rate * 100;
+                const colorClass = ratePercent > 0.01 ? 'text-red-600' : ratePercent < -0.01 ? 'text-green-600' : 'text-gray-600';
+                return `<span class="${colorClass}">${ratePercent.toFixed(4)}%</span>`;
+            };
+
             row.innerHTML = `
                 <td class="px-4 py-2 font-medium">${symbol}</td>
-                <td class="px-4 py-2">${vol24hQuote ? Math.round(vol24hQuote).toLocaleString() : '-'}</td>
+                <td class="px-4 py-2">${formatVolume(vol24hQuote)}</td>
                 ${isPro ? `<td class="px-4 py-2 ${changePct >= 0 ? 'text-green-600' : 'text-red-600'}">${changePct ? changePct.toFixed(2) + '%' : '-'}</td>` : ''}
-                <td class="px-4 py-2">${fundingRate ? (fundingRate * 100).toFixed(4) + '%' : '-'}</td>
-                <td class="px-4 py-2">${lastPrice ? lastPrice.toFixed(4) : '-'}</td>
-                ${isPro ? `<td class="px-4 py-2">${openInterest ? Math.round(openInterest).toLocaleString() : '-'}</td>` : ''}
+                <td class="px-4 py-2">${formatFundingRate(fundingRate)}</td>
+                <td class="px-4 py-2">${formatPrice(lastPrice)}</td>
+                ${isPro ? `<td class="px-4 py-2">${openInterest ? formatVolume(openInterest) : '-'}</td>` : ''}
                 ${isPro ? `<td class="px-4 py-2">${liquidationRisk ? liquidationRisk.toFixed(2) : '-'}</td>` : ''}
             `;
 
@@ -323,32 +353,50 @@ function showFallbackData() {
         { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, vol1hQuote: 15000000, fundingRate: 0.0003, spike3x: true, openInterest: 600000000, liquidationRisk: 0.25 }
     ];
 
+    // Format functions for fallback data
+    const formatVolume = (volume) => {
+        if (!volume) return '-';
+        if (volume >= 1000000000) return (volume / 1000000000).toFixed(1) + 'B';
+        if (volume >= 1000000) return (volume / 1000000).toFixed(1) + 'M';
+        return Math.round(volume).toLocaleString();
+    };
+
+    const formatPrice = (price) => {
+        if (!price) return '-';
+        if (price >= 1000) return price.toFixed(2);
+        if (price >= 1) return price.toFixed(4);
+        return price.toFixed(6);
+    };
+
+    const formatFundingRate = (rate) => {
+        if (!rate) return '-';
+        const ratePercent = rate * 100;
+        const colorClass = ratePercent > 0.01 ? 'text-red-600' : ratePercent < -0.01 ? 'text-green-600' : 'text-gray-600';
+        return `<span class="${colorClass}">${ratePercent.toFixed(4)}%</span>`;
+    };
+
     // Update desktop table
     const desktopTable = document.getElementById('tableBody');
     if (desktopTable) {
         desktopTable.innerHTML = sampleData.map(item => `
             <tr>
-                <td>${item.symbol}</td>
-                <td>${item.lastPrice.toFixed(4)}</td>
-                <td class="${item.changePct >= 0 ? 'text-green-500' : 'text-red-500'}">${item.changePct.toFixed(2)}%</td>
-                <td>${Math.round(item.vol24hQuote).toLocaleString()}</td>
-                <td>${item.fundingRate.toFixed(4)}</td>
-                <td>${Math.round(item.vol1hQuote).toLocaleString()}</td>
-                <td>${item.spike3x ? '🔥' : ''}</td>
+                <td class="px-4 py-2 font-medium">${item.symbol}</td>
+                <td class="px-4 py-2">${formatVolume(item.vol24hQuote)}</td>
+                <td class="px-4 py-2">${formatFundingRate(item.fundingRate)}</td>
+                <td class="px-4 py-2">${formatPrice(item.lastPrice)}</td>
             </tr>
         `).join('');
     }
-
+    
     // Update mobile table
     const mobileTable = document.getElementById('mobileTableBody');
     if (mobileTable) {
         mobileTable.innerHTML = sampleData.map(item => `
             <tr>
-                <td>${item.symbol}</td>
-                <td>${item.lastPrice.toFixed(4)}</td>
-                <td class="${item.changePct >= 0 ? 'text-green-500' : 'text-red-500'}">${item.changePct.toFixed(2)}%</td>
-                <td>${Math.round(item.vol1hQuote).toLocaleString()}</td>
-                <td>${item.spike3x ? '🔥' : ''}</td>
+                <td class="px-4 py-2 font-medium">${item.symbol}</td>
+                <td class="px-4 py-2">${formatVolume(item.vol24hQuote)}</td>
+                <td class="px-4 py-2">${formatFundingRate(item.fundingRate)}</td>
+                <td class="px-4 py-2">${formatPrice(item.lastPrice)}</td>
             </tr>
         `).join('');
     }
