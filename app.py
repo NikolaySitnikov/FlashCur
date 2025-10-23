@@ -53,6 +53,7 @@ import settings
 # Constants & settings (now loaded from config)
 # ──────────────────────────────────────────────────────────────
 API = config.API_BASE
+print(f"🔧 Using API_BASE = {API}")  # Debug logging for startup verification
 VOLUME_URL = config.VOLUME_URL
 FUNDING_URL = config.FUNDING_URL
 EXCHANGE_INFO_URL = config.EXCHANGE_INFO_URL
@@ -821,6 +822,15 @@ alert_thread.start()
 def health_check():
     """Health check endpoint for Railway deployment"""
     return {'status': 'healthy', 'service': 'VolSpike'}, 200
+
+@app.route('/debug/upstreams')
+def debug_upstreams():
+    return {
+        "API_BASE": config.API_BASE,
+        "VOLUME_URL": config.VOLUME_URL,
+        "FUNDING_URL": config.FUNDING_URL,
+        "EXCHANGE_INFO_URL": config.EXCHANGE_INFO_URL
+    }, 200
 
 
 @app.route('/')

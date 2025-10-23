@@ -39,33 +39,37 @@ TIERS = {
 # 4. Example: BINANCE_API_BASE=https://volspike-proxy.yourname.workers.dev
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Primary API endpoint
-# For local dev: uses fapi.binance.com directly
-# For Railway: MUST set BINANCE_API_BASE to your Cloudflare Worker URL
-API_BASE = os.getenv('BINANCE_API_BASE', "https://fapi.binance.com")
+# ---- Proxy-aware Binance base URLs ----
+DEFAULT_BINANCE = "https://fapi.binance.com"
+API_BASE = os.getenv("BINANCE_API_BASE", DEFAULT_BINANCE).rstrip("/")
 
-# Alternative endpoints (currently not used, but available for fallback)
-API_BASE_ALT1 = "https://fapi1.binance.com"
-API_BASE_ALT2 = "https://fapi2.binance.com"
-API_BASE_ALT3 = "https://fapi3.binance.com"
+# If we're using a proxy (anything not equal to the default), make fallbacks the same proxy
+if API_BASE != DEFAULT_BINANCE:
+    API_BASE_ALT1 = API_BASE
+    API_BASE_ALT2 = API_BASE
+    API_BASE_ALT3 = API_BASE
+else:
+    API_BASE_ALT1 = "https://fapi1.binance.com"
+    API_BASE_ALT2 = "https://fapi2.binance.com"
+    API_BASE_ALT3 = "https://fapi3.binance.com"
 
-VOLUME_URL = f"{API_BASE}/fapi/v1/ticker/24hr"
-FUNDING_URL = f"{API_BASE}/fapi/v1/premiumIndex"
-EXCHANGE_INFO_URL = f"{API_BASE}/fapi/v1/exchangeInfo"
-KLINES_URL = f"{API_BASE}/fapi/v1/klines"
+VOLUME_URL         = f"{API_BASE}/fapi/v1/ticker/24hr"
+FUNDING_URL        = f"{API_BASE}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL  = f"{API_BASE}/fapi/v1/exchangeInfo"
+KLINES_URL         = f"{API_BASE}/fapi/v1/klines"
 
-# Alternative URLs
-VOLUME_URL_ALT1 = f"{API_BASE_ALT1}/fapi/v1/ticker/24hr"
-FUNDING_URL_ALT1 = f"{API_BASE_ALT1}/fapi/v1/premiumIndex"
-EXCHANGE_INFO_URL_ALT1 = f"{API_BASE_ALT1}/fapi/v1/exchangeInfo"
+VOLUME_URL_ALT1         = f"{API_BASE_ALT1}/fapi/v1/ticker/24hr"
+FUNDING_URL_ALT1        = f"{API_BASE_ALT1}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL_ALT1  = f"{API_BASE_ALT1}/fapi/v1/exchangeInfo"
 
-VOLUME_URL_ALT2 = f"{API_BASE_ALT2}/fapi/v1/ticker/24hr"
-FUNDING_URL_ALT2 = f"{API_BASE_ALT2}/fapi/v1/premiumIndex"
-EXCHANGE_INFO_URL_ALT2 = f"{API_BASE_ALT2}/fapi/v1/exchangeInfo"
+VOLUME_URL_ALT2         = f"{API_BASE_ALT2}/fapi/v1/ticker/24hr"
+FUNDING_URL_ALT2        = f"{API_BASE_ALT2}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL_ALT2  = f"{API_BASE_ALT2}/fapi/v1/exchangeInfo"
 
-VOLUME_URL_ALT3 = f"{API_BASE_ALT3}/fapi/v1/ticker/24hr"
-FUNDING_URL_ALT3 = f"{API_BASE_ALT3}/fapi/v1/premiumIndex"
-EXCHANGE_INFO_URL_ALT3 = f"{API_BASE_ALT3}/fapi/v1/exchangeInfo"
+VOLUME_URL_ALT3         = f"{API_BASE_ALT3}/fapi/v1/ticker/24hr"
+FUNDING_URL_ALT3        = f"{API_BASE_ALT3}/fapi/v1/premiumIndex"
+EXCHANGE_INFO_URL_ALT3  = f"{API_BASE_ALT3}/fapi/v1/exchangeInfo"
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # COMMON SETTINGS (apply to all tiers by default)
