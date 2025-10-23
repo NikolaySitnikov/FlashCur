@@ -9,14 +9,16 @@ import sys
 import secrets
 import string
 
+
 def generate_secret_key():
     """Generate a secure secret key for Flask"""
     return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
 
+
 def create_production_env():
     """Create production environment file"""
     secret_key = generate_secret_key()
-    
+
     env_content = f"""# VolSpike Production Environment Variables
 # Generated on: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
@@ -58,12 +60,13 @@ SESSION_COOKIE_SAMESITE='Lax'
 # CORS Configuration
 CORS_ORIGINS=https://volspike.com,https://www.volspike.com
 """
-    
+
     with open('.env.production', 'w') as f:
         f.write(env_content)
-    
+
     print("✅ Created .env.production file")
     print("⚠️  IMPORTANT: Update the database URL and email credentials before deploying!")
+
 
 def create_requirements():
     """Create production requirements file"""
@@ -83,11 +86,12 @@ requests==2.31.0
 python-dotenv==1.0.0
 gunicorn==21.2.0
 """
-    
+
     with open('requirements.production.txt', 'w') as f:
         f.write(requirements)
-    
+
     print("✅ Created requirements.production.txt")
+
 
 def create_production_config():
     """Create production configuration"""
@@ -138,11 +142,12 @@ class ProductionConfig(Config):
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
 '''
-    
+
     with open('production_config.py', 'w') as f:
         f.write(config_content)
-    
+
     print("✅ Created production_config.py")
+
 
 def create_deployment_script():
     """Create deployment script"""
@@ -171,37 +176,39 @@ gunicorn --bind 0.0.0.0:$PORT --workers 4 --timeout 120 app:app
 
 echo "✅ VolSpike deployment complete!"
 '''
-    
+
     with open('deploy.sh', 'w') as f:
         f.write(script_content)
-    
+
     os.chmod('deploy.sh', 0o755)
     print("✅ Created deploy.sh")
+
 
 def main():
     """Main setup function"""
     print("🎯 VolSpike Production Setup")
     print("=" * 40)
-    
+
     # Create production files
     create_production_env()
     create_requirements()
     create_production_config()
     create_deployment_script()
-    
+
     print("\n📋 Next Steps:")
     print("1. Update .env.production with your actual credentials")
     print("2. Choose a hosting platform (Railway, Render, DigitalOcean)")
     print("3. Configure your domain in CloudFlare")
     print("4. Deploy using the deployment guide")
     print("\n📖 See VOLSPIKE_DEPLOYMENT_GUIDE.md for detailed instructions")
-    
+
     print("\n🔐 Security Reminders:")
     print("- Use strong, unique passwords")
     print("- Enable 2FA on all accounts")
     print("- Use environment variables for secrets")
     print("- Enable HTTPS/SSL")
     print("- Regular security updates")
+
 
 if __name__ == "__main__":
     main()
