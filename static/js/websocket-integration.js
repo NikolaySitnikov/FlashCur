@@ -12,6 +12,7 @@ class WebSocketIntegration {
         this.isConnected = false;
         this.reconnectTimeout = null;
         this.updateInterval = null;
+        this.sampleDataShown = false;
     }
 
     // Initialize WebSocket connection
@@ -48,20 +49,24 @@ class WebSocketIntegration {
     // Handle incoming WebSocket messages
     handleMessage(message) {
         try {
+            console.log('📨 Received WebSocket message:', message.stream, message.data?.length || 0, 'items');
+            
             if (message.stream === '!ticker@arr') {
                 // Update ticker data
+                console.log('📊 Processing ticker data:', message.data?.length || 0, 'tickers');
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
-
+                
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
+                console.log('💰 Processing mark price data:', message.data?.length || 0, 'prices');
                 this.store.updateMarkPrices(message.data);
-
+                
             } else {
-                console.log('Unknown stream:', message.stream);
+                console.log('❓ Unknown stream:', message.stream);
             }
         } catch (error) {
-            console.error('Error handling WebSocket message:', error);
+            console.error('❌ Error handling WebSocket message:', error);
         }
     }
 
@@ -110,9 +115,25 @@ class WebSocketIntegration {
             sortBy: 'vol24hQuote' 
         });
 
-        // If no data from WebSocket, show sample data
+        console.log('📊 Market table update - symbols count:', symbols.length);
+
+        // If no data from WebSocket, show sample data after 5 seconds
         if (symbols.length === 0) {
-            this.showSampleData();
+            // Only show sample data if we've been trying for a while
+            if (!this.sampleDataShown) {
+                setTimeout(() => {
+                    const currentSymbols = this.store.getSymbols({ 
+                        endsWith: 'USDT', 
+                        limit: 200, 
+                        sortBy: 'vol24hQuote' 
+                    });
+                    if (currentSymbols.length === 0) {
+                        console.log('⏰ No real data after 5 seconds, showing sample data');
+                        this.showSampleData();
+                        this.sampleDataShown = true;
+                    }
+                }, 5000);
+            }
             return;
         }
 
@@ -133,10 +154,10 @@ class WebSocketIntegration {
         ];
 
         console.log('📊 Showing sample data (WebSocket not connected)');
-        
+
         // Update desktop table
         this.updateTable('marketTableBody', sampleData);
-        
+
         // Update mobile table
         this.updateTable('mobileMarketTableBody', sampleData);
     }
@@ -243,7 +264,7 @@ class WebSocketIntegration {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Starting VolSpike WebSocket integration...');
-    
+
     // Test WebSocket connection
     console.log('🔍 Testing WebSocket connection...');
     try {
@@ -258,11 +279,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
         console.error('❌ WebSocket creation failed:', error);
     }
-    
+
     // Create global instance
     window.wsIntegration = new WebSocketIntegration();
     window.wsIntegration.init();
-    
+
     console.log('✅ VolSpike WebSocket integration started');
 });
 

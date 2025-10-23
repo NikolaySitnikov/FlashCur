@@ -50,9 +50,10 @@ class BinanceWS {
             this.ws.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
+                    console.log('🔌 Binance WebSocket received:', message.stream || 'unknown', 'data length:', message.data?.length || 0);
                     this.listeners.forEach(fn => fn(message));
                 } catch (error) {
-                    console.error('Error parsing WebSocket message:', error);
+                    console.error('❌ Error parsing WebSocket message:', error);
                 }
             };
 
