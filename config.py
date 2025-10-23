@@ -26,17 +26,28 @@ TIERS = {
 # BINANCE API SETTINGS
 # ══════════════════════════════════════════════════════════════════════════════
 
-# CORS Proxy to bypass Railway's blocked IPs
-# Railway's data center IPs are blocked by Binance, so we route through a proxy
-CORS_PROXY = os.getenv('CORS_PROXY', "https://corsproxy.io/?")
+# ══════════════════════════════════════════════════════════════════════════════
+# PROXY CONFIGURATION FOR RAILWAY DEPLOYMENT
+# ══════════════════════════════════════════════════════════════════════════════
+# Railway's data center IPs are blocked by Binance (451 errors).
+# Solution: Use Cloudflare Workers as a proxy.
+# 
+# Setup Instructions:
+# 1. See CLOUDFLARE_WORKER_SETUP.md for complete guide (5 minutes)
+# 2. Deploy the cloudflare-worker.js to Cloudflare Workers
+# 3. Set BINANCE_API_BASE env var in Railway to your Worker URL
+# 4. Example: BINANCE_API_BASE=https://volspike-proxy.yourname.workers.dev
+# ══════════════════════════════════════════════════════════════════════════════
 
-# Primary API endpoint - using proxy to bypass 451 errors
-API_BASE = os.getenv('BINANCE_API_BASE', f"{CORS_PROXY}https://fapi.binance.com")
+# Primary API endpoint
+# For local dev: uses fapi.binance.com directly
+# For Railway: MUST set BINANCE_API_BASE to your Cloudflare Worker URL
+API_BASE = os.getenv('BINANCE_API_BASE', "https://fapi.binance.com")
 
-# Alternative endpoints (all proxied)
-API_BASE_ALT1 = f"{CORS_PROXY}https://fapi1.binance.com"
-API_BASE_ALT2 = f"{CORS_PROXY}https://fapi2.binance.com" 
-API_BASE_ALT3 = f"{CORS_PROXY}https://fapi3.binance.com"
+# Alternative endpoints (currently not used, but available for fallback)
+API_BASE_ALT1 = "https://fapi1.binance.com"
+API_BASE_ALT2 = "https://fapi2.binance.com" 
+API_BASE_ALT3 = "https://fapi3.binance.com"
 
 VOLUME_URL = f"{API_BASE}/fapi/v1/ticker/24hr"
 FUNDING_URL = f"{API_BASE}/fapi/v1/premiumIndex"
