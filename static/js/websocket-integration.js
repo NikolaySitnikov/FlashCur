@@ -114,10 +114,10 @@ class WebSocketIntegration {
 
     // Update market data table
     updateMarketTable() {
-        const symbols = this.store.getSymbols({ 
-            endsWith: 'USDT', 
-            limit: 200, 
-            sortBy: 'vol24hQuote' 
+        const symbols = this.store.getSymbols({
+            endsWith: 'USDT',
+            limit: 200,
+            sortBy: 'vol24hQuote'
         });
 
         console.log('📊 Market table update - symbols count:', symbols.length);
@@ -127,10 +127,10 @@ class WebSocketIntegration {
             // Only show sample data if we've been trying for a while
             if (!this.sampleDataShown) {
                 setTimeout(() => {
-                    const currentSymbols = this.store.getSymbols({ 
-                        endsWith: 'USDT', 
-                        limit: 200, 
-                        sortBy: 'vol24hQuote' 
+                    const currentSymbols = this.store.getSymbols({
+                        endsWith: 'USDT',
+                        limit: 200,
+                        sortBy: 'vol24hQuote'
                     });
                     if (currentSymbols.length === 0) {
                         console.log('⏰ No real data after 3 seconds, showing sample data');
@@ -143,10 +143,10 @@ class WebSocketIntegration {
         }
 
         // Update desktop table
-        this.updateTable('marketTableBody', symbols);
+        this.updateTable('tableBody', symbols);
         
         // Update mobile table
-        this.updateTable('mobileMarketTableBody', symbols);
+        this.updateTable('mobileTableBody', symbols);
     }
 
     // Show sample data when WebSocket is not working
@@ -161,10 +161,10 @@ class WebSocketIntegration {
         console.log('📊 Showing sample data (WebSocket not connected)');
 
         // Update desktop table
-        this.updateTable('marketTableBody', sampleData);
-
+        this.updateTable('tableBody', sampleData);
+        
         // Update mobile table
-        this.updateTable('mobileMarketTableBody', sampleData);
+        this.updateTable('mobileTableBody', sampleData);
     }
 
     // Update specific table
@@ -270,7 +270,7 @@ class WebSocketIntegration {
 window.addEventListener('error', (event) => {
     console.error('❌ Global JavaScript error caught:', event.error);
     console.error('❌ Error details:', event.message, event.filename, event.lineno);
-    
+
     // If WebSocket integration fails, show fallback data
     if (!window.wsIntegration || !window.wsIntegration.isConnected) {
         console.log('📊 WebSocket integration failed, showing fallback data');
@@ -321,9 +321,9 @@ function showFallbackData() {
         { symbol: 'ADAUSDT', lastPrice: 0.4850, changePct: 3.67, vol24hQuote: 450000000, vol1hQuote: 18000000, fundingRate: 0.0001, spike3x: false },
         { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, vol1hQuote: 15000000, fundingRate: 0.0003, spike3x: true }
     ];
-    
+
     // Update desktop table
-    const desktopTable = document.getElementById('marketTableBody');
+    const desktopTable = document.getElementById('tableBody');
     if (desktopTable) {
         desktopTable.innerHTML = sampleData.map(item => `
             <tr>
@@ -339,7 +339,7 @@ function showFallbackData() {
     }
     
     // Update mobile table
-    const mobileTable = document.getElementById('mobileMarketTableBody');
+    const mobileTable = document.getElementById('mobileTableBody');
     if (mobileTable) {
         mobileTable.innerHTML = sampleData.map(item => `
             <tr>
