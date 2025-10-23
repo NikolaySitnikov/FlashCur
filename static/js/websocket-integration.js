@@ -30,8 +30,13 @@ class WebSocketIntegration {
             // Update connection indicator based on store state
             this.updateConnectionIndicator(state.connectionState);
 
-            // Only Elite paints on every change; Free/Pro paint on timer.
-            if (this.userTier >= 2) {
+            // Handle first paint for all tiers
+            if (!this.firstPaintDone) {
+                console.log('🎨 First paint triggered by store subscription');
+                this.updateDashboard();
+                this.firstPaintDone = true;
+            } else if (this.userTier >= 2) {
+                // Elite tier: paint on every store change after first paint
                 this.updateDashboard();
             }
         });
@@ -97,19 +102,13 @@ class WebSocketIntegration {
 
         // UI refresh by tier
         if (this.userTier >= 2) {
-            // Elite → nothing else to do; subscription paints in real-time.
+            // Elite → subscription handles all painting
             console.log('🚀 Elite tier - Real-time WebSocket updates');
-            // One immediate paint so the user isn't waiting for first WS tick:
-            this.updateDashboard();
         } else {
-            // Free/Pro → paint on schedule; do ONE immediate paint after first data arrives
+            // Free/Pro → subscription handles first paint, timer handles subsequent updates
             console.log(`📊 Tier ${this.userTier} - WebSocket data + ${this.refreshInterval / 1000 / 60} minute UI updates`);
             this.waitForFirstData()
                 .then(() => {
-                    if (!this.firstPaintDone) {
-                        this.updateDashboard();
-                        this.firstPaintDone = true;
-                    }
                     this.startUIUpdates();
                 })
                 .catch(() => {
@@ -143,11 +142,6 @@ class WebSocketIntegration {
                 console.log('📊 Processing ticker data:', message.data?.length || 0, 'tickers');
                 this.store.updateTickers(message.data);
                 this.store.setConnectionState('connected');
-                console.log('🎨 firstPaintDone:', this.firstPaintDone, 'calling updateDashboard from ticker');
-                if (!this.firstPaintDone) {
-                    this.updateDashboard();
-                    this.firstPaintDone = true;
-                }
 
             } else if (message.stream === '!markPrice@arr') {
                 // Update mark prices and funding rates
@@ -160,11 +154,6 @@ class WebSocketIntegration {
                     console.log('💰 markPrice sample log failed:', e);
                 }
                 this.store.updateMarkPrices(message.data);
-                console.log('🎨 firstPaintDone:', this.firstPaintDone, 'calling updateDashboard from markPrice');
-                if (!this.firstPaintDone) {
-                    this.updateDashboard();
-                    this.firstPaintDone = true;
-                }
 
             } else {
                 console.log('❓ Unknown stream:', message.stream);
