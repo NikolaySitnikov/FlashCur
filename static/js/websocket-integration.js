@@ -276,7 +276,8 @@ class WebSocketIntegration {
             if (r === null || r === undefined) return 'N/A';
             // Handle zero funding rate (show 0.0000% instead of N/A)
             const ratePercent = r * 100;
-            return `${ratePercent.toFixed(4)}%`;
+            const colorClass = ratePercent > 0.03 ? 'funding-positive' : ratePercent < -0.03 ? 'funding-negative' : '';
+            return `<span class="${colorClass}">${ratePercent.toFixed(4)}%</span>`;
         };
 
         return symbols.map(s => ({
@@ -483,7 +484,7 @@ class WebSocketIntegration {
                 <td class="px-4 py-2 font-medium">${item.asset}</td>
                 <td class="px-4 py-2">${item.volume_formatted}</td>
                 ${isPro ? `<td class="px-4 py-2 ${item.price_change_pct >= 0 ? 'text-green-600' : 'text-red-600'}">${item.price_change_pct ? item.price_change_pct.toFixed(2) + '%' : '-'}</td>` : ''}
-                <td class="px-4 py-2">${formatFundingRate(item.funding_rate)}</td>
+                <td class="px-4 py-2">${item.funding_formatted}</td>
                 <td class="px-4 py-2">${item.price_formatted}</td>
                 ${isPro ? `<td class="px-4 py-2">${item.open_interest_formatted}</td>` : ''}
                 ${isPro ? `<td class="px-4 py-2">${item.liquidation_risk ? item.liquidation_risk.toFixed(2) : '-'}</td>` : ''}
