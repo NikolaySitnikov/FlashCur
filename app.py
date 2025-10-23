@@ -859,6 +859,28 @@ def debug_upstreams():
         "EXCHANGE_INFO_URL": config.EXCHANGE_INFO_URL
     }, 200
 
+@app.route('/debug/users')
+def debug_users():
+    """Debug route to check Railway database users"""
+    try:
+        users = User.query.all()
+        user_data = []
+        for user in users:
+            user_data.append({
+                "email": user.email,
+                "tier": user.tier,
+                "is_active": user.is_active,
+                "email_confirmed": user.email_confirmed
+            })
+        
+        return {
+            "total_users": len(users),
+            "users": user_data,
+            "database_uri": app.config.get('DATABASE_URI', 'Not set')
+        }, 200
+    except Exception as e:
+        return {"error": str(e)}, 500
+
 
 @app.route('/')
 def home():
