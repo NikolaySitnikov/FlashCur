@@ -8,6 +8,9 @@
 class BinanceWS {
     constructor(streams = ['!ticker@arr', '!markPrice@arr'], base = 'wss://fstream.binance.com/stream?streams=') {
         this.url = base + streams.join('/');
+        console.log('🔌 BinanceWS constructor - streams:', streams);
+        console.log('🔌 BinanceWS constructor - base URL:', base);
+        console.log('🔌 BinanceWS constructor - final URL:', this.url);
         this.ws = null;
         this.listeners = new Set();
         this.backoff = 1000; // start with 1s
@@ -39,21 +42,25 @@ class BinanceWS {
         if (this.stopped) return;
 
         try {
+            console.log('🔌 Creating WebSocket connection to:', this.url);
             this.ws = new WebSocket(this.url);
 
             this.ws.onopen = () => {
-                console.log('🔌 Binance WebSocket connected');
+                console.log('🔌 Binance WebSocket connected to:', this.url);
+                console.log('🔌 WebSocket readyState:', this.ws.readyState);
                 this.backoff = 1000; // reset backoff on successful connection
                 this.reconnectAttempts = 0;
             };
 
             this.ws.onmessage = (event) => {
                 try {
+                    console.log('🔌 Raw WebSocket message received, length:', event.data.length);
                     const message = JSON.parse(event.data);
                     console.log('🔌 Binance WebSocket received:', message.stream || 'unknown', 'data length:', message.data?.length || 0);
                     this.listeners.forEach(fn => fn(message));
                 } catch (error) {
                     console.error('❌ Error parsing WebSocket message:', error);
+                    console.error('❌ Raw message data:', event.data);
                 }
             };
 
