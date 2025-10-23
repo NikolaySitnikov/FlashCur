@@ -1,4 +1,9 @@
-/* Global Styles */
+/* CSS Cache Busting - v8.0 - Modernized 2025 */
+
+/* Import Modern Base Styles */
+@import url('modern-base.css');
+
+/* Global Styles - Enhanced Modern */
 * {
     margin: 0;
     padding: 0;
@@ -6,11 +11,25 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2d2d2d 100%);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #000000 0%, #0a0a0a 25%, #1a1a1a 75%, #1e1e1e 100%);
+    background-attachment: fixed;
     color: #ffffff;
     min-height: 100vh;
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    font-feature-settings: 'kern' 1, 'liga' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Allow scrolling within containers but prevent page-level horizontal scroll */
+    width: 100%;
+    max-width: 100vw;
+    /* Use visible to allow child containers to scroll horizontally */
+    overflow-x: visible;
+    overflow-y: auto;
+    overscroll-behavior-x: none;
+    /* disable rubber-banding */
+    -webkit-overflow-scrolling: auto;
 }
 
 body.light-theme {
@@ -22,17 +41,370 @@ body.light-theme {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: visible;
+    /* Allow tiny rounding errors without clipping */
+    overflow-y: visible;
+    /* Allow vertical scrolling */
+    overscroll-behavior: contain;
+    /* keep scroll effects inside */
 }
 
-/* Header Styles */
+/* Footer - Professional Design */
+.app-footer {
+    background: linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin-top: 4rem;
+    padding: 3rem 0 2rem 0;
+    position: relative;
+}
+
+.app-footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.3), transparent);
+}
+
+.footer-content {
+    max-width: 1400px;
+    width: calc(100% - 4rem);
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.footer-main {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 3rem;
+    margin-bottom: 2.5rem;
+}
+
+/* Footer Brand */
+.footer-brand {
+    max-width: 400px;
+}
+
+.brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.logo-icon {
+    width: 28px;
+    height: 28px;
+    stroke: #00ff88;
+    stroke-width: 2;
+}
+
+.brand-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #00ff88;
+    letter-spacing: -0.02em;
+}
+
+.brand-tagline {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.5;
+    margin: 0;
+    font-weight: 400;
+}
+
+/* Footer Links */
+.footer-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    min-width: 0;
+}
+
+.link-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.link-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 1rem 0;
+    letter-spacing: -0.01em;
+}
+
+.link-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.footer-link {
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 400;
+    transition: color 0.3s ease;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.footer-link:hover {
+    color: #00ff88;
+}
+
+
+/* Footer Bottom */
+.footer-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.footer-copyright {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.copyright-text {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+.copyright-subtext {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+}
+
+.footer-version {
+    display: flex;
+    align-items: center;
+}
+
+.version-text {
+    font-size: 0.8rem;
+    color: rgba(0, 255, 136, 0.8);
+    font-weight: 500;
+    background: rgba(0, 255, 136, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+/* Footer Responsive Design */
+@media (max-width: 1024px) {
+    .footer-main {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .footer-links {
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-footer {
+        margin-top: 3rem;
+        padding: 2rem 0 1.5rem 0;
+    }
+
+    .footer-content {
+        width: calc(100% - 2rem);
+        padding: 0 1rem;
+        text-align: center;
+    }
+
+    .footer-main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .footer-brand {
+        text-align: center;
+        max-width: none;
+    }
+
+    .footer-links {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        width: 100%;
+        max-width: 600px;
+    }
+
+    .link-group {
+        text-align: center;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .brand-logo {
+        justify-content: center;
+    }
+
+    .brand-text {
+        font-size: 1.25rem;
+    }
+
+    .brand-tagline {
+        text-align: center;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-footer {
+        margin-top: 2rem;
+        padding: 1.5rem 0 1rem 0;
+    }
+
+    .footer-content {
+        width: calc(100% - 1rem);
+        padding: 0 0.5rem;
+        text-align: center;
+    }
+
+    .footer-main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .footer-brand {
+        text-align: center;
+        max-width: none;
+    }
+
+    .footer-links {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        width: 100%;
+        max-width: 500px;
+    }
+
+    .link-group {
+        text-align: center;
+    }
+
+    .brand-text {
+        font-size: 1.1rem;
+    }
+
+    .brand-tagline {
+        font-size: 0.85rem;
+    }
+
+    .link-title {
+        font-size: 0.9rem;
+    }
+
+    .footer-link {
+        font-size: 0.85rem;
+    }
+
+    .copyright-text {
+        font-size: 0.8rem;
+    }
+
+    .copyright-subtext {
+        font-size: 0.75rem;
+    }
+}
+
+/* Light Theme Footer */
+.light-theme .app-footer {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+    border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.light-theme .app-footer::before {
+    background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.3), transparent);
+}
+
+.light-theme .brand-text {
+    color: #059669;
+}
+
+.light-theme .logo-icon {
+    stroke: #059669;
+}
+
+.light-theme .brand-tagline {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.light-theme .link-title {
+    color: #1a1a1a;
+}
+
+.light-theme .footer-link {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.light-theme .footer-link:hover {
+    color: #059669;
+}
+
+.light-theme .footer-bottom {
+    border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.light-theme .copyright-text {
+    color: rgba(0, 0, 0, 0.8);
+}
+
+.light-theme .copyright-subtext {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.light-theme .version-text {
+    color: rgba(5, 150, 105, 0.8);
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+/* Header Styles - Enhanced Modern */
 .header {
-    background: rgba(45, 45, 45, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid #404040;
-    padding: 1rem 2rem;
+    background: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1.25rem 2rem;
     position: sticky;
     top: 0;
     z-index: 100;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), 0 0 1px rgba(0, 255, 136, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .light-theme .header {
@@ -67,6 +439,8 @@ body.light-theme {
     align-items: center;
     justify-content: flex-end;
     gap: 1rem;
+    position: relative;
+    z-index: 1001;
 }
 
 /* Pricing Link */
@@ -248,19 +622,107 @@ body.light-theme {
     font-size: 1.2rem;
 }
 
+/* ============================================
+   Navigation Menu (Hamburger)
+   ============================================ */
+
+/* Clean Navigation Menu */
+.nav-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.nav-btn {
+    background: rgba(0, 255, 136, 0.1);
+    border: 2px solid #00ff88;
+    border-radius: 8px;
+    color: #00ff88;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 8px 12px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.nav-btn:hover {
+    background: rgba(0, 255, 136, 0.2);
+    transform: scale(1.05);
+}
+
+.nav-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    margin-top: 0;
+    background: rgba(26, 26, 26, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1rem;
+    padding-top: 1rem;
+    min-width: 200px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.nav-dropdown.show {
+    display: block;
+}
+
+.nav-user {
+    padding: 0.75rem 1rem;
+    padding-top: 0.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 0.5rem;
+}
+
+.nav-email {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.nav-tier {
+    color: #00ff88;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+.nav-item {
+    display: block;
+    padding: 0.75rem 1rem;
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.3s;
+    font-size: 14px;
+}
+
+.nav-item:hover {
+    background: rgba(0, 255, 136, 0.1);
+    color: #00ff88;
+}
+
 .title {
     font-size: 2rem;
     margin: 0;
 }
 
 .main-title {
-    font-size: 1.8rem;
-    font-weight: 700;
+    font-size: 2rem;
+    font-weight: 800;
     margin: 0;
-    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    background: linear-gradient(135deg, #00ff88 0%, #00ffaa 50%, #00cc6a 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    letter-spacing: -0.02em;
+    text-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
 }
 
 .light-theme .main-title {
@@ -270,8 +732,9 @@ body.light-theme {
     background-clip: text;
 }
 
+/* Desktop/Mobile visibility - Default to desktop */
 .desktop-only {
-    display: block;
+    display: flex;
 }
 
 .mobile-only {
@@ -296,8 +759,8 @@ body.light-theme {
 }
 
 .title-icon {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     stroke: #00ff88;
     transition: stroke 0.3s ease;
 }
@@ -314,57 +777,6 @@ body.light-theme {
 
 .light-theme .last-updated {
     color: #4b5563;
-}
-
-/* Theme Toggle */
-.theme-toggle {
-    background: #00ff88;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    font-size: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 6px 20px rgba(0, 255, 136, 0.4);
-    position: relative;
-    overflow: hidden;
-}
-
-.light-theme .theme-toggle {
-    background: #10b981;
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-}
-
-.theme-toggle::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    transition: all 0.6s ease;
-}
-
-.theme-toggle:hover::before {
-    width: 100%;
-    height: 100%;
-}
-
-.theme-toggle:hover {
-    transform: scale(1.15) rotate(15deg);
-    box-shadow: 0 10px 30px rgba(0, 255, 136, 0.6);
-}
-
-.light-theme .theme-toggle:hover {
-    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.6);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -465,14 +877,170 @@ body.light-theme {
     box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════════
+   EMAIL CONFIRMATION BANNER (PRO TIER STEP 2)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.email-confirmation-banner {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15));
+    border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+    padding: 1rem 2rem;
+    animation: slideDown 0.5s ease-out;
+}
+
+.light-theme .email-confirmation-banner {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.1));
+    border-bottom-color: rgba(59, 130, 246, 0.3);
+}
+
+.confirmation-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 0 auto;
+    gap: 1.5rem;
+}
+
+.confirmation-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.confirmation-icon {
+    font-size: 2rem;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+.confirmation-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.confirmation-text strong {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.light-theme .confirmation-text strong {
+    color: #2563eb;
+}
+
+.confirmation-text p {
+    font-size: 0.9rem;
+    color: #b0b0b0;
+    margin: 0;
+}
+
+.light-theme .confirmation-text p {
+    color: #6b7280;
+}
+
+.resend-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #3b82f6;
+    padding: 0.65rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+}
+
+.light-theme .resend-btn {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.25);
+    color: #2563eb;
+}
+
+.resend-btn:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.light-theme .resend-btn:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.resend-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.resend-icon {
+    font-size: 1.1rem;
+}
+
+/* Responsive adjustments for email confirmation banner */
+@media (max-width: 480px) {
+    .email-confirmation-banner {
+        padding: 1rem;
+    }
+
+    .confirmation-content {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .confirmation-left {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .resend-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .confirmation-text strong {
+        font-size: 0.95rem;
+    }
+
+    .confirmation-text p {
+        font-size: 0.85rem;
+    }
+}
+
 /* Main Content */
 .main-content {
     display: flex;
     flex: 1;
-    max-width: 1400px;
+    max-width: min(1800px, 96vw);
     margin: 0 auto;
     padding: 2rem;
+    padding-bottom: 4rem;
+    /* extra breathing room above footer */
     gap: 2rem;
+    /* Allow touch scrolling in children */
+    touch-action: auto;
+    overflow: visible;
 }
 
 /* Desktop Layout */
@@ -489,6 +1057,14 @@ body.light-theme {
 
 .market-data {
     flex: 3;
+    min-width: 0;
+    /* Allow flex child to shrink below content size */
+    overflow: visible;
+    /* Don't clip children */
+    /* Ensure touch events pass through */
+    touch-action: auto;
+    /* No transforms that interfere with scrolling */
+    transform: none;
 }
 
 .alerts-sidebar {
@@ -691,6 +1267,7 @@ body.light-theme {
     color: #10b981;
 }
 
+
 /* Loading Animation */
 .loading-container {
     display: flex;
@@ -773,14 +1350,48 @@ body.light-theme {
     }
 }
 
-/* Table Styles */
+/* Table Styles - Enhanced Modern Glassmorphism */
 .table-container {
-    background: rgba(45, 45, 45, 0.9);
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0, 255, 136, 0.15);
-    border: 1px solid #404040;
-    backdrop-filter: blur(10px);
+    background: rgba(26, 26, 26, 0.7);
+    border-radius: 20px;
+    overflow-y: hidden;
+    overflow-x: auto;
+    width: 100%;
+    max-width: 100%;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.05),
+        0 8px 32px rgba(0, 255, 136, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    /* Remove transition on mobile to prevent scroll snap-back */
+    transition: box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Enable momentum scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+    /* Force scrollbar to always be visible for clarity */
+    scrollbar-width: auto;
+    /* Ensure transforms don't interfere with scrolling */
+    transform: translateZ(0);
+    will-change: scroll-position;
+}
+
+/* Add scroll indicator for wide tables */
+.table-container.has-scroll {
+    background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.15) 0%, transparent 20px),
+        linear-gradient(90deg, transparent calc(100% - 20px), rgba(0, 0, 0, 0.15) 100%),
+        rgba(26, 26, 26, 0.7);
+    background-attachment: local, local, scroll;
+}
+
+/* Only apply hover effects on devices that support hover (not touch devices) */
+@media (hover: hover) {
+    .table-container:hover {
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4),
+            0 0 0 1px rgba(0, 255, 136, 0.2),
+            0 12px 40px rgba(0, 255, 136, 0.2);
+    }
 }
 
 .light-theme .table-container {
@@ -795,15 +1406,29 @@ body.light-theme {
     font-size: 0.95rem;
 }
 
+
 .data-table th {
-    background: #2d2d2d;
+    background: linear-gradient(180deg, rgba(45, 45, 45, 0.9) 0%, rgba(30, 30, 30, 0.9) 100%);
     color: #ffffff;
     font-weight: 700;
     text-align: center;
-    padding: 1.25rem 1rem;
-    border-bottom: 3px solid #00ff88;
-    font-size: 14px;
-    letter-spacing: 0.5px;
+    padding: 1.5rem 1rem;
+    border-bottom: 2px solid #00ff88;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    position: relative;
+}
+
+.data-table th::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff88, transparent);
+    opacity: 0.5;
 }
 
 .light-theme .data-table th {
@@ -829,8 +1454,9 @@ body.light-theme {
 }
 
 .data-table tr:hover {
-    background: rgba(0, 255, 136, 0.1);
-    transform: scale(1.01);
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.08), transparent);
+    transform: scale(1.005);
+    box-shadow: 0 4px 12px rgba(0, 255, 136, 0.1);
 }
 
 .light-theme .data-table tr:hover td {
@@ -966,53 +1592,258 @@ body.light-theme {
     padding: 0.5rem;
 }
 
-/* Download Button */
+/* Download Section - Professional Design */
 .download-section {
-    margin-top: 2rem;
-    text-align: center;
+    margin: 3rem auto 0 auto;
+    padding: 2.5rem;
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    max-width: 1200px;
+    width: calc(100% - 4rem);
+    position: relative;
 }
 
+.download-section::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.6), transparent);
+    border-radius: 0 0 3px 3px;
+}
+
+.download-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.download-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: -0.02em;
+}
+
+.download-description {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+    font-weight: 400;
+}
+
+.download-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+    .download-buttons {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1.25rem;
+        max-width: none;
+    }
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 767px) {
+    .download-section {
+        padding: 2rem;
+        margin: 2rem auto 0 auto;
+        width: calc(100% - 2rem);
+        max-width: none;
+    }
+
+    .download-title {
+        font-size: 1.25rem;
+    }
+
+    .download-description {
+        font-size: 0.9rem;
+    }
+
+    .download-btn {
+        padding: 1rem 1.25rem;
+        gap: 0.75rem;
+    }
+
+    .download-icon {
+        width: 18px;
+        height: 18px;
+    }
+
+    .download-label {
+        font-size: 0.9rem;
+    }
+
+    .download-format {
+        font-size: 0.75rem;
+    }
+}
+
+/* Download Button Styles */
 .download-btn {
-    background: #00ff88;
-    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
     border: none;
-    border-radius: 12px;
-    padding: 1rem 2rem;
-    font-size: 1rem;
-    font-weight: 700;
+    border-radius: 16px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+    text-align: left;
+    position: relative;
+    overflow: hidden;
 }
 
-.light-theme .download-btn {
-    background: #10b981;
-    color: #ffffff;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+.download-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
-.download-btn:hover {
+.download-btn:hover::before {
+    opacity: 1;
+}
+
+/* Primary Button */
+.download-btn.primary {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 255, 136, 0.08) 100%);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    color: #00ff88;
+}
+
+.download-btn.primary:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.25) 0%, rgba(0, 255, 136, 0.15) 100%);
+    border-color: rgba(0, 255, 136, 0.5);
     transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(0, 255, 136, 0.4);
+    box-shadow: 0 8px 25px rgba(0, 255, 136, 0.2);
 }
 
-.light-theme .download-btn:hover {
-    box-shadow: 0 6px 25px rgba(16, 185, 129, 0.4);
+/* Secondary Buttons */
+.download-btn.secondary {
+    background: linear-gradient(135deg, rgba(138, 138, 138, 0.08) 0%, rgba(138, 138, 138, 0.04) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.9);
 }
 
-/* Alerts */
-.alerts-container {
-    /* Removed max-height and overflow-y to allow natural expansion */
+.download-btn.secondary:hover {
+    background: linear-gradient(135deg, rgba(138, 138, 138, 0.15) 0%, rgba(138, 138, 138, 0.08) 100%);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
+
+/* Button Icons */
+.download-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    stroke-width: 2;
+}
+
+.download-btn.primary .download-icon {
+    stroke: #00ff88;
+}
+
+.download-btn.secondary .download-icon {
+    stroke: rgba(255, 255, 255, 0.8);
+}
+
+/* Button Text */
+.download-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.download-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+
+.download-format {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    font-weight: 400;
+}
+
+/* Light Theme Adjustments */
+.light-theme .download-section {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.light-theme .download-title {
+    color: #1a1a1a;
+}
+
+.light-theme .download-description {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.light-theme .download-btn.primary {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #059669;
+}
+
+.light-theme .download-btn.primary:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.1) 100%);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.light-theme .download-btn.primary .download-icon {
+    stroke: #059669;
+}
+
+.light-theme .download-btn.secondary {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.02) 100%);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: rgba(0, 0, 0, 0.8);
+}
+
+.light-theme .download-btn.secondary:hover {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.05) 100%);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+.light-theme .download-btn.secondary .download-icon {
+    stroke: rgba(0, 0, 0, 0.6);
+}
+
+/* Alerts - Enhanced Modern */
 
 .alert-item {
-    background: rgba(45, 45, 45, 0.8);
-    border-radius: 12px;
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    border-left: 5px solid #00ff88;
-    box-shadow: 0 4px 15px rgba(0, 255, 136, 0.1);
+    background: linear-gradient(135deg, rgba(45, 45, 45, 0.85) 0%, rgba(35, 35, 35, 0.85) 100%);
+    backdrop-filter: blur(10px);
+    border-radius: 14px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #00ff88;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3),
+        0 2px 8px rgba(0, 255, 136, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
@@ -1045,8 +1876,11 @@ body.light-theme {
 }
 
 .alert-item:hover {
-    transform: translateX(8px) scale(1.02);
-    box-shadow: 0 8px 30px rgba(0, 255, 136, 0.2);
+    transform: translateX(10px) scale(1.02);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4),
+        0 4px 12px rgba(0, 255, 136, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-left-color: #00ffaa;
 }
 
 .light-theme .alert-item:hover {
@@ -1196,9 +2030,272 @@ body.light-theme {
     }
 
     /* Mobile alerts container - removed height restriction to allow natural expansion */
-    .mobile-alerts .alerts-container {
-        /* Removed max-height to allow natural expansion */
+
+    /* Pro tier table adjustments for mobile */
+    .data-table {
+        font-size: 0.8rem;
     }
+
+    .data-table th,
+    .data-table td {
+        padding: 0.6rem 0.4rem;
+    }
+
+    /* Make Pro columns more compact on mobile */
+    .pro-column {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.3rem;
+    }
+}
+
+/* Pro tier responsive adjustments for medium screens */
+@media (max-width: 1024px) and (min-width: 769px) {
+
+    /* Pro tier table adjustments for medium screens */
+    .data-table {
+        font-size: 0.85rem;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 0.7rem 0.5rem;
+    }
+
+    /* Make Pro columns more compact on medium screens */
+    .pro-column {
+        font-size: 0.8rem;
+        padding: 0.6rem 0.4rem;
+    }
+}
+
+/* Small mobile screens - adjust spacing */
+@media (max-width: 480px) {
+
+    .mobile-menu-btn:hover {
+        background: rgba(0, 255, 136, 0.2);
+        transform: scale(1.05);
+    }
+
+    .mobile-menu-btn:active {
+        background: rgba(0, 255, 136, 0.3);
+        transform: scale(0.95);
+    }
+
+    .mobile-menu-btn:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.3);
+    }
+
+    .mobile-menu-btn .menu-icon {
+        color: #00ff88;
+        font-size: 1.1rem;
+    }
+
+    #mobileMenuBtn .menu-icon {
+        font-family: Inter, "Segoe UI Symbol", "Noto Sans Symbols", sans-serif;
+        color: #00ff88 !important;
+    }
+
+
+    /* Add a larger touch target for mobile */
+    @media (max-width: 480px) {
+        .mobile-menu-btn {
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            min-height: 48px;
+        }
+    }
+
+    .mobile-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: #1a1a1a;
+        border: 2px solid #00ff88;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        min-width: 280px;
+        margin-top: 0.5rem;
+    }
+
+    .mobile-menu.show {
+        display: block;
+    }
+
+    /* Force mobile menu to start hidden */
+    #mobileMenu {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+    }
+
+    #mobileMenu.show {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    .mobile-menu-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #404040;
+    }
+
+    .mobile-menu-header h3 {
+        margin: 0;
+        color: #00ff88;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .close-menu-btn {
+        background: none;
+        border: none;
+        color: #b0b0b0;
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0.25rem;
+    }
+
+    .mobile-menu-content {
+        padding: 0.5rem 0;
+    }
+
+    .mobile-user-info {
+        padding: 1rem;
+        border-bottom: 1px solid #404040;
+        margin-bottom: 0.5rem;
+    }
+
+    .mobile-user-email {
+        color: #ffffff;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .mobile-user-tier {
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        display: inline-block;
+    }
+
+    .mobile-menu-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: #b0b0b0;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border-bottom: 1px solid #2a2a2a;
+    }
+
+    .mobile-menu-item:hover {
+        background: rgba(0, 255, 136, 0.1);
+        color: #00ff88;
+    }
+
+    .mobile-menu-item.logout:hover {
+        background: rgba(255, 0, 0, 0.1);
+        color: #ff4444;
+    }
+
+    .mobile-menu-item .menu-icon {
+        margin-right: 0.75rem;
+        font-size: 1.1rem;
+    }
+
+    .mobile-menu-item span:last-child {
+        font-weight: 500;
+    }
+
+    .header {
+        padding: 0.5rem 1rem;
+    }
+
+    .last-updated {
+        font-size: 0.8rem;
+        margin-top: 0;
+    }
+
+    .title-icon {
+        width: 45px;
+        height: 45px;
+    }
+
+    .mobile-title {
+        font-size: 1.8rem;
+        line-height: 1.2;
+    }
+
+    .data-table {
+        font-size: 0.85rem;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 0.75rem 0.5rem;
+        /* Prevent text wrapping in cells */
+        white-space: nowrap;
+    }
+
+    /* Ensure table container allows horizontal scroll */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        /* Add subtle scroll indicators */
+        background:
+            linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0%, transparent 10px),
+            linear-gradient(90deg, transparent calc(100% - 10px), rgba(0, 0, 0, 0.1) 100%);
+        background-attachment: local, local;
+        /* Add scroll hint */
+        position: relative;
+    }
+
+
+
+    /* Make sort indicators smaller on mobile */
+    .sort-indicator {
+        font-size: 0.6rem;
+        right: 6px;
+    }
+
+    /* Allow header text wrapping on mobile */
+    .data-table th.sortable {
+        white-space: normal;
+        line-height: 1.2;
+        padding: 0.75rem 0.5rem;
+    }
+
+    /* Mobile tab adjustments */
+    .mobile-tab-button {
+        font-size: 1.2rem;
+        gap: 0.3rem;
+    }
+
+    .tab-text {
+        font-size: 1.2rem;
+    }
+
+    .tab-icon {
+        font-size: 1rem;
+    }
+
+    .notification-badge {
+        width: 18px;
+        height: 18px;
+        font-size: 0.65rem;
+        top: -0.4rem;
+        right: -0.4rem;
+    }
+
+    /* Mobile alerts container - removed height restriction to allow natural expansion */
 }
 
 /* Medium width screens (like iPad) - adjust layout to prevent horizontal scroll */
@@ -1219,26 +2316,66 @@ body.light-theme {
     .data-table {
         font-size: 0.9rem;
     }
+}
 
-    .alerts-sidebar .section-title {
-        white-space: normal;
-        line-height: 1.2;
+
+.alerts-sidebar .section-title {
+    white-space: normal;
+    line-height: 1.2;
+}
+
+/* Make sort indicators smaller on medium screens */
+.sort-indicator {
+    font-size: 0.62rem;
+    right: 7px;
+}
+
+/* Ensure table is responsive on medium screens */
+.table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Small mobile screens - optimize for very small screens */
+@media (max-width: 480px) {
+    .data-table {
+        font-size: 0.75rem;
     }
 
-    /* Make sort indicators smaller on medium screens */
-    .sort-indicator {
-        font-size: 0.62rem;
-        right: 7px;
+    .data-table th,
+    .data-table td {
+        padding: 0.5rem 0.25rem;
+    }
+
+    /* Make table headers more compact */
+    .data-table th {
+        font-size: 0.7rem;
+        padding: 0.75rem 0.25rem;
+    }
+
+    /* Pro tier adjustments for very small screens */
+    .pro-column {
+        font-size: 0.65rem;
+        padding: 0.4rem 0.2rem;
+    }
+
+
+    /* Ensure all content is visible with horizontal scroll */
+    .table-container {
+        border-radius: 12px;
     }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
+    /* For horizontal scrollbar */
 }
 
 ::-webkit-scrollbar-track {
     background: #1a1a1a;
+    border-radius: 4px;
 }
 
 .light-theme ::-webkit-scrollbar-track {
@@ -1367,4 +2504,387 @@ body.light-theme {
         transform: translateY(0);
         opacity: 1;
     }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   PRO TIER FEATURES (STEP 6)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Section Header with Manual Refresh Button */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+
+/* Pro Column Styling */
+.pro-column {
+    background: rgba(0, 255, 136, 0.04);
+    border-left: 2px solid rgba(0, 255, 136, 0.15) !important;
+    font-weight: 500;
+}
+
+th.pro-column {
+    color: #00ff88;
+    font-weight: 700;
+    text-shadow: 0 0 8px rgba(0, 255, 136, 0.3);
+}
+
+/* Price Change Styling */
+.price-change-positive {
+    color: #00ff88;
+    font-weight: 600;
+}
+
+.price-change-negative {
+    color: #ff4757;
+    font-weight: 600;
+}
+
+/* Liquidation Risk Styling */
+.liq-risk-high {
+    color: #ff4757;
+    font-weight: 700;
+    text-shadow: 0 0 6px rgba(255, 71, 87, 0.4);
+}
+
+.liq-risk-medium {
+    color: #ffa502;
+    font-weight: 600;
+}
+
+.liq-risk-low {
+    color: #888888;
+}
+
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 480px) {
+    .section-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+
+    /* Hide some Pro columns on mobile to save space */
+    .mobile-layout .pro-column {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.4rem;
+    }
+
+    .download-section {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   HORIZONTAL SCROLL INDICATOR (PRO TIER)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   MOBILE SCROLL FIX (Prevent snap-back on touch release)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+
+    /* Mobile-specific table container fixes */
+    /* Mobile-specific table container fixes */
+    .table-container {
+        /* CRITICAL: Force horizontal scrolling */
+        overflow-x: scroll !important;
+        overflow-y: hidden !important;
+        /* Enable iOS momentum scrolling */
+        -webkit-overflow-scrolling: touch !important;
+        /* Allow ONLY horizontal touch panning */
+        touch-action: pan-x !important;
+        /* Disable smooth scroll (causes snap-back) */
+        scroll-behavior: auto !important;
+        /* Prevent overscroll bounce */
+        overscroll-behavior-x: contain !important;
+        overscroll-behavior-y: none !important;
+        /* Remove ALL transforms */
+        transform: none !important;
+        will-change: auto !important;
+        /* Disable ALL transitions */
+        transition: none !important;
+        /* GPU acceleration */
+        backface-visibility: hidden;
+        perspective: 1000px;
+        -webkit-transform: translate3d(0, 0, 0);
+    }
+
+    /* Prevent hover on mobile */
+    .table-container:hover {
+        transform: none !important;
+        box-shadow: inherit !important;
+    }
+
+    /* Table no transforms */
+    .data-table {
+        transform: none !important;
+        transition: none !important;
+    }
+
+    /* Padding for scroll hint */
+    .table-container.has-scroll {
+        padding-top: 3rem;
+    }
+
+    /* Mobile scroll hint */
+    .table-container.has-scroll::before {
+        top: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    /* Ensure mobile containers dont interfere */
+    .mobile-layout,
+    .mobile-market-data {
+        overflow: visible !important;
+        touch-action: auto !important;
+    }
+}
+
+/* Touch-specific optimizations */
+@media (pointer: coarse) {
+    .table-container {
+        /* Optimize for touch devices */
+        overflow-x: scroll !important;
+        touch-action: pan-x !important;
+        /* Allow horizontal panning ONLY */
+        -webkit-overflow-scrolling: touch !important;
+        scroll-snap-type: none !important;
+        /* Disable any scroll snapping */
+        scroll-behavior: auto !important;
+        transform: none !important;
+    }
+
+    /* Ensure all parent containers allow scrolling */
+    .main-content,
+    .desktop-layout,
+    .mobile-layout,
+    .market-data,
+    .mobile-market-data {
+        overflow: visible !important;
+        touch-action: auto !important;
+    }
+}
+
+/* ============================================
+   Responsive Navigation (Root Level)
+   ============================================ */
+
+/* Mobile screens - Show hamburger, hide desktop nav */
+@media (max-width: 768px) {
+    .desktop-only {
+        display: none !important;
+    }
+
+    .mobile-only {
+        display: block !important;
+    }
+
+    .nav-menu {
+        display: inline-block !important;
+    }
+}
+
+/* Desktop screens - Show desktop nav, hide hamburger */
+@media (min-width: 769px) {
+    .nav-menu {
+        display: none !important;
+    }
+
+    .desktop-only {
+        display: flex !important;
+    }
+
+    .mobile-only {
+        display: none !important;
+    }
+}
+
+/* Medium screens: keep two columns side-by-side (no wrapping) */
+@media (min-width: 769px) and (max-width: 1200px) {
+    .desktop-layout {
+        flex-wrap: nowrap !important;
+        align-items: flex-start;
+    }
+
+    .alerts-sidebar {
+        flex: 0 0 clamp(260px, 27vw, 340px) !important;
+        min-width: clamp(260px, 27vw, 340px) !important;
+    }
+
+    .market-data {
+        min-width: 0 !important;
+    }
+}
+
+/* ============================================
+   MOBILE TAB BUTTONS (≤480px)
+   - center reliably
+   - prevent "Volume Alerts" getting cut off
+   ============================================ */
+@media (max-width: 480px) {
+    .mobile-tab-buttons {
+        flex-wrap: wrap;
+        /* allow 1–2 lines */
+        gap: .75rem;
+        /* smaller than 2rem */
+        justify-content: center;
+        /* keep centered across lines */
+        width: 100%;
+    }
+
+    .mobile-tab-button {
+        flex: 1 1 45%;
+        /* two equal buttons per row when possible */
+        min-width: 140px;
+        /* don't shrink into illegible pills */
+        justify-content: center;
+    }
+
+    .tab-text {
+        white-space: normal;
+        /* allow wrapping on very thin screens */
+        font-size: clamp(1rem, 4vw, 1.2rem);
+    }
+}
+
+
+
+/* ========= BD: responsive hotfixes (safe overrides) ========= */
+
+/* 0) Allow table containers to handle horizontal scroll */
+html,
+body,
+.app {
+    overflow-x: visible;
+}
+
+/* 1) Keep Alerts on the right (no wrapping) from 1025–1350px; 
+      give it a fixed, responsive width and let the table area shrink + scroll */
+@media (min-width: 1025px) and (max-width: 1350px) {
+    .desktop-layout {
+        flex-wrap: nowrap !important;
+    }
+
+    .alerts-sidebar {
+        flex: 0 0 clamp(280px, 28vw, 360px) !important;
+        min-width: clamp(280px, 28vw, 360px) !important;
+    }
+
+    .market-data {
+        min-width: 0 !important;
+    }
+}
+
+/* 2) Section header resilience: never clip the button; allow wrap */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .5rem;
+    min-width: 0;
+}
+
+
+/* 3) Always show Pro columns; rely on horizontal scroll instead of hiding */
+th.pro-column,
+td.pro-column {
+    display: table-cell !important;
+}
+
+/* 4) Force horizontal scroll to live in the table container, always */
+.table-container {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+}
+
+/* Beautiful, Subtle Scroll Indicator */
+.table-container {
+    position: relative;
+}
+
+/* Subtle right edge fade */
+.table-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 30px;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.3));
+    border-radius: 0 12px 12px 0;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* Show fade when scrollable */
+.table-container.has-scroll::after {
+    opacity: 1;
+}
+
+/* Hide fade when user scrolls */
+.table-container.scrolled::after {
+    opacity: 0;
+}
+
+
+/* 6) Small-screen tab centering – robust grid so labels/badge can't throw it off */
+@media (max-width: 768px) {
+    .mobile-tab-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+        justify-content: center;
+        justify-items: center;
+        align-items: center;
+        gap: .75rem;
+        width: 100%;
+        margin-inline: auto;
+    }
+
+    .mobile-tab-button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .tab-text {
+        white-space: normal;
+    }
+}
+
+/* 7) Optional: column widths for readability when scrollable */
+.data-table th,
+.data-table td {
+    min-width: 120px;
+}
+
+.data-table th[data-column="asset"],
+.data-table td:first-child {
+    min-width: 100px;
+}
+
+.data-table th.pro-column[data-column="open_interest"],
+.data-table td.pro-column[data-column="open_interest"] {
+    min-width: 140px;
+}
+
+.data-table th.pro-column[data-column="liquidation_risk"],
+.data-table td.pro-column[data-column="liquidation_risk"] {
+    min-width: 120px;
 }

@@ -10,7 +10,8 @@ Animated Binance Dashboard - Flask Version
 ✅ Real-time visible animations using JavaScript
 """
 
-from flask import Flask, render_template, jsonify, request
+from flask_cors import CORS
+from flask import Flask, render_template, jsonify, request, make_response, flash, redirect, url_for
 import requests
 import pandas as pd
 from requests.adapters import HTTPAdapter
@@ -26,14 +27,27 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 
+# Import Pro Tier extensions
+from flask_mail import Mail
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 # Import configuration (centralized tier settings)
 import config
+import payments
 
 # Import database models
 from models import db, User, AlertPreferences, get_user_by_email, create_default_alert_preferences
 
 # Import authentication module
+import auth
 from auth import init_auth
+
+# Import wallet authentication module
+from wallet_auth import init_wallet_auth
+
+# Import settings module
+import settings
 
 # ──────────────────────────────────────────────────────────────
 # Constants & settings (now loaded from config)
@@ -57,6 +71,18 @@ LOCAL_TZ = pytz.timezone(config.LOCAL_TZ)
 # ──────────────────────────────────────────────────────────────
 app = Flask(__name__)
 
+# Enable CORS for React frontend and mobile testing
+CORS(app, origins=['http://localhost:3000',
+     'http://localhost:8081',
+                   'http://192.168.22.131:3000',
+                   'http://192.168.22.131:8081',
+                   'http://192.168.1.70:3000',
+                   'http://192.168.1.70:8081',
+                   'http://127.0.0.1:3000',
+                   'http://127.0.0.1:8081',
+                   'http://*:3000',
+                   'http://*:8081'], supports_credentials=True)
+
 # Flask configuration from config module
 app.config['SECRET_KEY'] = config.SECRET_KEY
 app.config['SQLALCHEMY_DATABASE_URI'] = config.DATABASE_URI
@@ -67,8 +93,41 @@ app.config['SESSION_COOKIE_HTTPONLY'] = config.SESSION_COOKIE_HTTPONLY
 app.config['SESSION_COOKIE_SAMESITE'] = config.SESSION_COOKIE_SAMESITE
 app.config['PERMANENT_SESSION_LIFETIME'] = config.PERMANENT_SESSION_LIFETIME
 
+# ──────────────────────────────────────────────────────────────────
+# Pro Tier: Email Configuration
+# ──────────────────────────────────────────────────────────────────
+app.config['MAIL_SERVER'] = config.MAIL_SERVER
+app.config['MAIL_PORT'] = config.MAIL_PORT
+app.config['MAIL_USE_TLS'] = config.MAIL_USE_TLS
+app.config['MAIL_USE_SSL'] = config.MAIL_USE_SSL
+app.config['MAIL_USERNAME'] = config.MAIL_USERNAME
+app.config['MAIL_PASSWORD'] = config.MAIL_PASSWORD
+app.config['MAIL_DEFAULT_SENDER'] = config.MAIL_DEFAULT_SENDER
+
+# ──────────────────────────────────────────────────────────────────
+# Pro Tier: Stripe Payment Configuration
+# ──────────────────────────────────────────────────────────────────
+app.config['STRIPE_PUBLISHABLE_KEY'] = config.STRIPE_PUBLISHABLE_KEY
+app.config['STRIPE_SECRET_KEY'] = config.STRIPE_SECRET_KEY
+app.config['STRIPE_WEBHOOK_SECRET'] = config.STRIPE_WEBHOOK_SECRET
+
 # Initialize database with Flask app
 db.init_app(app)
+
+# ──────────────────────────────────────────────────────────────────
+# Pro Tier: Initialize Flask-Mail (for email alerts & confirmation)
+# ──────────────────────────────────────────────────────────────────
+mail = Mail(app)
+
+# ──────────────────────────────────────────────────────────────────
+# Pro Tier: Initialize Flask-Limiter (rate limiting)
+# ──────────────────────────────────────────────────────────────────
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["10000 per hour"],  # High limit for development/testing
+    storage_uri="memory://"  # Use Redis in production for distributed systems
+)
 
 # ──────────────────────────────────────────────────────────────
 # Database initialization
@@ -91,13 +150,26 @@ with app.app_context():
 init_auth(app)
 print("🔐 Authentication system initialized")
 
+# Initialize wallet authentication system
+init_wallet_auth(app)
+print("🔑 Wallet authentication system initialized")
+
+# Register settings blueprint
+app.register_blueprint(settings.settings_bp)
+print("⚙️  Settings module initialized")
+
+print("📧 Flask-Mail initialized for Pro Tier email features")
+print("🚦 Flask-Limiter initialized for rate limiting")
+
 # ──────────────────────────────────────────────────────────────
 # Logging Configuration
 # ──────────────────────────────────────────────────────────────
 
-# Create logs directory if it doesn't exist
+# Create necessary directories if they don't exist
 if not os.path.exists('logs'):
     os.makedirs('logs')
+if not os.path.exists('instance'):
+    os.makedirs('instance')
 
 # Set up logging
 logging.basicConfig(
@@ -121,6 +193,11 @@ file_handler.setFormatter(logging.Formatter(
 # Add handler to app logger
 app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
+
+# Add handler to payments logger for detailed webhook debugging
+payments_logger = logging.getLogger('payments')
+payments_logger.addHandler(file_handler)
+payments_logger.setLevel(logging.DEBUG)  # Use DEBUG for detailed webhook logs
 
 # Log startup
 app.logger.info("="*70)
@@ -219,13 +296,16 @@ def create_robust_session():
 
 
 class DataManager:
-    """Handles data fetching and caching."""
+    """Handles data fetching and caching with background refresh."""
 
     def __init__(self):
         self.session = create_robust_session()
         self.active_syms = set()
         self.cached_data = []
+        self.cached_pro_data = []
         self.last_update = None
+        self.cache_lock = threading.Lock()
+        self.is_fetching = False
 
     def fetch_active_symbols(self) -> set[str]:
         """Fetch and cache active trading symbols."""
@@ -245,13 +325,33 @@ class DataManager:
             print(f"Failed to fetch active symbols: {e}")
             return set()
 
-    def fetch_data(self) -> List[Dict]:
-        """Fetch fresh data from Binance."""
+    def get_cached_data(self, include_pro_metrics: bool = False) -> Tuple[List[Dict], Optional[datetime]]:
+        """
+        Get cached data immediately without waiting for fetch.
+        Returns (data, last_update_time).
+        """
+        with self.cache_lock:
+            if include_pro_metrics and self.cached_pro_data:
+                return self.cached_pro_data, self.last_update
+            elif not include_pro_metrics and self.cached_data:
+                return self.cached_data, self.last_update
+            else:
+                # No cache yet, fetch synchronously
+                return self.fetch_data(include_pro_metrics), datetime.now(timezone.utc)
+
+    def fetch_data(self, include_pro_metrics: bool = False) -> List[Dict]:
+        """
+        Fetch fresh data from Binance.
+
+        Args:
+            include_pro_metrics: If True, fetch additional metrics for Pro/Elite users
+                                (price change %, open interest, liquidation estimates)
+        """
         if not self.active_syms:
             self.active_syms = self.fetch_active_symbols()
 
         try:
-            # Fetch volume data
+            # Fetch volume data (includes price change %)
             volume_response = self.session.get(VOLUME_URL, timeout=15)
             volume_response.raise_for_status()
             volume_data = volume_response.json()
@@ -268,6 +368,20 @@ class DataManager:
                 if item.get("symbol", "").endswith("USDT")
             }
 
+            # Fetch open interest data for Pro/Elite users
+            open_interest_data = {}
+            if include_pro_metrics:
+                try:
+                    oi_response = self.session.get(
+                        f"{API}/fapi/v1/openInterest",
+                        timeout=15
+                    )
+                    # Note: This endpoint requires a symbol parameter
+                    # We'll fetch it per-symbol below
+                except Exception as e:
+                    app.logger.warning(
+                        f"Failed to fetch open interest data: {e}")
+
             # Process and filter data
             processed_data = []
             for item in volume_data:
@@ -276,31 +390,152 @@ class DataManager:
                         float(item.get("quoteVolume", 0)) > 100_000_000):
 
                     asset = item["symbol"].replace("USDT", "")
+                    symbol = item["symbol"]
                     volume = float(item["quoteVolume"])
                     price = float(item["lastPrice"])
                     funding_rate = funding_rates.get(asset, None)
 
-                    processed_data.append({
+                    # Base data for all users
+                    data_item = {
                         "asset": asset,
+                        "symbol": symbol,
                         "volume": volume,
                         "price": price,
                         "funding_rate": funding_rate,
                         "volume_formatted": format_volume(volume),
                         "price_formatted": format_price(price),
                         "funding_formatted": format_funding_rate(funding_rate) if funding_rate is not None else "N/A"
-                    })
+                    }
+
+                    # Add Pro/Elite metrics
+                    if include_pro_metrics:
+                        # Price change % (24h)
+                        price_change_pct = float(
+                            item.get("priceChangePercent", 0))
+                        data_item["price_change_pct"] = price_change_pct
+                        data_item["price_change_formatted"] = f"{price_change_pct:+.2f}%"
+
+                        # Fetch open interest for this symbol
+                        try:
+                            oi_response = self.session.get(
+                                f"{API}/fapi/v1/openInterest",
+                                params={"symbol": symbol},
+                                timeout=5
+                            )
+                            if oi_response.status_code == 200:
+                                oi_data = oi_response.json()
+                                open_interest = float(
+                                    oi_data.get("openInterest", 0))
+                                # Convert to USD value
+                                oi_usd = open_interest * price
+                                data_item["open_interest"] = open_interest
+                                data_item["open_interest_usd"] = oi_usd
+                                data_item["open_interest_formatted"] = format_volume(
+                                    oi_usd)
+                            else:
+                                data_item["open_interest"] = None
+                                data_item["open_interest_usd"] = None
+                                data_item["open_interest_formatted"] = "N/A"
+                        except Exception as e:
+                            data_item["open_interest"] = None
+                            data_item["open_interest_usd"] = None
+                            data_item["open_interest_formatted"] = "N/A"
+
+                        # Liquidation estimate (proxy using funding rate intensity)
+                        # High funding rate + high volume = potential liquidation risk
+                        if funding_rate is not None and abs(funding_rate) > 0.05:
+                            liq_risk = "High" if abs(
+                                funding_rate) > 0.1 else "Medium"
+                        else:
+                            liq_risk = "Low"
+                        data_item["liquidation_risk"] = liq_risk
+
+                    processed_data.append(data_item)
 
             # Sort by volume descending
             processed_data.sort(key=lambda x: x["volume"], reverse=True)
+
+            # Update cache
+            with self.cache_lock:
+                if include_pro_metrics:
+                    self.cached_pro_data = processed_data
+                else:
+                    self.cached_data = processed_data
+                self.last_update = datetime.now(timezone.utc)
+
             return processed_data
 
         except Exception as e:
             print(f"Failed to fetch data: {e}")
+            app.logger.error(f"Failed to fetch data: {e}")
+            # Return cached data if available
+            with self.cache_lock:
+                if include_pro_metrics and self.cached_pro_data:
+                    return self.cached_pro_data
+                elif not include_pro_metrics and self.cached_data:
+                    return self.cached_data
             return []
+
+    def refresh_cache_background(self):
+        """Refresh both Free and Pro caches in background."""
+        if self.is_fetching:
+            return  # Already fetching, skip
+
+        self.is_fetching = True
+        try:
+            app.logger.info("🔄 Background cache refresh started")
+
+            # Fetch both Free and Pro data
+            free_data = self.fetch_data(include_pro_metrics=False)
+            pro_data = self.fetch_data(include_pro_metrics=True)
+
+            app.logger.info(
+                f"✅ Cache refreshed: {len(free_data)} Free, {len(pro_data)} Pro assets")
+        except Exception as e:
+            app.logger.error(f"❌ Background cache refresh failed: {e}")
+        finally:
+            self.is_fetching = False
 
 
 # Global data manager
 data_manager = DataManager()
+
+# Background cache refresh thread
+
+
+def background_cache_refresher():
+    """
+    Background thread that refreshes cache every CACHE_MINUTES.
+    Keeps data fresh without blocking user requests.
+    """
+    import time
+
+    # Initial cache population
+    app.logger.info("🔄 Populating initial cache...")
+    try:
+        data_manager.refresh_cache_background()
+        app.logger.info("✅ Initial cache populated")
+    except Exception as e:
+        app.logger.error(f"❌ Initial cache population failed: {e}")
+
+    # Continuous refresh loop
+    while True:
+        try:
+            time.sleep(CACHE_MINUTES * 60)  # Wait for cache interval
+            app.logger.info(
+                f"🔄 Scheduled cache refresh (every {CACHE_MINUTES} min)")
+            data_manager.refresh_cache_background()
+        except Exception as e:
+            app.logger.error(f"❌ Background cache refresh error: {e}")
+            time.sleep(60)  # Wait 1 minute before retrying
+
+
+# Start background cache refresher
+cache_refresh_thread = threading.Thread(
+    target=background_cache_refresher, daemon=True)
+cache_refresh_thread.start()
+app.logger.info(
+    f"🚀 Background cache refresher started (interval: {CACHE_MINUTES} min)")
 
 # Alert system
 alerts = []
@@ -324,7 +559,11 @@ def last_two_closed_klines(sym: str):
 
 
 def scan_alerts():
-    """Scan for volume spikes and generate alerts."""
+    """
+    Scan for volume spikes and generate alerts.
+
+    For Pro/Elite users with email alerts enabled, sends email notifications.
+    """
     global alerts, last_alert, initial_alert_minute
 
     utc_now = datetime.now(timezone.utc)
@@ -400,6 +639,73 @@ def scan_alerts():
             alert_msg = f"{update_prefix}{asset} hourly volume ${vol_str} ({ratio:.2f}× prev) — VOLUME SPIKE!"
             alerts.append((utc_now, alert_msg))
             alerts = alerts[-30:]  # Keep only last 30 alerts
+
+            # Send email alerts to Pro/Elite users with email_alerts enabled
+            try:
+                from models import User, AlertPreferences
+                from email_utils import send_alert_email
+
+                # Get users with email alerts enabled
+                users_with_alerts = db.session.query(User).join(AlertPreferences).filter(
+                    AlertPreferences.email_alerts_enabled == True,
+                    User.is_active == True,
+                    User.email_confirmed == True
+                ).all()
+
+                for user in users_with_alerts:
+                    # Check if user has email_alerts feature
+                    if config.has_feature(user.tier, 'email_alerts'):
+                        # Get current price and funding rate
+                        try:
+                            price_response = data_manager.session.get(
+                                f"{API}/fapi/v1/ticker/price",
+                                params={"symbol": sym},
+                                timeout=5
+                            )
+                            price_data = price_response.json()
+                            current_price = float(price_data.get('price', 0))
+                        except:
+                            current_price = 0
+
+                        # Get funding rate
+                        try:
+                            funding_response = data_manager.session.get(
+                                f"{API}/fapi/v1/premiumIndex",
+                                params={"symbol": sym},
+                                timeout=5
+                            )
+                            funding_data = funding_response.json()
+                            funding_rate = float(funding_data.get(
+                                'lastFundingRate', 0)) * 100
+                        except:
+                            funding_rate = 0
+
+                        # Prepare alert data for email
+                        alert_data = {
+                            'symbol': sym,
+                            'asset': asset,
+                            'volume_24h': curr_vol,
+                            'volume_change': ratio,
+                            'funding_rate': funding_rate,
+                            'price': current_price,
+                            'alert_message': alert_msg
+                        }
+
+                        # Send email (non-blocking) with app context
+                        def send_email_with_context():
+                            with app.app_context():
+                                send_alert_email(user, alert_data, mail)
+
+                        threading.Thread(
+                            target=send_email_with_context,
+                            daemon=True
+                        ).start()
+
+                        app.logger.info(
+                            f"📧 Alert email queued for {user.email}: {sym}")
+
+            except Exception as e:
+                app.logger.error(f"❌ Error sending alert emails: {e}")
 
 
 # Start alert scanning in background
@@ -567,52 +873,44 @@ def change_password():
     return redirect(url_for('profile'))
 
 
-@app.route('/update-theme-preference', methods=['POST'])
-@login_required
-def update_theme_preference():
-    """
-    Update user's theme preference.
-
-    Saves to database for automatic application on future logins.
-    """
-    from flask import flash, redirect, url_for
-
-    theme_preference = request.form.get('theme_preference', 'dark')
-
-    if theme_preference not in ['dark', 'light']:
-        flash('❌ Invalid theme preference.', 'error')
-        return redirect(url_for('profile'))
-
-    try:
-        current_user.theme_preference = theme_preference
-        db.session.commit()
-
-        # Log theme change
-        app.logger.info(
-            f"🎨 Theme preference updated for {current_user.email}: {theme_preference}")
-
-        flash(
-            f'✅ Theme preference saved! Now using {theme_preference} mode.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(
-            f"❌ Theme update failed for {current_user.email}: {e}")
-        flash(f'❌ Failed to update theme: {str(e)}', 'error')
-
-    return redirect(url_for('profile'))
+# Theme preference route removed - using dark mode only
 
 
 @app.route('/api/data')
 def get_data():
     """
-    API endpoint to fetch data.
+    API endpoint to fetch data (with server-side caching).
 
     Applies tier-specific limits:
-    - Free: Top 50 assets only
-    - Pro/Elite: All assets
+    - Free: Top 50 assets only, basic columns
+    - Pro/Elite: All assets, additional columns (price change %, OI, liquidation risk)
+
+    Performance: Returns cached data immediately (< 50ms), refreshes in background
     """
     try:
-        data = data_manager.fetch_data()
+        # Determine if user has Pro metrics access
+        include_pro_metrics = False
+        if current_user.is_authenticated:
+            tier = current_user.tier
+            # Pro and Elite users get additional metrics
+            include_pro_metrics = config.has_feature(
+                tier, 'additional_metrics')
+
+        # Get cached data (instant response!)
+        data, last_update = data_manager.get_cached_data(
+            include_pro_metrics=include_pro_metrics)
+
+        # Trigger background refresh if cache is old
+        cache_age = (datetime.now(timezone.utc) -
+                     last_update).total_seconds() if last_update else 999999
+        if cache_age > CACHE_MINUTES * 60:  # Cache older than configured minutes
+            # Refresh in background thread (non-blocking)
+            threading.Thread(
+                target=data_manager.refresh_cache_background,
+                daemon=True
+            ).start()
+            app.logger.info(
+                f"🔄 Cache is {cache_age:.0f}s old, refreshing in background")
 
         # Apply tier-based limits
         if current_user.is_authenticated:
@@ -630,15 +928,18 @@ def get_data():
         return jsonify({
             'success': True,
             'data': data,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': last_update.isoformat() if last_update else datetime.now(timezone.utc).isoformat(),
+            'cache_age_seconds': int(cache_age) if last_update else 0,
             'tier': current_user.tier if current_user.is_authenticated else 0,
-            'limited': (current_user.is_authenticated and current_user.tier == 0) or not current_user.is_authenticated
+            'limited': (current_user.is_authenticated and current_user.tier == 0) or not current_user.is_authenticated,
+            'has_pro_metrics': include_pro_metrics
         })
     except Exception as e:
+        app.logger.error(f"Error in get_data: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
-        })
+        }), 500
 
 
 @app.route('/api/watchlist')
@@ -647,11 +948,38 @@ def get_watchlist():
     API endpoint to get TradingView watchlist.
 
     Applies tier-specific limits:
-    - Free: Top 50 symbols
-    - Pro/Elite: Unlimited symbols
+    - Free: Top 50 symbols, .txt format only
+    - Pro/Elite: Unlimited symbols, supports CSV/JSON formats
+
+    Query parameters:
+    - format: 'txt' (default), 'csv', or 'json'
     """
     try:
-        data = data_manager.fetch_data()
+        # Get requested format
+        export_format = request.args.get('format', 'txt').lower()
+
+        # Check if user has enhanced export feature
+        has_enhanced_export = False
+        if current_user.is_authenticated:
+            tier = current_user.tier
+            has_enhanced_export = config.has_feature(tier, 'enhanced_export')
+
+        # Restrict format based on tier
+        if export_format in ['csv', 'json'] and not has_enhanced_export:
+            return jsonify({
+                'success': False,
+                'error': 'CSV/JSON export is only available for Pro and Elite tiers',
+                'tier': current_user.tier if current_user.is_authenticated else 0
+            }), 403
+
+        # Determine if user has Pro metrics access
+        include_pro_metrics = False
+        if current_user.is_authenticated:
+            include_pro_metrics = config.has_feature(
+                current_user.tier, 'additional_metrics')
+
+        # Fetch data
+        data = data_manager.fetch_data(include_pro_metrics=include_pro_metrics)
 
         # Apply tier-based limits
         if current_user.is_authenticated:
@@ -666,20 +994,88 @@ def get_watchlist():
             # Guest users: treat as Free tier
             data = data[:50]
 
-        symbols = [f"BINANCE:{item['asset']}USDT.P" for item in data]
+        # Generate output based on format
+        if export_format == 'txt':
+            # TradingView watchlist format
+            symbols = [f"BINANCE:{item['asset']}USDT.P" for item in data]
+            return jsonify({
+                'success': True,
+                'watchlist': '\n'.join(symbols),
+                'count': len(symbols),
+                'format': 'txt',
+                'tier': current_user.tier if current_user.is_authenticated else 0,
+                'limited': (current_user.is_authenticated and current_user.tier == 0) or not current_user.is_authenticated
+            })
 
-        return jsonify({
-            'success': True,
-            'watchlist': '\n'.join(symbols),
-            'count': len(symbols),
-            'tier': current_user.tier if current_user.is_authenticated else 0,
-            'limited': (current_user.is_authenticated and current_user.tier == 0) or not current_user.is_authenticated
-        })
+        elif export_format == 'csv':
+            # CSV export with all available columns
+            df = pd.DataFrame(data)
+            csv_data = df.to_csv(index=False)
+
+            response = make_response(csv_data)
+            response.headers['Content-Type'] = 'text/csv'
+            response.headers['Content-Disposition'] = 'attachment; filename=binance_watchlist.csv'
+            return response
+
+        elif export_format == 'json':
+            # JSON export with all data
+            return jsonify({
+                'success': True,
+                'data': data,
+                'count': len(data),
+                'format': 'json',
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+                'tier': current_user.tier if current_user.is_authenticated else 0
+            })
+
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Unsupported format: {export_format}. Use txt, csv, or json.'
+            }), 400
+
     except Exception as e:
+        app.logger.error(f"Error in get_watchlist: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
-        })
+        }), 500
+
+
+@app.route('/api/user')
+def get_user_info():
+    """
+    API endpoint to get current user's tier information.
+
+    Used by frontend to determine refresh interval and feature availability.
+    """
+    try:
+        if current_user.is_authenticated:
+            tier = current_user.tier
+            tier_config = config.get_tier_config(tier)
+
+            return jsonify({
+                'authenticated': True,
+                'tier': tier,
+                'tier_name': current_user.tier_name,
+                'refresh_interval': tier_config.get('refresh_ms'),
+                'features': tier_config.get('features', {})
+            })
+        else:
+            # Guest user - return Free tier settings
+            return jsonify({
+                'authenticated': False,
+                'tier': 0,
+                'tier_name': 'Free',
+                'refresh_interval': config.FREE_TIER['refresh_ms'],
+                'features': config.FREE_TIER['features']
+            })
+    except Exception as e:
+        app.logger.error(f"Error in get_user_info: {e}")
+        return jsonify({
+            'authenticated': False,
+            'error': str(e)
+        }), 500
 
 
 @app.route('/api/alerts')
@@ -964,9 +1360,391 @@ if config.FEATURE_FLAGS.get('enable_debug_routes', False):
             }), 500
 
 # ──────────────────────────────────────────────────────────────
+# Phantom Ephemeral Keystore API (Server-side storage)
+# ──────────────────────────────────────────────────────────────
+
+
+# In-memory storage for ephemeral keys (use Redis in production)
+phantom_ekey_store = {}
+
+
+@app.route('/api/phantom/ekey', methods=['POST'])
+def store_ekey():
+    """Generate ephemeral x25519 keypair and return sid + public key"""
+    try:
+        import nacl.public
+        import nacl.encoding
+        import base58
+        import secrets
+
+        # Generate ephemeral x25519 keypair on server
+        priv_key = nacl.public.PrivateKey.generate()
+        pub_key = priv_key.public_key
+
+        # Generate unique sid
+        sid = base58.b58encode(secrets.token_bytes(16)).decode('ascii')
+
+        # Store private key with 5-minute TTL
+        phantom_ekey_store[sid] = {
+            'priv_key': priv_key,  # Store nacl.public.PrivateKey object
+            'expires': time.time() + 300  # 5 minutes
+        }
+
+        # Return sid and base58-encoded public key
+        dapp_pub58 = base58.b58encode(bytes(pub_key)).decode('ascii')
+
+        app.logger.info(f'🔑 Ephemeral keypair generated for sid: {sid[:8]}...')
+        return jsonify({'sid': sid, 'dapp_encryption_public_key': dapp_pub58})
+
+    except Exception as e:
+        app.logger.error(f'❌ Store ekey error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+# ──────────────────────────────────────────────────────────────
+# Phantom UL Sign Endpoints (Server-side session management)
+# ──────────────────────────────────────────────────────────────
+
+# In-memory storage for user sessions (use Redis in production)
+phantom_sessions = {}
+
+
+@app.route('/api/phantom/session', methods=['POST'])
+def set_phantom_session():
+    """Decrypt Phantom payload and create authenticated session"""
+    try:
+        import nacl.public
+        import base58
+        import json
+
+        data = request.get_json() or {}
+        sid = data.get('sid')
+        phantom_pub58 = data.get('phantom_encryption_public_key')
+        data58 = data.get('data')
+        nonce58 = data.get('nonce')
+
+        if not all([sid, phantom_pub58, data58, nonce58]):
+            return jsonify({'error': 'missing required params'}), 400
+
+        # Retrieve ephemeral private key
+        key_store = phantom_ekey_store.get(sid)
+        if not key_store or key_store['expires'] < time.time():
+            return jsonify({'error': 'sid expired or not found'}), 410
+
+        dapp_priv = key_store['priv_key']
+
+        # Clean up ephemeral key (one-time use)
+        phantom_ekey_store.pop(sid, None)
+
+        # Decode Phantom's return params
+        try:
+            phantom_pub = nacl.public.PublicKey(
+                base58.b58decode(phantom_pub58))
+            data_bytes = base58.b58decode(data58)
+            nonce_bytes = base58.b58decode(nonce58)
+        except Exception as e:
+            return jsonify({'error': f'base58 decode error: {str(e)}'}), 400
+
+        # Decrypt payload using NaCl Box
+        try:
+            box = nacl.public.Box(dapp_priv, phantom_pub)
+            plaintext = box.decrypt(data_bytes, nonce_bytes)
+            payload = json.loads(plaintext.decode('utf-8'))
+        except Exception as e:
+            return jsonify({'error': f'decryption error: {str(e)}'}), 400
+
+        # Extract wallet public key from payload
+        wallet_pub58 = payload.get('public_key') or payload.get(
+            'wallet_pubkey') or payload.get('wallet') or 'unknown'
+
+        # Find or create User for Solana wallet (same pattern as EVM wallets)
+        from models import User
+        from flask_login import login_user
+        from datetime import datetime, timezone
+        import secrets as sec
+
+        user = User.query.filter_by(wallet_address=wallet_pub58).first()
+
+        if not user:
+            # Create new user with Solana wallet address
+            app.logger.info(
+                f"✨ Creating new user for Solana wallet: {wallet_pub58[:8]}...")
+
+            user = User(
+                # Dummy email for Solana wallet users
+                email=f"{wallet_pub58.lower()}@solana.wallet.local",
+                wallet_address=wallet_pub58,
+                tier=0,  # Free tier
+                is_active=True,
+                email_confirmed=True,  # Wallet users don't need email confirmation
+                email_confirmed_at=datetime.now(timezone.utc),
+                theme_preference='dark'
+            )
+            # Set a random password (won't be used, but required by model)
+            user.set_password(sec.token_hex(32))
+
+            db.session.add(user)
+            db.session.commit()
+
+            # Create default alert preferences
+            from auth import create_default_alert_preferences
+            alert_prefs = create_default_alert_preferences(user)
+            db.session.add(alert_prefs)
+            db.session.commit()
+
+            app.logger.info(
+                f"✅ New Solana wallet user created: {wallet_pub58[:8]}...")
+
+        # Log user in with Flask-Login (this creates the session Flask expects!)
+        login_user(user, remember=True)
+
+        # Also store in phantom_sessions for backward compatibility
+        session_token = base58.b58encode(sec.token_bytes(24)).decode('ascii')
+        phantom_sessions[session_token] = {
+            'wallet_pub58': wallet_pub58,
+            'ts': time.time(),
+            'user': {'wallet_pub58': wallet_pub58, 'tier': user.tier, 'tier_name': user.tier_name}
+        }
+
+        app.logger.info(
+            f'🔐 Phantom session + Flask-Login created for wallet: {wallet_pub58[:8]}... (Tier: {user.tier_name})')
+
+        return jsonify({'ok': True, 'user': {'wallet_pub58': wallet_pub58, 'tier': user.tier, 'tier_name': user.tier_name}})
+
+    except Exception as e:
+        app.logger.error(f'❌ Set session error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/me', methods=['GET'])
+def me():
+    """Check authentication status via Flask-Login"""
+    try:
+        from flask_login import current_user
+
+        # Check if user is authenticated via Flask-Login (works for both EVM and Solana wallets)
+        if current_user.is_authenticated:
+            return jsonify({
+                'authenticated': True,
+                'user': {
+                    'wallet_pub58': current_user.wallet_address,
+                    'email': current_user.email,
+                    'tier': current_user.tier,
+                    'tier_name': current_user.tier_name
+                },
+                'wallet_pub58': current_user.wallet_address
+            })
+
+        return jsonify({'authenticated': False}), 401
+
+    except Exception as e:
+        app.logger.error(f'❌ Me endpoint error: {str(e)}')
+        return jsonify({'authenticated': False, 'error': str(e)}), 500
+
+
+@app.route('/api/phantom/ul/sign-message', methods=['GET'])
+def ul_sign_message():
+    """Build UL for signMessage with encrypted payload"""
+    try:
+        msg_b64 = request.args.get('msg_b64')
+        if not msg_b64:
+            return jsonify({'error': 'missing msg_b64'}), 400
+
+        # Get session data from cookie
+        phantom_pubkey = request.cookies.get('phantom_pubkey')
+        if not phantom_pubkey:
+            return jsonify({'error': 'not authenticated'}), 401
+
+        session_data = phantom_sessions.get(phantom_pubkey)
+        if not session_data:
+            return jsonify({'error': 'session not found'}), 404
+
+        # Decode message
+        import base64
+        message = base64.b64decode(msg_b64)
+
+        # For now, return a simple redirect to show the flow works
+        # In production, you'd encrypt the message with the shared secret
+        # and build the proper UL with encrypted payload
+
+        app.logger.info(
+            f'📝 UL sign-message requested for: {phantom_pubkey[:8]}...')
+
+        # Simple redirect for testing (replace with proper UL construction)
+        return redirect(f'/phantom-redirect?ul_sign=success&msg={msg_b64[:20]}...', code=302)
+
+    except Exception as e:
+        app.logger.error(f'❌ UL sign-message error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+# ──────────────────────────────────────────────────────────────
+# Pro Tier: Payment Routes
+# ──────────────────────────────────────────────────────────────
+
+
+@app.route('/create-checkout')
+@login_required
+def create_checkout():
+    """Create Stripe checkout session for subscription upgrade"""
+    try:
+        tier = request.args.get('tier', type=int)
+        billing_cycle = request.args.get('billing_cycle', 'monthly')
+
+        if not tier or tier not in [1, 2]:  # 1=Pro, 2=Elite
+            flash('❌ Invalid tier selected.', 'error')
+            return redirect(url_for('pricing'))
+
+        if billing_cycle not in ['monthly', 'yearly']:
+            flash('❌ Invalid billing cycle selected.', 'error')
+            return redirect(url_for('pricing'))
+
+        # Check if user already has an active subscription
+        from models import get_active_subscription
+        active_sub = get_active_subscription(current_user)
+        if active_sub and active_sub.status in ['active', 'trialing']:
+            flash('ℹ️ You already have an active subscription.', 'info')
+            return redirect(url_for('profile'))
+
+        # Create Stripe checkout session
+        success_url = url_for('payment_success', _external=True)
+        cancel_url = url_for('payment_canceled', _external=True)
+
+        app.logger.info(
+            f"Creating checkout for user: {current_user.email} (ID: {current_user.id})")
+        session_id, error = payments.create_checkout_session(
+            user=current_user,
+            tier=tier,
+            billing_cycle=billing_cycle,
+            success_url=success_url,
+            cancel_url=cancel_url
+        )
+
+        if session_id:
+            # Get the checkout session URL from Stripe
+            import stripe
+            checkout_session = stripe.checkout.Session.retrieve(session_id)
+            return redirect(checkout_session.url, code=303)
+        else:
+            flash(f'❌ Failed to create checkout session: {error}', 'error')
+            return redirect(url_for('pricing'))
+
+    except Exception as e:
+        app.logger.error(f"Error creating checkout session: {str(e)}")
+        flash('❌ An error occurred. Please try again.', 'error')
+        return redirect(url_for('pricing'))
+
+
+@limiter.exempt  # ✅ Exempt Stripe webhooks from rate limiting
+@app.route('/webhook/stripe', methods=['POST'])
+def stripe_webhook():
+    """Handle Stripe webhook events"""
+    try:
+        payload = request.get_data()
+        sig_header = request.headers.get('Stripe-Signature')
+
+        if not sig_header:
+            app.logger.warning("Missing Stripe-Signature header")
+            return jsonify({'error': 'Missing signature'}), 400
+
+        # Verify webhook signature and process event
+        success, error = payments.handle_webhook(payload, sig_header)
+
+        if success:
+            return jsonify({'success': True}), 200
+        else:
+            app.logger.error(f"Webhook processing failed: {error}")
+            return jsonify({'error': error or 'Webhook processing failed'}), 400
+
+    except Exception as e:
+        app.logger.error(f"Webhook error: {str(e)}")
+        return jsonify({'error': 'Webhook processing failed'}), 500
+
+
+@app.route('/payment/success')
+@login_required
+def payment_success():
+    """Handle successful payment"""
+    try:
+        session_id = request.args.get('session_id')
+        # The webhook should have already processed this, but we can show success
+        flash('🎉 Payment successful! Your subscription is now active.', 'success')
+
+        return redirect(url_for('index'))
+
+    except Exception as e:
+        app.logger.error(f"Payment success error: {str(e)}")
+        flash('✅ Payment completed! Your subscription is being activated.', 'success')
+        return redirect(url_for('index'))
+
+
+@app.route('/payment/canceled')
+@login_required
+def payment_canceled():
+    """Handle canceled payment"""
+    flash('ℹ️ Payment was canceled. You can try again anytime.', 'info')
+    return redirect(url_for('pricing'))
+
+
+@app.route('/cancel-subscription', methods=['POST'])
+@login_required
+def cancel_subscription_route():
+    """Cancel user's subscription"""
+    try:
+        success = payments.cancel_subscription(current_user.id)
+
+        if success:
+            flash('✅ Subscription canceled. You will retain access until the end of your billing period.', 'success')
+        else:
+            flash('❌ Failed to cancel subscription. Please contact support.', 'error')
+
+        return redirect(url_for('profile'))
+
+    except Exception as e:
+        app.logger.error(f"Cancel subscription error: {str(e)}")
+        flash('❌ An error occurred. Please contact support.', 'error')
+        return redirect(url_for('profile'))
+
+
+@app.route('/manage-subscription')
+@login_required
+def manage_subscription():
+    """Redirect to Stripe Customer Portal"""
+    try:
+        portal_url = payments.get_stripe_portal_url(current_user.id)
+
+        if portal_url:
+            return redirect(portal_url, code=303)
+        else:
+            flash(
+                '❌ Unable to access subscription management. Please contact support.', 'error')
+            return redirect(url_for('profile'))
+
+    except Exception as e:
+        app.logger.error(f"Manage subscription error: {str(e)}")
+        flash('❌ An error occurred. Please contact support.', 'error')
+        return redirect(url_for('profile'))
+
+
+# ──────────────────────────────────────────────────────────────
 # Run the app
 # ──────────────────────────────────────────────────────────────
 
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8081)
+
+# Diagnostic test route
+
+
+@app.route('/test-scroll')
+def test_scroll():
+    """Test page for diagnosing mobile scroll issues."""
+    return render_template('test_scroll.html')
+
+# Layout debug route
+
+
+@app.route('/debug-layout')
+def debug_layout():
+    """Debug page for testing responsive layout."""
+    return render_template('debug_layout.html')

@@ -7,8 +7,8 @@
     <title>Pricing - Binance Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pricing.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=7.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pricing.css') }}?v=7.7">
 </head>
 
 <body>
@@ -22,9 +22,64 @@
                     <span class="back-text">Back to Dashboard</span>
                 </a>
 
-                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
-                    <span id="themeIcon">🌙</span>
-                </button>
+                <!-- Mobile Navigation Menu -->
+                <div class="mobile-nav mobile-only">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()">
+                        <span class="menu-icon">☰</span>
+                    </button>
+
+                    <div class="mobile-menu" id="mobileMenu">
+                        <div class="mobile-menu-header">
+                            <h3>Navigation</h3>
+                            <button class="close-menu-btn" onclick="toggleMobileMenu()">✕</button>
+                        </div>
+
+                        <div class="mobile-menu-content">
+                            {% if current_user.is_authenticated %}
+                            <div class="mobile-user-info">
+                                <div class="mobile-user-email">{{ current_user.email }}</div>
+                                <div class="mobile-user-tier tier-{{ current_user.tier }}">{{ current_user.tier_name }}
+                                </div>
+                            </div>
+
+                            <a href="{{ url_for('index') }}" class="mobile-menu-item">
+                                <span class="menu-icon">📊</span>
+                                <span>Dashboard</span>
+                            </a>
+
+                            <a href="{{ url_for('profile') }}" class="mobile-menu-item">
+                                <span class="menu-icon">⚙️</span>
+                                <span>Profile & Settings</span>
+                            </a>
+
+                            <a href="{{ url_for('pricing') }}" class="mobile-menu-item">
+                                <span class="menu-icon">💎</span>
+                                <span>Pricing</span>
+                            </a>
+
+                            <a href="{{ url_for('auth.logout') }}" class="mobile-menu-item logout">
+                                <span class="menu-icon">🚪</span>
+                                <span>Logout</span>
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('auth.login') }}" class="mobile-menu-item">
+                                <span class="menu-icon">🔑</span>
+                                <span>Login</span>
+                            </a>
+
+                            <a href="{{ url_for('auth.register') }}" class="mobile-menu-item">
+                                <span class="menu-icon">📝</span>
+                                <span>Register</span>
+                            </a>
+
+                            <a href="{{ url_for('pricing') }}" class="mobile-menu-item">
+                                <span class="menu-icon">💎</span>
+                                <span>Pricing</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -167,8 +222,17 @@
                     {% if current_user.is_authenticated %}
                     {% if current_user.tier == 1 %}
                     <button class="cta-btn current" disabled>Your Current Plan</button>
-                    {% elif current_user.tier < 1 %} <a href="{{ url_for('upgrade', tier=1) }}" class="cta-btn primary">
-                        Upgrade to Pro</a>
+                    {% elif current_user.tier < 1 %} <!-- Monthly Option -->
+                        <a href="{{ url_for('create_checkout', tier=1, billing_cycle='monthly') }}"
+                            class="cta-btn primary">
+                            Upgrade to Pro - Monthly
+                        </a>
+                        <!-- Yearly Option -->
+                        <a href="{{ url_for('create_checkout', tier=1, billing_cycle='yearly') }}"
+                            class="cta-btn secondary"
+                            style="margin-top: 0.5rem; display: block; width: 100%; padding: 1rem 2rem; font-size: 1.1rem; font-weight: 700; text-align: center; text-decoration: none; border-radius: 12px; background: rgba(255, 255, 255, 0.1); color: #ffffff; border: 2px solid #404040; transition: all 0.3s ease;">
+                            Upgrade to Pro - Yearly (Save $20)
+                        </a>
                         {% else %}
                         <a href="{{ url_for('downgrade', tier=1) }}" class="cta-btn secondary">Downgrade to Pro</a>
                         {% endif %}
@@ -177,7 +241,7 @@
                         {% endif %}
                 </div>
 
-                <div class="tier-note">or $99/year (save $20)</div>
+                <div class="tier-note">💳 Secure payment powered by Stripe</div>
             </div>
 
             <!-- ELITE TIER -->
@@ -244,15 +308,24 @@
                     {% if current_user.is_authenticated %}
                     {% if current_user.tier == 2 %}
                     <button class="cta-btn current" disabled>Your Current Plan</button>
-                    {% elif current_user.tier < 2 %} <a href="{{ url_for('upgrade', tier=2) }}" class="cta-btn primary">
-                        Upgrade to Elite</a>
+                    {% elif current_user.tier < 2 %} <!-- Monthly Option -->
+                        <a href="{{ url_for('create_checkout', tier=2, billing_cycle='monthly') }}"
+                            class="cta-btn primary">
+                            Upgrade to Elite - Monthly
+                        </a>
+                        <!-- Yearly Option -->
+                        <a href="{{ url_for('create_checkout', tier=2, billing_cycle='yearly') }}"
+                            class="cta-btn secondary"
+                            style="margin-top: 0.5rem; display: block; width: 100%; padding: 1rem 2rem; font-size: 1.1rem; font-weight: 700; text-align: center; text-decoration: none; border-radius: 12px; background: rgba(255, 255, 255, 0.1); color: #ffffff; border: 2px solid #404040; transition: all 0.3s ease;">
+                            Upgrade to Elite - Yearly (Save $60)
+                        </a>
                         {% endif %}
                         {% else %}
                         <a href="{{ url_for('auth.register') }}" class="cta-btn primary">Start Free Trial</a>
                         {% endif %}
                 </div>
 
-                <div class="tier-note">or $299/year (save $60)</div>
+                <div class="tier-note">💳 Secure payment powered by Stripe</div>
             </div>
         </div>
 
@@ -401,22 +474,118 @@
     </div>
 
     <script>
-        // Theme handling
-        function toggleTheme() {
-            document.body.classList.toggle('light-theme');
-            const isLight = document.body.classList.contains('light-theme');
-            document.getElementById('themeIcon').textContent = isLight ? '☀️' : '🌙';
-            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        // Mobile menu functionality
+        function toggleMobileMenu() {
+            console.log('toggleMobileMenu called'); // Debug log
+            const menu = document.getElementById('mobileMenu');
+            const btn = document.getElementById('mobileMenuBtn');
+
+            if (menu.style.display === 'block') {
+                menu.style.display = 'none';
+                btn.innerHTML = '<span class="menu-icon">☰</span>';
+            } else {
+                menu.style.display = 'block';
+                btn.innerHTML = '<span class="menu-icon">✕</span>';
+            }
         }
 
-        // Load saved theme
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            if (savedTheme === 'light') {
-                document.body.classList.add('light-theme');
-                document.getElementById('themeIcon').textContent = '☀️';
+        // Add event listener for better mobile support
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Mobile menu button clicked'); // Debug log
+                    toggleMobileMenu();
+                });
+
+                // Also add touch events for mobile
+                mobileMenuBtn.addEventListener('touchend', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Mobile menu button touched'); // Debug log
+                    toggleMobileMenu();
+                });
             }
         });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function (event) {
+            const menu = document.getElementById('mobileMenu');
+            const btn = document.getElementById('mobileMenuBtn');
+
+            if (menu && !menu.contains(event.target) && !btn.contains(event.target)) {
+                menu.style.display = 'none';
+                btn.innerHTML = '<span class="menu-icon">☰</span>';
+            }
+        });
+
+        // AGGRESSIVE FIX: Prevent table overscroll behavior
+        const comparisonTableContainer = document.querySelector('.comparison-table-container');
+        if (comparisonTableContainer) {
+            let isScrolling = false;
+            let startX = 0;
+            let scrollLeft = 0;
+
+            // Prevent touch overscroll
+            comparisonTableContainer.addEventListener('touchstart', function (e) {
+                isScrolling = true;
+                startX = e.touches[0].pageX - comparisonTableContainer.offsetLeft;
+                scrollLeft = comparisonTableContainer.scrollLeft;
+            }, { passive: false });
+
+            comparisonTableContainer.addEventListener('touchmove', function (e) {
+                if (!isScrolling) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const x = e.touches[0].pageX - comparisonTableContainer.offsetLeft;
+                const walk = (x - startX) * 2;
+                const newScrollLeft = scrollLeft - walk;
+
+                // Constrain scrolling to actual content bounds
+                const maxScroll = comparisonTableContainer.scrollWidth - comparisonTableContainer.clientWidth;
+                const constrainedScroll = Math.max(0, Math.min(newScrollLeft, maxScroll));
+
+                comparisonTableContainer.scrollLeft = constrainedScroll;
+            }, { passive: false });
+
+            comparisonTableContainer.addEventListener('touchend', function (e) {
+                isScrolling = false;
+            }, { passive: false });
+
+            // Prevent mouse wheel overscroll
+            comparisonTableContainer.addEventListener('wheel', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const delta = e.deltaY;
+                const currentScroll = comparisonTableContainer.scrollLeft;
+                const maxScroll = comparisonTableContainer.scrollWidth - comparisonTableContainer.clientWidth;
+
+                let newScroll = currentScroll + delta;
+                newScroll = Math.max(0, Math.min(newScroll, maxScroll));
+
+                comparisonTableContainer.scrollLeft = newScroll;
+            }, { passive: false });
+
+            // Reset scroll position if it goes beyond bounds
+            comparisonTableContainer.addEventListener('scroll', function () {
+                const maxScroll = comparisonTableContainer.scrollWidth - comparisonTableContainer.clientWidth;
+                if (comparisonTableContainer.scrollLeft < 0) {
+                    comparisonTableContainer.scrollLeft = 0;
+                } else if (comparisonTableContainer.scrollLeft > maxScroll) {
+                    comparisonTableContainer.scrollLeft = maxScroll;
+                }
+            });
+
+            // Force reset scroll position on page load
+            window.addEventListener('load', function () {
+                comparisonTableContainer.scrollLeft = 0;
+            });
+        }
     </script>
 </body>
 

@@ -1,0 +1,48 @@
+CONFIRM YOUR EMAIL - Binance Dashboard
+=====================================
+
+Hi there! 👋
+
+Thanks for signing up for Binance Dashboard!
+
+To get started with tracking volume spikes, funding rates, and more, 
+please confirm your email address by clicking the button below.
+
+CONFIRM YOUR EMAIL ADDRESS
+--------------------------
+
+Click or copy this link into your browser:
+
+{{ confirmation_url }}
+
+SECURITY NOTE:
+--------------
+This confirmation link will expire in 1 hour for your security.
+If you didn't create an account with Binance Dashboard, you can
+safely ignore this email.
+
+WHAT'S INCLUDED IN YOUR FREE TIER:
+----------------------------------
+✅ Core dashboard access with 24h volume & funding rates
+✅ Auto-refresh every 15 minutes  
+✅ Volume spike alerts (last 10)
+✅ TradingView watchlist export (top 50 assets)
+
+🚀 Upgrade to Pro ($9.99/mo) for:
+   • Faster refresh (5 min)
+   • Email alerts for volume spikes
+   • Unlimited exports (CSV, JSON)
+   • No ads & custom thresholds
+
+Learn more: {{ base_url }}/pricing
+
+---
+Binance Dashboard
+Real-time crypto market monitoring for traders
+
+Visit: {{ base_url }}
+Pricing: {{ base_url }}/pricing
+
+© 2025 Binance Dashboard. All rights reserved.
+
+You received this email because you signed up for Binance Dashboard.

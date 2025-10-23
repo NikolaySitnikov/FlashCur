@@ -7,16 +7,12 @@
     <title>500 - Server Error</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/error.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=7.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/error.css') }}?v=7.7">
 </head>
 
 <body>
     <div class="error-container">
-        <!-- Theme Toggle -->
-        <button class="theme-toggle error-theme-toggle" id="themeToggle" onclick="toggleTheme()">
-            <span id="themeIcon">🌙</span>
-        </button>
 
         <div class="error-content">
             <!-- Error Icon -->
@@ -41,15 +37,14 @@
 
             <!-- Action Buttons -->
             <div class="error-actions">
-                <a href="{{ url_for('index') if current_user.is_authenticated else url_for('auth.login') }}"
-                    class="error-btn primary">
+                <a href="{{ url_for('index') }}" class="error-btn primary">
                     <span class="btn-icon">🏠</span>
                     Back to Dashboard
                 </a>
-                <a href="javascript:window.location.reload()" class="error-btn secondary">
+                <button onclick="window.location.reload()" class="error-btn secondary">
                     <span class="btn-icon">🔄</span>
                     Try Again
-                </a>
+                </button>
             </div>
 
             <!-- Help Text -->
@@ -62,21 +57,7 @@
 
     <script>
         // Theme handling
-        function toggleTheme() {
-            document.body.classList.toggle('light-theme');
-            const isLight = document.body.classList.contains('light-theme');
-            document.getElementById('themeIcon').textContent = isLight ? '☀️' : '🌙';
-            localStorage.setItem('theme', isLight ? 'light' : 'dark');
-        }
 
-        // Load saved theme
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            if (savedTheme === 'light') {
-                document.body.classList.add('light-theme');
-                document.getElementById('themeIcon').textContent = '☀️';
-            }
-        });
     </script>
 </body>
 

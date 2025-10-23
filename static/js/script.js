@@ -8,10 +8,41 @@ let currentTab = 'market-data';
 let unreadAlertsCount = 0;
 let lastViewedAlertsCount = 0;
 
+
 // User tier and refresh settings
 let userTier = 0;
 let refreshInterval = 15 * 60 * 1000; // Default to 15 min (Free tier)
 let refreshTimer = null;
+let hasProMetrics = false; // Track if Pro metrics are available
+
+// Simple navigation menu toggle
+function toggleNavMenu() {
+    const menu = document.getElementById('navDropdown');
+    const btn = document.getElementById('navBtn');
+    if (!menu || !btn) return;
+
+    menu.classList.toggle('show');
+    btn.innerHTML = menu.classList.contains('show') ? '✕' : '☰';
+}
+
+// Setup navigation menu
+document.addEventListener('DOMContentLoaded', function () {
+    const navBtn = document.getElementById('navBtn');
+    const menu = document.getElementById('navDropdown');
+
+    if (navBtn) {
+        navBtn.addEventListener('click', toggleNavMenu);
+    }
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function (e) {
+        if (menu && navBtn && !menu.contains(e.target) && !navBtn.contains(e.target)) {
+            menu.classList.remove('show');
+            navBtn.innerHTML = '☰';
+        }
+    });
+});
+
 
 // Sorting state
 let sortState = {
@@ -75,6 +106,15 @@ function switchTab(tabName) {
         if (tabName === 'volume-alerts') {
             markAlertsAsViewed();
         }
+
+        // Re-check overflow so the scroll hint is accurate after tab switch
+        ['tableContainer', 'mobileTableContainer'].forEach(id => {
+            const c = document.getElementById(id);
+            if (!c) return;
+            const has = c.scrollWidth > c.clientWidth + 1;
+            c.classList.toggle('has-scroll', has);
+            if (!has) c.classList.remove('scrolled');
+        });
     }
 }
 
@@ -98,30 +138,10 @@ function markAlertsAsViewed() {
     updateNotificationBadge();
 }
 
-// Theme Management
+// Dark Mode Only - No theme switching needed
 function initializeTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    setTheme(savedTheme);
-}
-
-function toggleTheme() {
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-}
-
-function setTheme(theme) {
-    currentTheme = theme;
-    const body = document.body;
-    const themeIcon = document.getElementById('themeIcon');
-
-    if (theme === 'dark') {
-        body.classList.remove('light-theme');
-        themeIcon.textContent = '🌙';
-    } else {
-        body.classList.add('light-theme');
-        themeIcon.textContent = '☀️';
-    }
+    // Force dark theme only
+    document.body.classList.add('dark-theme');
 }
 
 // Data Loading with Progressive Animation
@@ -138,6 +158,7 @@ async function loadData() {
         if (result.success) {
             originalDataCache = result.data; // Store original order
             dataCache = applySorting([...result.data]); // Apply current sorting
+            hasProMetrics = result.has_pro_metrics || false; // Track Pro metrics availability
             hideLoading(); // Hide loading first
             await displayDataProgressive(dataCache);
             updateLastUpdated();
@@ -150,6 +171,17 @@ async function loadData() {
         showError('Network error: ' + error.message);
     } finally {
         isDataLoading = false;
+        // Update scroll indicators after data loads
+        setTimeout(() => {
+            ['tableContainer', 'mobileTableContainer'].forEach(id => {
+                const container = document.getElementById(id);
+                if (container) {
+                    const hasScroll = container.scrollWidth > container.clientWidth + 1;
+                    container.classList.toggle('has-scroll', hasScroll);
+                    if (!hasScroll) container.classList.remove('scrolled');
+                }
+            });
+        }, 100);
     }
 }
 
@@ -171,8 +203,24 @@ async function displayDataProgressive(data) {
     if (mobileTableBody) mobileTableBody.innerHTML = '';
 
     // Show table containers
-    if (tableContainer) tableContainer.style.display = 'block';
-    if (mobileTableContainer) mobileTableContainer.style.display = 'block';
+    if (tableContainer) {
+        tableContainer.style.display = 'block';
+        // Add class to table if it has Pro columns
+        const table = tableContainer.querySelector('.data-table');
+        if (table && hasProMetrics) {
+            table.classList.add('has-pro-columns');
+        }
+        // Check if table is scrollable and add visual indicator
+        checkTableScroll(tableContainer);
+    }
+    if (mobileTableContainer) {
+        mobileTableContainer.style.display = 'block';
+        const mobileTable = mobileTableContainer.querySelector('.data-table');
+        if (mobileTable && hasProMetrics) {
+            mobileTable.classList.add('has-pro-columns');
+        }
+        checkTableScroll(mobileTableContainer);
+    }
 
     // Add rows progressively with animation
     for (let i = 0; i < data.length; i++) {
@@ -221,6 +269,20 @@ function createTableRow(item, index) {
     volumeCell.innerHTML = createRollingText(item.volume_formatted, 0.1, false); // isTicker = false
     row.appendChild(volumeCell);
 
+    // Pro Tier: Price Change % column
+    if (hasProMetrics && item.price_change_formatted) {
+        const priceChangeCell = document.createElement('td');
+        priceChangeCell.className = 'pro-column';
+        const priceChange = item.price_change_pct;
+        if (priceChange > 0) {
+            priceChangeCell.classList.add('price-change-positive');
+        } else if (priceChange < 0) {
+            priceChangeCell.classList.add('price-change-negative');
+        }
+        priceChangeCell.innerHTML = createRollingText(item.price_change_formatted, 0.1, false);
+        row.appendChild(priceChangeCell);
+    }
+
     // Funding rate column with rolling animation and color coding
     const fundingCell = document.createElement('td');
     const fundingRate = item.funding_rate;
@@ -238,6 +300,33 @@ function createTableRow(item, index) {
     const priceCell = document.createElement('td');
     priceCell.innerHTML = createRollingText(item.price_formatted, 0.1, false); // isTicker = false
     row.appendChild(priceCell);
+
+    // Pro Tier: Open Interest column
+    if (hasProMetrics && item.open_interest_formatted) {
+        const openInterestCell = document.createElement('td');
+        openInterestCell.className = 'pro-column';
+        openInterestCell.innerHTML = createRollingText(item.open_interest_formatted, 0.1, false);
+        row.appendChild(openInterestCell);
+    }
+
+    // Pro Tier: Liquidation Risk column
+    if (hasProMetrics && item.liquidation_risk) {
+        const liqRiskCell = document.createElement('td');
+        liqRiskCell.className = 'pro-column';
+        const risk = item.liquidation_risk;
+        liqRiskCell.textContent = risk;
+
+        // Color coding for risk
+        if (risk === 'High') {
+            liqRiskCell.classList.add('liq-risk-high');
+        } else if (risk === 'Medium') {
+            liqRiskCell.classList.add('liq-risk-medium');
+        } else {
+            liqRiskCell.classList.add('liq-risk-low');
+        }
+
+        row.appendChild(liqRiskCell);
+    }
 
     return row;
 }
@@ -403,21 +492,57 @@ function showDownloadButton() {
     if (mobileDownloadSection) mobileDownloadSection.style.display = 'block';
 }
 
-async function downloadWatchlist() {
+async function downloadWatchlist(format = 'txt') {
     try {
-        const response = await fetch('/api/watchlist');
+        const response = await fetch(`/api/watchlist?format=${format}`);
+
+        // For CSV format, handle as file download directly
+        if (format === 'csv') {
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'binance_watchlist.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Failed to download CSV');
+            }
+            return;
+        }
+
+        // For txt and json formats, handle as JSON response
         const result = await response.json();
 
         if (result.success) {
-            const blob = new Blob([result.watchlist], { type: 'text/plain' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'tradingview_watchlist.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
+            if (format === 'json') {
+                // Download JSON
+                const jsonStr = JSON.stringify(result.data, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'binance_watchlist.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                // Download TXT
+                const blob = new Blob([result.watchlist], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'tradingview_watchlist.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }
         } else {
             alert('Failed to download watchlist: ' + result.error);
         }
@@ -641,6 +766,10 @@ function applySorting(data) {
                 aVal = a.volume;
                 bVal = b.volume;
                 break;
+            case 'price_change_pct':
+                aVal = a.price_change_pct !== undefined ? a.price_change_pct : -Infinity;
+                bVal = b.price_change_pct !== undefined ? b.price_change_pct : -Infinity;
+                break;
             case 'funding_rate':
                 aVal = a.funding_rate !== null ? a.funding_rate : -Infinity;
                 bVal = b.funding_rate !== null ? b.funding_rate : -Infinity;
@@ -648,6 +777,10 @@ function applySorting(data) {
             case 'price':
                 aVal = a.price;
                 bVal = b.price;
+                break;
+            case 'open_interest':
+                aVal = a.open_interest_usd !== null && a.open_interest_usd !== undefined ? a.open_interest_usd : -Infinity;
+                bVal = b.open_interest_usd !== null && b.open_interest_usd !== undefined ? b.open_interest_usd : -Infinity;
                 break;
             default:
                 return 0;
@@ -696,10 +829,14 @@ function updateSortIndicators() {
                 if (indicator) {
                     if (sortState.direction === 'asc') {
                         activeHeader.classList.add('sort-asc');
-                        indicator.textContent = '▲';
+                        // For Asset column: A to Z should show down arrow (▼)
+                        // For other columns: ascending should show up arrow (▲)
+                        indicator.textContent = sortState.column === 'asset' ? '▼' : '▲';
                     } else {
                         activeHeader.classList.add('sort-desc');
-                        indicator.textContent = '▼';
+                        // For Asset column: Z to A should show up arrow (▲)
+                        // For other columns: descending should show down arrow (▼)
+                        indicator.textContent = sortState.column === 'asset' ? '▲' : '▼';
                     }
                 }
             }
@@ -724,3 +861,242 @@ function enableSortHeaders() {
         th.style.pointerEvents = 'auto';
     });
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EMAIL CONFIRMATION (PRO TIER STEP 2)
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Resend confirmation email to current user
+ * Called when user clicks "Resend Email" button in confirmation banner
+ */
+async function resendConfirmation() {
+    const button = document.getElementById('resendConfirmationBtn');
+
+    if (!button) return;
+
+    // Disable button during request
+    button.disabled = true;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="resend-icon">⏳</span><span class="resend-text">Sending...</span>';
+
+    try {
+        const response = await fetch('/resend-confirmation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Success - show success message
+            button.innerHTML = '<span class="resend-icon">✅</span><span class="resend-text">Email Sent!</span>';
+            button.style.background = 'rgba(0, 255, 136, 0.15)';
+            button.style.borderColor = 'rgba(0, 255, 136, 0.3)';
+            button.style.color = '#00ff88';
+
+            // Show success notification
+            showNotification('📧 Confirmation email sent! Check your inbox.', 'success');
+
+            // Re-enable button after 3 seconds
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.disabled = false;
+                button.style.background = '';
+                button.style.borderColor = '';
+                button.style.color = '';
+            }, 3000);
+        } else {
+            // Error - show error message
+            button.innerHTML = '<span class="resend-icon">❌</span><span class="resend-text">Failed</span>';
+            showNotification(`❌ ${data.message || 'Failed to send email'}`, 'error');
+
+            // Re-enable button after 2 seconds
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('Error resending confirmation:', error);
+        button.innerHTML = '<span class="resend-icon">❌</span><span class="resend-text">Error</span>';
+        showNotification('❌ Network error. Please try again.', 'error');
+
+        // Re-enable button after 2 seconds
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }, 2000);
+    }
+}
+
+/**
+ * Show a temporary notification message
+ * @param {string} message - Message to display
+ * @param {string} type - Notification type ('success', 'error', 'info')
+ */
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        background: ${type === 'success' ? 'rgba(0, 255, 136, 0.15)' : 'rgba(239, 68, 68, 0.15)'};
+        border: 1px solid ${type === 'success' ? 'rgba(0, 255, 136, 0.3)' : 'rgba(239, 68, 68, 0.3)'};
+        border-left: 4px solid ${type === 'success' ? '#00ff88' : '#ef4444'};
+        color: ${type === 'success' ? '#00ff88' : '#ef4444'};
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        z-index: 10000;
+        font-weight: 600;
+        animation: slideInRight 0.4s ease-out;
+        max-width: 400px;
+    `;
+    notification.textContent = message;
+
+    // Add to page
+    document.body.appendChild(notification);
+
+    // Remove after 5 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.5s ease forwards';
+        setTimeout(() => notification.remove(), 500);
+    }, 5000);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MANUAL REFRESH (PRO TIER STEP 6)
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Check if table container is scrollable and add visual indicator
+ */
+function checkTableScroll(container) {
+    if (!container) return;
+
+    const table = container.querySelector('table');
+    if (!table) return;
+
+    // Check if content is wider than container
+    if (table.scrollWidth > container.clientWidth) {
+        container.classList.add('has-scroll');
+    } else {
+        container.classList.remove('has-scroll');
+    }
+}
+
+// Check scroll on window resize
+window.addEventListener('resize', () => {
+    const tableContainer = document.getElementById('tableContainer');
+    const mobileTableContainer = document.getElementById('mobileTableContainer');
+    if (tableContainer) checkTableScroll(tableContainer);
+    if (mobileTableContainer) checkTableScroll(mobileTableContainer);
+});
+
+/**
+ * Add scroll event listeners to hide scroll hint after user scrolls
+ */
+function setupScrollHintDismissal() {
+    const containers = [
+        document.getElementById('tableContainer'),
+        document.getElementById('mobileTableContainer')
+    ];
+
+    containers.forEach(container => {
+        if (!container) return;
+
+        // Hide hint after user scrolls horizontally
+        container.addEventListener('scroll', function () {
+            if (this.scrollLeft > 10) {
+                this.classList.add('scrolled');
+            }
+        }, { passive: true });
+    });
+}
+
+// Initialize scroll hint dismissal after DOM is ready
+document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
+
+
+// ===== BEAUTIFUL SCROLL INDICATOR MANAGEMENT =====
+// Subtle, unobtrusive scroll indicators that appear only when needed
+(function () {
+    function wireScrollIndicator(container) {
+        if (!container) return;
+
+        function updateScrollState() {
+            const hasScroll = container.scrollWidth > container.clientWidth + 1;
+            container.classList.toggle('has-scroll', hasScroll);
+
+            // Remove scrolled class if no scroll needed
+            if (!hasScroll) {
+                container.classList.remove('scrolled');
+            }
+        }
+
+        // Initial check
+        updateScrollState();
+
+        // Update on scroll
+        container.addEventListener('scroll', () => {
+            const scrolled = container.scrollLeft > 8;
+            container.classList.toggle('scrolled', scrolled);
+        }, { passive: true });
+
+        // Update on resize
+        window.addEventListener('resize', updateScrollState);
+
+        // Update when data loads
+        container.addEventListener('DOMSubtreeModified', updateScrollState);
+    }
+
+    // Initialize for both desktop and mobile containers
+    document.addEventListener('DOMContentLoaded', () => {
+        wireScrollIndicator(document.getElementById('tableContainer'));
+        wireScrollIndicator(document.getElementById('mobileTableContainer'));
+    });
+
+    // Re-check when data is loaded
+    window.addEventListener('dataLoaded', () => {
+        wireScrollIndicator(document.getElementById('tableContainer'));
+        wireScrollIndicator(document.getElementById('mobileTableContainer'));
+    });
+})();
+
+// One-time, auto-dismissing scroll hint
+(function () {
+    const HINT_KEY = 'bdScrollHintDismissed';
+
+    function armHint(container) {
+        if (!container) return;
+        const show = () => {
+            if (container.scrollWidth > container.clientWidth + 1 && !localStorage.getItem(HINT_KEY)) {
+                container.classList.add('show-hint');
+                // auto-hide after 2.5s and never show again
+                setTimeout(() => {
+                    container.classList.remove('show-hint');
+                    localStorage.setItem(HINT_KEY, '1');
+                }, 2500);
+            }
+        };
+        const dismiss = () => {
+            container.classList.remove('show-hint');
+            localStorage.setItem(HINT_KEY, '1');
+        };
+        show();
+        container.addEventListener('scroll', () => {
+            if (container.scrollLeft > 8) dismiss();
+        }, { passive: true });
+        window.addEventListener('resize', show);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        armHint(document.getElementById('tableContainer'));
+        armHint(document.getElementById('mobileTableContainer'));
+    });
+})();

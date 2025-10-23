@@ -5,6 +5,7 @@ Centralizes all tier-specific settings, API constants, and feature limits.
 This module makes it easy to manage freemium tiers and feature gates.
 """
 
+import os as _os
 import os
 from dotenv import load_dotenv
 
@@ -150,7 +151,10 @@ ELITE_TIER = {
 
 # SQLite for local development (change to PostgreSQL/MySQL for production)
 # Can be overridden with environment variable
-DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///binance_dashboard.db')
+# Use absolute path for SQLite to avoid path resolution issues
+_basedir = _os.path.abspath(_os.path.dirname(__file__))
+_default_db_path = f'sqlite:///{_os.path.join(_basedir, "instance", "binance_dashboard.db")}'
+DATABASE_URI = os.getenv('DATABASE_URI', _default_db_path)
 
 # Secret key for sessions (MUST be changed in production!)
 # Can be overridden with environment variable
@@ -166,6 +170,66 @@ SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 PERMANENT_SESSION_LIFETIME = 2592000  # 30 days in seconds
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EMAIL CONFIGURATION (for Pro/Elite tiers)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Email backend configuration (using SendGrid or SMTP)
+MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.sendgrid.net')
+MAIL_PORT = int(os.getenv('MAIL_PORT', '587'))
+MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
+MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
+# SendGrid uses 'apikey' as username
+MAIL_USERNAME = os.getenv('MAIL_USERNAME', 'apikey')
+MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')  # SendGrid API key goes here
+MAIL_DEFAULT_SENDER = os.getenv(
+    'MAIL_DEFAULT_SENDER', 'noreply@binancedashboard.com')
+
+# Email confirmation settings
+EMAIL_CONFIRMATION_SALT = os.getenv(
+    'EMAIL_CONFIRMATION_SALT', 'email-confirmation-salt-change-in-prod')
+EMAIL_CONFIRMATION_MAX_AGE = 3600  # 1 hour token validity
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAYMENT CONFIGURATION (Stripe for Pro/Elite tiers)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Stripe API keys (get from https://dashboard.stripe.com/apikeys)
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
+
+# Stripe Product/Price IDs (create these in Stripe Dashboard)
+STRIPE_PRODUCTS = {
+    'pro_monthly': os.getenv('STRIPE_PRO_MONTHLY_PRICE_ID', ''),
+    'pro_yearly': os.getenv('STRIPE_PRO_YEARLY_PRICE_ID', ''),
+    'elite_monthly': os.getenv('STRIPE_ELITE_MONTHLY_PRICE_ID', ''),
+    'elite_yearly': os.getenv('STRIPE_ELITE_YEARLY_PRICE_ID', ''),
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# WALLET AUTHENTICATION (Web3 / MetaMask / Crypto Wallet Sign-In)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Ethereum/Polygon mainnet RPC (for wallet verification)
+WEB3_PROVIDER_URI = os.getenv('WEB3_PROVIDER_URI', 'https://eth.llamarpc.com')
+# Message template for wallet signatures
+WALLET_SIGN_MESSAGE = "Sign this message to authenticate with Binance Dashboard.\n\nNonce: {nonce}"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# RATE LIMITING (to prevent API abuse)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Rate limits per tier (requests per hour)
+RATE_LIMITS = {
+    'free': '100/hour',      # 100 requests per hour for Free
+    'pro': '500/hour',       # 500 requests per hour for Pro
+    'elite': '2000/hour',    # 2000 requests per hour for Elite
+}
+
+# Default rate limit for unauthenticated users
+DEFAULT_RATE_LIMIT = '50/hour'
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS

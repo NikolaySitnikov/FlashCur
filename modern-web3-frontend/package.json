@@ -1,0 +1,66 @@
+{
+  "name": "modern-web3-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@craco/craco": "^7.1.0",
+    "@rainbow-me/rainbowkit": "^2.2.9",
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/wallet-adapter-react": "^0.15.39",
+    "@solana/wallet-adapter-react-ui": "^0.9.39",
+    "@solana/wallet-adapter-wallets": "^0.19.37",
+    "@solana/web3.js": "^1.98.4",
+    "@tanstack/react-query": "^5.90.5",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^16.18.126",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "ajv": "^8.17.1",
+    "bs58": "^6.0.0",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
+    "ethers": "^6.15.0",
+    "process": "^0.11.10",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "siwe": "^3.0.0",
+    "stream-browserify": "^3.0.0",
+    "tweetnacl": "^1.0.3",
+    "typescript": "^5.0.4",
+    "viem": "^2.38.3",
+    "wagmi": "^2.18.1",
+    "web-vitals": "^2.1.4"
+  },
+  "overrides": {
+    "typescript": "^5.0.4"
+  },
+  "scripts": {
+    "start": "craco start",
+    "build": "craco build",
+    "test": "craco test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

@@ -23,9 +23,8 @@
     z-index: 100;
 }
 
-.light-theme .pricing-header {
-    background: rgba(255, 255, 255, 0.95);
-    border-bottom-color: #e5e7eb;
+background: rgba(255, 255, 255, 0.95);
+border-bottom-color: #e5e7eb;
 }
 
 .pricing-header-content {
@@ -40,23 +39,15 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #00ff88;
+    color: #00ff88 !important;
     text-decoration: none;
     font-weight: 600;
     transition: all 0.3s ease;
 }
 
-.light-theme .back-link {
-    color: #10b981;
-}
-
 .back-link:hover {
-    color: #00cc6a;
+    color: #00cc6a !important;
     transform: translateX(-4px);
-}
-
-.light-theme .back-link:hover {
-    color: #059669;
 }
 
 .back-icon {
@@ -86,10 +77,9 @@
     border: 1px solid rgba(0, 255, 136, 0.3);
 }
 
-.light-theme .hero-badge {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-    border-color: rgba(16, 185, 129, 0.3);
+background: rgba(16, 185, 129, 0.1);
+color: #10b981;
+border-color: rgba(16, 185, 129, 0.3);
 }
 
 .hero-title {
@@ -102,11 +92,10 @@
     background-clip: text;
 }
 
-.light-theme .hero-title {
-    background: linear-gradient(135deg, #10b981, #059669);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+background: linear-gradient(135deg, #10b981, #059669);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
 }
 
 .hero-subtitle {
@@ -115,8 +104,7 @@
     margin: 0;
 }
 
-.light-theme .hero-subtitle {
-    color: #6b7280;
+color: #6b7280;
 }
 
 .current-plan-banner {
@@ -130,10 +118,9 @@
     color: #ffffff;
 }
 
-.light-theme .current-plan-banner {
-    background: rgba(16, 185, 129, 0.1);
-    border-color: rgba(16, 185, 129, 0.3);
-    color: #1f2937;
+background: rgba(16, 185, 129, 0.1);
+border-color: rgba(16, 185, 129, 0.3);
+color: #1f2937;
 }
 
 .current-plan-icon {
@@ -164,9 +151,8 @@
     animation: fadeInUp 0.6s ease-out;
 }
 
-.light-theme .pricing-card {
-    background: rgba(255, 255, 255, 0.95);
-    border-color: #e5e7eb;
+background: rgba(255, 255, 255, 0.95);
+border-color: #e5e7eb;
 }
 
 .pricing-card:hover {
@@ -174,8 +160,7 @@
     box-shadow: 0 20px 60px rgba(0, 255, 136, 0.15);
 }
 
-.light-theme .pricing-card:hover {
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
 }
 
 /* Featured (Pro) Card */
@@ -185,9 +170,8 @@
     transform: scale(1.05);
 }
 
-.light-theme .pricing-card.featured {
-    border-color: #10b981;
-    box-shadow: 0 12px 40px rgba(16, 185, 129, 0.2);
+border-color: #10b981;
+box-shadow: 0 12px 40px rgba(16, 185, 129, 0.2);
 }
 
 .pricing-card.featured:hover {
@@ -195,8 +179,7 @@
     box-shadow: 0 25px 70px rgba(0, 255, 136, 0.3);
 }
 
-.light-theme .pricing-card.featured:hover {
-    box-shadow: 0 25px 70px rgba(16, 185, 129, 0.3);
+box-shadow: 0 25px 70px rgba(16, 185, 129, 0.3);
 }
 
 /* Premium (Elite) Card */
@@ -204,8 +187,7 @@
     border-color: #a855f7;
 }
 
-.light-theme .pricing-card.premium {
-    border-color: #9333ea;
+border-color: #9333ea;
 }
 
 /* Current Tier Highlight */
@@ -214,9 +196,8 @@
     border-color: #00ff88;
 }
 
-.light-theme .pricing-card.current-tier {
-    background: rgba(16, 185, 129, 0.05);
-    border-color: #10b981;
+background: rgba(16, 185, 129, 0.05);
+border-color: #10b981;
 }
 
 /* Badges */
@@ -234,9 +215,8 @@
     box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
 }
 
-.light-theme .popular-badge {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: #ffffff;
+background: linear-gradient(135deg, #10b981, #059669);
+color: #ffffff;
 }
 
 .current-badge {
@@ -251,9 +231,8 @@
     font-weight: 700;
 }
 
-.light-theme .current-badge {
-    background: #10b981;
-    color: #ffffff;
+background: #10b981;
+color: #ffffff;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -267,8 +246,7 @@
     border-bottom: 1px solid #404040;
 }
 
-.light-theme .tier-header {
-    border-bottom-color: #e5e7eb;
+border-bottom-color: #e5e7eb;
 }
 
 .tier-icon {
@@ -283,8 +261,7 @@
     margin: 0 0 1rem 0;
 }
 
-.light-theme .tier-name {
-    color: #1f2937;
+color: #1f2937;
 }
 
 .tier-price {
@@ -298,8 +275,7 @@
     line-height: 1;
 }
 
-.light-theme .price-amount {
-    color: #10b981;
+color: #10b981;
 }
 
 .price-period {
@@ -308,8 +284,7 @@
     font-weight: 500;
 }
 
-.light-theme .price-period {
-    color: #6b7280;
+color: #6b7280;
 }
 
 .tier-description {
@@ -318,8 +293,7 @@
     margin: 0;
 }
 
-.light-theme .tier-description {
-    color: #6b7280;
+color: #6b7280;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -339,8 +313,7 @@
     font-size: 0.95rem;
 }
 
-.light-theme .feature-item {
-    color: #1f2937;
+color: #1f2937;
 }
 
 .feature-item.highlighted {
@@ -351,9 +324,8 @@
     border-top: 1px solid #404040;
 }
 
-.light-theme .feature-item.highlighted {
-    color: #10b981;
-    border-top-color: #e5e7eb;
+color: #10b981;
+border-top-color: #e5e7eb;
 }
 
 .feature-item.disabled {
@@ -361,8 +333,7 @@
     opacity: 0.6;
 }
 
-.light-theme .feature-item.disabled {
-    color: #9ca3af;
+color: #9ca3af;
 }
 
 .feature-icon {
@@ -403,9 +374,8 @@
     box-shadow: 0 8px 25px rgba(0, 255, 136, 0.3);
 }
 
-.light-theme .cta-btn.primary {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: #ffffff;
+background: linear-gradient(135deg, #10b981, #059669);
+color: #ffffff;
 }
 
 .cta-btn.primary:hover {
@@ -413,8 +383,7 @@
     box-shadow: 0 12px 35px rgba(0, 255, 136, 0.4);
 }
 
-.light-theme .cta-btn.primary:hover {
-    box-shadow: 0 12px 35px rgba(16, 185, 129, 0.4);
+box-shadow: 0 12px 35px rgba(16, 185, 129, 0.4);
 }
 
 .cta-btn.secondary {
@@ -423,21 +392,12 @@
     border: 2px solid #404040;
 }
 
-.light-theme .cta-btn.secondary {
-    background: rgba(0, 0, 0, 0.05);
-    color: #1f2937;
-    border-color: #d1d5db;
-}
 
 .cta-btn.secondary:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: #00ff88;
 }
 
-.light-theme .cta-btn.secondary:hover {
-    background: rgba(0, 0, 0, 0.08);
-    border-color: #10b981;
-}
 
 .cta-btn.current {
     background: rgba(100, 100, 100, 0.2);
@@ -457,18 +417,16 @@
     font-style: italic;
 }
 
-.light-theme .tier-note {
-    color: #6b7280;
-}
-
 /* ══════════════════════════════════════════════════════════════════════════════
    COMPARISON TABLE
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .comparison-section {
-    max-width: 1200px;
-    margin: 5rem auto 3rem;
-    padding: 0 2rem;
+    max-width: 800px !important;
+    margin: 5rem auto 3rem !important;
+    padding: 0 2rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .comparison-title {
@@ -482,27 +440,26 @@
     background-clip: text;
 }
 
-.light-theme .comparison-title {
-    background: linear-gradient(135deg, #10b981, #059669);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+background: linear-gradient(135deg, #10b981, #059669);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
 }
 
 .comparison-table-container {
     overflow-x: auto;
     border-radius: 16px;
     box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1);
+    max-width: 700px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .comparison-table {
     width: 100%;
     border-collapse: collapse;
     background: rgba(45, 45, 45, 0.9);
-}
-
-.light-theme .comparison-table {
-    background: rgba(255, 255, 255, 0.95);
 }
 
 .comparison-table th {
@@ -514,11 +471,6 @@
     border-bottom: 3px solid #00ff88;
 }
 
-.light-theme .comparison-table th {
-    background: #ffffff;
-    color: #1f2937;
-    border-bottom-color: #10b981;
-}
 
 .comparison-table th.feature-col {
     text-align: left;
@@ -529,17 +481,11 @@
     background: rgba(0, 255, 136, 0.2);
 }
 
-.light-theme .comparison-table th.featured-col {
-    background: rgba(16, 185, 129, 0.15);
-}
 
 .comparison-table th.premium-col {
     background: rgba(168, 85, 247, 0.2);
 }
 
-.light-theme .comparison-table th.premium-col {
-    background: rgba(147, 51, 234, 0.15);
-}
 
 .comparison-table td {
     padding: 1.25rem 1rem;
@@ -548,19 +494,11 @@
     color: #b0b0b0;
 }
 
-.light-theme .comparison-table td {
-    border-bottom-color: #e5e7eb;
-    color: #4b5563;
-}
 
 .comparison-table td.feature-name {
     text-align: left;
     font-weight: 600;
     color: #ffffff;
-}
-
-.light-theme .comparison-table td.feature-name {
-    color: #1f2937;
 }
 
 .comparison-table td.featured-cell {
@@ -569,20 +507,195 @@
     font-weight: 600;
 }
 
-.light-theme .comparison-table td.featured-cell {
-    background: rgba(16, 185, 129, 0.05);
-    color: #10b981;
-}
-
 .comparison-table td.premium-cell {
     background: rgba(168, 85, 247, 0.05);
     color: #a855f7;
     font-weight: 600;
 }
 
-.light-theme .comparison-table td.premium-cell {
-    background: rgba(147, 51, 234, 0.05);
-    color: #9333ea;
+/* ══════════════════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE DESIGN
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Mobile-first approach for comparison table */
+@media (max-width: 768px) {
+
+    /* AGGRESSIVE FIX: Prevent any element from causing horizontal scroll */
+    * {
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Prevent overscroll behavior on the entire page */
+    body {
+        overscroll-behavior: contain !important;
+        -webkit-overflow-scrolling: auto !important;
+    }
+
+    /* Fix heading spacing - ensure proper padding */
+    .comparison-section h2 {
+        padding: 0 1rem !important;
+        margin: 0 auto !important;
+        max-width: calc(100vw - 2rem) !important;
+        text-align: center !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+
+    /* Prevent page from scrolling horizontally */
+    body {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+        width: 100vw !important;
+    }
+
+    .pricing-page {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+    }
+
+    .comparison-section {
+        max-width: 100% !important;
+        margin: 3rem 1rem !important;
+        padding: 0 1rem !important;
+        overflow-x: hidden !important;
+        width: calc(100% - 2rem) !important;
+        box-sizing: border-box !important;
+    }
+
+    .comparison-table-container {
+        max-width: 100% !important;
+        margin: 0 !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        /* Modern scrollbar styling */
+        scrollbar-width: thin;
+        scrollbar-color: #00ff88 #2d2d2d;
+        /* Add subtle border to indicate scrollable area */
+        border: 1px solid rgba(0, 255, 136, 0.2);
+        border-radius: 12px;
+        /* Ensure container doesn't expand beyond viewport */
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+        /* AGGRESSIVE: Force container to stay within bounds */
+        position: relative !important;
+        left: 0 !important;
+        right: 0 !important;
+        /* Prevent overscroll/bounce behavior */
+        overscroll-behavior-x: contain !important;
+        overscroll-behavior-y: none !important;
+        /* Prevent momentum scrolling beyond content */
+        -webkit-overflow-scrolling: auto !important;
+        /* Snap scrolling to prevent partial content */
+        scroll-snap-type: x mandatory !important;
+        /* AGGRESSIVE: Lock scroll position to prevent overscroll */
+        scroll-behavior: auto !important;
+        /* Force scroll to stay within bounds */
+        scroll-padding: 0 !important;
+        scroll-margin: 0 !important;
+    }
+
+    /* Webkit scrollbar styling for better mobile experience */
+    .comparison-table-container::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .comparison-table-container::-webkit-scrollbar-track {
+        background: #2d2d2d;
+        border-radius: 4px;
+    }
+
+    .comparison-table-container::-webkit-scrollbar-thumb {
+        background: #00ff88;
+        border-radius: 4px;
+    }
+
+    .comparison-table-container::-webkit-scrollbar-thumb:hover {
+        background: #00cc6a;
+    }
+
+    .comparison-table {
+        min-width: 600px;
+        font-size: 0.9rem;
+        /* Ensure table doesn't break layout */
+        table-layout: fixed;
+        /* AGGRESSIVE: Force table to stay within container */
+        max-width: 100% !important;
+        width: 100% !important;
+        display: block !important;
+        overflow-x: auto !important;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+        padding: 0.75rem 0.5rem !important;
+        white-space: nowrap;
+        /* Prevent text wrapping in cells */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        /* Add scroll snap points for better UX */
+        scroll-snap-align: start !important;
+    }
+
+    /* Sticky first column for better mobile UX */
+    .comparison-table th:first-child,
+    .comparison-table td:first-child {
+        position: sticky;
+        left: 0;
+        background: #1a1a1a;
+        z-index: 10;
+        min-width: 120px;
+        max-width: 120px;
+        /* Add subtle shadow to indicate sticky column */
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Make feature names more readable on mobile */
+    .comparison-table td.feature-name {
+        font-size: 0.85rem;
+        line-height: 1.3;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    /* Stack pricing cards on mobile */
+    .pricing-container {
+        grid-template-columns: 1fr !important;
+        gap: 1.5rem !important;
+        max-width: 100% !important;
+        margin: 2rem 1rem !important;
+    }
+
+    .pricing-card {
+        margin: 0 !important;
+    }
+
+    /* Mobile FAQ improvements */
+    .faq-section {
+        max-width: 100% !important;
+        margin: 3rem 1rem !important;
+        padding: 0 !important;
+    }
+
+    .faq-grid {
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .faq-item {
+        margin-bottom: 1rem !important;
+        padding: 1rem !important;
+    }
+
+    .faq-question {
+        font-size: 1rem !important;
+    }
+
+    .faq-answer {
+        font-size: 0.9rem !important;
+    }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -590,9 +703,11 @@
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .faq-section {
-    max-width: 1200px;
-    margin: 5rem auto;
-    padding: 0 2rem;
+    max-width: 600px !important;
+    margin: 5rem auto !important;
+    padding: 0 2rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .faq-title {
@@ -606,17 +721,20 @@
     background-clip: text;
 }
 
-.light-theme .faq-title {
-    background: linear-gradient(135deg, #10b981, #059669);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+background: linear-gradient(135deg, #10b981, #059669);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
 }
 
 .faq-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 2rem;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    max-width: 500px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .faq-item {
@@ -628,9 +746,8 @@
     transition: all 0.3s ease;
 }
 
-.light-theme .faq-item {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: #e5e7eb;
+background: rgba(255, 255, 255, 0.9);
+border-color: #e5e7eb;
 }
 
 .faq-item:hover {
@@ -638,9 +755,8 @@
     box-shadow: 0 8px 25px rgba(0, 255, 136, 0.15);
 }
 
-.light-theme .faq-item:hover {
-    border-color: #10b981;
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
+border-color: #10b981;
+box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
 }
 
 .faq-question {
@@ -650,8 +766,7 @@
     margin: 0 0 1rem 0;
 }
 
-.light-theme .faq-question {
-    color: #10b981;
+color: #10b981;
 }
 
 .faq-answer {
@@ -661,8 +776,7 @@
     margin: 0;
 }
 
-.light-theme .faq-answer {
-    color: #4b5563;
+color: #4b5563;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -679,9 +793,8 @@
     border: 2px solid rgba(0, 255, 136, 0.2);
 }
 
-.light-theme .pricing-footer-cta {
-    background: rgba(16, 185, 129, 0.05);
-    border-color: rgba(16, 185, 129, 0.2);
+background: rgba(16, 185, 129, 0.05);
+border-color: rgba(16, 185, 129, 0.2);
 }
 
 .footer-cta-title {
@@ -694,11 +807,10 @@
     background-clip: text;
 }
 
-.light-theme .footer-cta-title {
-    background: linear-gradient(135deg, #10b981, #059669);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+background: linear-gradient(135deg, #10b981, #059669);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
 }
 
 .footer-cta-text {
@@ -707,8 +819,7 @@
     margin-bottom: 2rem;
 }
 
-.light-theme .footer-cta-text {
-    color: #6b7280;
+color: #6b7280;
 }
 
 .footer-cta-buttons {
@@ -716,6 +827,8 @@
     gap: 1rem;
     justify-content: center;
     flex-wrap: wrap;
+    max-width: 600px;
+    margin: 0 auto;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -776,4 +889,207 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   EXPERT FIX: Hard-stop narrowing + centering for comparison and FAQ blocks
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Hard-stop narrowing + centering for these blocks */
+.pricing-page .comparison-section,
+.pricing-page .faq-section {
+    max-width: 800px;
+    /* FAQ is visually okay at 700–800 too */
+    padding-left: 1rem;
+    padding-right: 1rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.pricing-page .comparison-table-container,
+.pricing-page .faq-grid {
+    max-width: 700px;
+    /* FAQ grid is 500 in your file; keep if you prefer */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* If a parent ever applies grid/flex stretching, prevent it */
+.pricing-page .comparison-section,
+.pricing-page .comparison-table-container,
+.pricing-page .faq-section,
+.pricing-page .faq-grid {
+    justify-self: center;
+    /* for grid parents */
+    align-self: start;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   EXPERT FIX: Beautiful Feature Comparison Table Styling
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* CSS Cache Busting - v7.7 */
+
+/* Make comparison table beautiful and consistent with dark theme */
+.comparison-table {
+    background: rgba(45, 45, 45, 0.95) !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    box-shadow: 0 8px 32px rgba(0, 255, 136, 0.15) !important;
+    border: 1px solid rgba(0, 255, 136, 0.2) !important;
+}
+
+.comparison-table th {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    padding: 1.5rem 1rem !important;
+    text-align: center !important;
+    border-bottom: 2px solid #00ff88 !important;
+    font-size: 1.1rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+.comparison-table th.feature-col {
+    text-align: left !important;
+    min-width: 250px !important;
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%) !important;
+}
+
+.comparison-table th.featured-col {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.3) 0%, rgba(0, 255, 136, 0.1) 100%) !important;
+    color: #00ff88 !important;
+}
+
+.comparison-table th.premium-col {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(168, 85, 247, 0.1) 100%) !important;
+    color: #a855f7 !important;
+}
+
+.comparison-table td {
+    padding: 1.25rem 1rem !important;
+    text-align: center !important;
+    border-bottom: 1px solid rgba(64, 64, 64, 0.5) !important;
+    color: #e0e0e0 !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+}
+
+.comparison-table td:hover {
+    background: rgba(0, 255, 136, 0.05) !important;
+    color: #ffffff !important;
+}
+
+.comparison-table td.feature-name {
+    text-align: left !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    background: rgba(45, 45, 45, 0.8) !important;
+}
+
+.comparison-table td.featured-cell {
+    background: rgba(0, 255, 136, 0.1) !important;
+    color: #00ff88 !important;
+    font-weight: 600 !important;
+}
+
+.comparison-table td.premium-cell {
+    background: rgba(168, 85, 247, 0.1) !important;
+    color: #a855f7 !important;
+    font-weight: 600 !important;
+}
+
+/* Checkmark and X styling */
+.comparison-table .checkmark {
+    color: #00ff88 !important;
+    font-size: 1.2rem !important;
+    font-weight: bold !important;
+}
+
+.comparison-table .cross {
+    color: #ff4757 !important;
+    font-size: 1.2rem !important;
+    font-weight: bold !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   EXPERT FIX: Beautiful FAQ Section Styling
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Make FAQ section beautiful with proper spacing */
+.faq-grid {
+    gap: 2rem !important;
+    /* Increased spacing between questions */
+}
+
+.faq-item {
+    background: rgba(45, 45, 45, 0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    border-radius: 16px !important;
+    padding: 2rem !important;
+    border: 1px solid rgba(0, 255, 136, 0.2) !important;
+    box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1) !important;
+    transition: all 0.3s ease !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.faq-item:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 12px 40px rgba(0, 255, 136, 0.2) !important;
+    border-color: rgba(0, 255, 136, 0.4) !important;
+}
+
+.faq-question {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    margin-bottom: 1rem !important;
+    line-height: 1.4 !important;
+}
+
+.faq-answer {
+    font-size: 1rem !important;
+    color: #b0b0b0 !important;
+    line-height: 1.6 !important;
+    margin: 0 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   EXPERT FIX: Footer CTA Section - Fix Stretched Layout
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Fix stretched "Ready to get started?" block */
+.pricing-footer-cta {
+    max-width: 800px !important;
+    margin: 5rem auto 3rem !important;
+    padding: 0 2rem !important;
+    text-align: center !important;
+}
+
+.footer-cta-title {
+    font-size: 2.5rem !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    margin-bottom: 1rem !important;
+    background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+}
+
+.footer-cta-text {
+    font-size: 1.2rem !important;
+    color: #b0b0b0 !important;
+    margin-bottom: 2rem !important;
+    line-height: 1.6 !important;
+}
+
+.footer-cta-buttons {
+    display: flex !important;
+    gap: 1rem !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    max-width: 600px !important;
+    margin: 0 auto !important;
 }

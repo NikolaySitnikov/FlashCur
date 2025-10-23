@@ -7,7 +7,7 @@
     <title>Binance USDT-Perpetual Pairs Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=7.8">
 </head>
 
 <body>
@@ -51,9 +51,28 @@
                     </div>
                     {% endif %}
 
-                    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
-                        <span id="themeIcon">🌙</span>
-                    </button>
+                    <!-- Clean Hamburger Menu -->
+                    <div class="nav-menu">
+                        <button id="navBtn" class="nav-btn">
+                            ☰
+                        </button>
+                        <div id="navDropdown" class="nav-dropdown">
+                            {% if current_user.is_authenticated %}
+                            <div class="nav-user">
+                                <div class="nav-email">{{ current_user.email }}</div>
+                                <div class="nav-tier">{{ current_user.tier_name }}</div>
+                            </div>
+                            <a href="{{ url_for('profile') }}" class="nav-item">⚙️ Profile</a>
+                            <a href="{{ url_for('pricing') }}" class="nav-item">💎 Pricing</a>
+                            <a href="{{ url_for('auth.logout') }}" class="nav-item">🚪 Logout</a>
+                            {% else %}
+                            <a href="{{ url_for('auth.login') }}" class="nav-item">🔑 Login</a>
+                            <a href="{{ url_for('auth.register') }}" class="nav-item">📝 Register</a>
+                            <a href="{{ url_for('pricing') }}" class="nav-item">💎 Pricing</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </header>
@@ -71,13 +90,34 @@
         </div>
         {% endif %}
 
+        <!-- Email Confirmation Banner (Pro Tier Step 2) -->
+        {% if current_user.is_authenticated and not current_user.email_confirmed %}
+        <div class="email-confirmation-banner">
+            <div class="confirmation-content">
+                <div class="confirmation-left">
+                    <span class="confirmation-icon">📧</span>
+                    <div class="confirmation-text">
+                        <strong>Verify your email address</strong>
+                        <p>Check your inbox for a confirmation link to unlock all features.</p>
+                    </div>
+                </div>
+                <button class="resend-btn" id="resendConfirmationBtn" onclick="resendConfirmation()">
+                    <span class="resend-icon">📬</span>
+                    <span class="resend-text">Resend Email</span>
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Main Content -->
         <div class="main-content">
             <!-- Desktop Layout -->
             <div class="desktop-layout">
                 <!-- Market Data Section -->
                 <div class="market-data">
-                    <h2 class="section-title">📈 Market Data</h2>
+                    <div class="section-header">
+                        <h2 class="section-title">📈 Market Data</h2>
+                    </div>
 
                     <!-- Loading Indicator -->
                     <div class="loading-container" id="loadingContainer">
@@ -99,6 +139,12 @@
                                     <th class="sortable" data-column="volume" onclick="handleSort('volume')">
                                         Volume<br>(24h, $) <span class="sort-indicator"></span>
                                     </th>
+                                    {% if current_user.is_authenticated and current_user.tier >= 1 %}
+                                    <th class="sortable pro-column" data-column="price_change_pct"
+                                        onclick="handleSort('price_change_pct')">
+                                        Change<br>(24h, %) <span class="sort-indicator"></span>
+                                    </th>
+                                    {% endif %}
                                     <th class="sortable" data-column="funding_rate"
                                         onclick="handleSort('funding_rate')">
                                         Funding Rate<br>(%) <span class="sort-indicator"></span>
@@ -106,6 +152,15 @@
                                     <th class="sortable" data-column="price" onclick="handleSort('price')">
                                         Price<br>(USDT) <span class="sort-indicator"></span>
                                     </th>
+                                    {% if current_user.is_authenticated and current_user.tier >= 1 %}
+                                    <th class="sortable pro-column" data-column="open_interest"
+                                        onclick="handleSort('open_interest')">
+                                        Open Interest<br>($) <span class="sort-indicator"></span>
+                                    </th>
+                                    <th class="pro-column" data-column="liquidation_risk">
+                                        Liq. Risk
+                                    </th>
+                                    {% endif %}
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -114,12 +169,6 @@
                         </table>
                     </div>
 
-                    <!-- Download Button -->
-                    <div class="download-section" id="downloadSection" style="display: none;">
-                        <button class="download-btn" onclick="downloadWatchlist()">
-                            📥 Download TradingView Watchlist
-                        </button>
-                    </div>
                 </div>
 
                 <!-- Alerts Sidebar -->
@@ -175,6 +224,12 @@
                                             <th class="sortable" data-column="volume" onclick="handleSort('volume')">
                                                 Volume<br>(24h, $) <span class="sort-indicator"></span>
                                             </th>
+                                            {% if current_user.is_authenticated and current_user.tier >= 1 %}
+                                            <th class="sortable pro-column" data-column="price_change_pct"
+                                                onclick="handleSort('price_change_pct')">
+                                                Change<br>(24h, %) <span class="sort-indicator"></span>
+                                            </th>
+                                            {% endif %}
                                             <th class="sortable" data-column="funding_rate"
                                                 onclick="handleSort('funding_rate')">
                                                 Funding Rate<br>(%) <span class="sort-indicator"></span>
@@ -182,6 +237,15 @@
                                             <th class="sortable" data-column="price" onclick="handleSort('price')">
                                                 Price<br>(USDT) <span class="sort-indicator"></span>
                                             </th>
+                                            {% if current_user.is_authenticated and current_user.tier >= 1 %}
+                                            <th class="sortable pro-column" data-column="open_interest"
+                                                onclick="handleSort('open_interest')">
+                                                Open Int.<br>($) <span class="sort-indicator"></span>
+                                            </th>
+                                            <th class="pro-column" data-column="liquidation_risk">
+                                                Liq. Risk
+                                            </th>
+                                            {% endif %}
                                         </tr>
                                     </thead>
                                     <tbody id="mobileTableBody">
@@ -190,12 +254,6 @@
                                 </table>
                             </div>
 
-                            <!-- Download Button -->
-                            <div class="download-section" id="mobileDownloadSection" style="display: none;">
-                                <button class="download-btn" onclick="downloadWatchlist()">
-                                    📥 Download TradingView Watchlist
-                                </button>
-                            </div>
                         </div>
                     </div>
 
@@ -211,6 +269,98 @@
             </div>
         </div>
     </div>
+
+    <!-- Export Data Section -->
+    <div class="download-section" id="downloadSection" style="display: none;">
+        <div class="download-header">
+            <h3 class="download-title">Export Data</h3>
+            <p class="download-description">Download your watchlist in various formats</p>
+        </div>
+        <div class="download-buttons">
+            <button class="download-btn primary" onclick="downloadWatchlist()">
+                <svg class="download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7,10 12,15 17,10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span class="download-text">
+                    <span class="download-label">TradingView Watchlist</span>
+                    <span class="download-format">.txt format</span>
+                </span>
+            </button>
+            {% if current_user.is_authenticated and current_user.tier >= 1 %}
+            <button class="download-btn secondary" onclick="downloadWatchlist('csv')">
+                <svg class="download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14,2 14,8 20,8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10,9 9,9 8,9" />
+                </svg>
+                <span class="download-text">
+                    <span class="download-label">CSV Export</span>
+                    <span class="download-format">Spreadsheet ready</span>
+                </span>
+            </button>
+            <button class="download-btn secondary" onclick="downloadWatchlist('json')">
+                <svg class="download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <line x1="9" y1="9" x2="15" y2="9" />
+                    <line x1="9" y1="13" x2="15" y2="13" />
+                    <line x1="9" y1="17" x2="13" y2="17" />
+                </svg>
+                <span class="download-text">
+                    <span class="download-label">JSON Export</span>
+                    <span class="download-format">Developer friendly</span>
+                </span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-main">
+                <div class="footer-brand">
+                    <div class="brand-logo">
+                        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                        <span class="brand-text">Binance Dashboard</span>
+                    </div>
+                    <p class="brand-tagline">Professional cryptocurrency market analysis and volume alerts</p>
+                </div>
+                <div class="footer-links">
+                    <div class="link-group">
+                        <h4 class="link-title">Features</h4>
+                        <ul class="link-list">
+                            <li><a href="#" class="footer-link">Market Data</a></li>
+                            <li><a href="#" class="footer-link">Volume Alerts</a></li>
+                            <li><a href="#" class="footer-link">Real-time Updates</a></li>
+                        </ul>
+                    </div>
+                    <div class="link-group">
+                        <h4 class="link-title">Export</h4>
+                        <ul class="link-list">
+                            <li><a href="#" class="footer-link">TradingView Watchlist</a></li>
+                            <li><a href="#" class="footer-link">CSV Export</a></li>
+                            <li><a href="#" class="footer-link">JSON Export</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <div class="footer-copyright">
+                    <span class="copyright-text">© 2025 Binance Dashboard. All rights reserved.</span>
+                    <span class="copyright-subtext">Data provided by Binance API</span>
+                </div>
+                <div class="footer-version">
+                    <span class="version-text">v2.1.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>

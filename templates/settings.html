@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Binance Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=7.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}?v=7.7">
+</head>
+
+<body>
+    <div class="settings-page">
+        <!-- Header -->
+        <header class="settings-header">
+            <div class="settings-header-content">
+                <a href="{{ url_for('index') }}" class="back-link">
+                    <span class="back-icon">←</span>
+                    <span class="back-text">Back to Dashboard</span>
+                </a>
+
+                <div class="settings-title">
+                    <h1>Settings</h1>
+                    <p class="settings-subtitle">Customize your Pro tier experience</p>
+                </div>
+
+                <!-- Mobile Navigation Menu -->
+                <div class="mobile-nav mobile-only">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()">
+                        <span class="menu-icon">☰</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mobile Menu Overlay -->
+        <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="toggleMobileMenu()"></div>
+        <div class="mobile-menu" id="mobileMenu">
+            <div class="mobile-menu-header">
+                <h3>Menu</h3>
+                <button class="mobile-menu-close" onclick="toggleMobileMenu()">×</button>
+            </div>
+            <div class="mobile-menu-content">
+                <a href="{{ url_for('index') }}" class="mobile-menu-link">
+                    <span class="menu-icon">📊</span>
+                    Dashboard
+                </a>
+                <a href="{{ url_for('pricing') }}" class="mobile-menu-link">
+                    <span class="menu-icon">💎</span>
+                    Pricing
+                </a>
+                <a href="{{ url_for('profile') }}" class="mobile-menu-link">
+                    <span class="menu-icon">👤</span>
+                    Profile
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="mobile-menu-link">
+                    <span class="menu-icon">🚪</span>
+                    Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Settings Content -->
+        <main class="settings-content">
+            <div class="settings-container">
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        <span class="flash-icon">
+                            {% if category == 'success' %}✅{% elif category == 'error' %}❌{% elif category == 'warning'
+                            %}⚠️{% else %}ℹ️{% endif %}
+                        </span>
+                        <span class="flash-text">{{ message }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- Settings Tabs -->
+                <div class="settings-tabs">
+                    <button class="tab-btn active" data-tab="alerts">
+                        <span class="tab-icon">🔔</span>
+                        <span class="tab-text">Alerts</span>
+                    </button>
+                    <button class="tab-btn" data-tab="display">
+                        <span class="tab-icon">🎨</span>
+                        <span class="tab-text">Display</span>
+                    </button>
+                    <button class="tab-btn" data-tab="export">
+                        <span class="tab-icon">📤</span>
+                        <span class="tab-text">Export</span>
+                    </button>
+                    <button class="tab-btn" data-tab="notifications">
+                        <span class="tab-icon">📧</span>
+                        <span class="tab-text">Notifications</span>
+                    </button>
+                    <button class="tab-btn" data-tab="advanced">
+                        <span class="tab-icon">⚙️</span>
+                        <span class="tab-text">Advanced</span>
+                    </button>
+                </div>
+
+                <!-- Alert Settings Tab -->
+                <div class="settings-tab-content active" id="alerts-tab">
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <h2>Alert Settings</h2>
+                            <p>Configure volume spike alerts and notification preferences</p>
+                        </div>
+
+                        <form method="POST" action="{{ url_for('settings.update_settings') }}" class="settings-form">
+                            {{ alert_form.csrf_token }}
+                            <input type="hidden" name="form_type" value="alert">
+
+                            <div class="form-group">
+                                <label for="volume_multiple">Volume Spike Multiple</label>
+                                <input type="number" id="volume_multiple" name="volume_multiple"
+                                    value="{{ alert_form.volume_multiple.data }}" min="1.0" max="10.0" step="0.1"
+                                    class="form-input">
+                                <small class="form-help">Alert when volume is X times the average (1.0-10.0)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="min_quote_volume">Minimum Quote Volume ($)</label>
+                                <input type="number" id="min_quote_volume" name="min_quote_volume"
+                                    value="{{ alert_form.min_quote_volume.data }}" min="100000" max="10000000"
+                                    class="form-input">
+                                <small class="form-help">Only alert for assets with volume above this amount</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="email_alerts" {% if alert_form.email_alerts.data
+                                        %}checked{% endif %} class="form-checkbox">
+                                    <span class="checkbox-text">Email Notifications</span>
+                                </label>
+                                <small class="form-help">Receive email alerts for volume spikes</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="alert_history_limit">Alert History Limit</label>
+                                <input type="number" id="alert_history_limit" name="alert_history_limit"
+                                    value="{{ alert_form.alert_history_limit.data }}" min="10" max="100"
+                                    class="form-input">
+                                <small class="form-help">Number of alerts to keep in history (10-100)</small>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="btn-icon">💾</span>
+                                    Save Alert Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Display Settings Tab -->
+                <div class="settings-tab-content" id="display-tab">
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <h2>Display Settings</h2>
+                            <p>Customize your dashboard appearance and behavior</p>
+                        </div>
+
+                        <form method="POST" action="{{ url_for('settings.update_settings') }}" class="settings-form">
+                            {{ display_form.csrf_token }}
+                            <input type="hidden" name="form_type" value="display">
+
+                            <div class="form-group">
+                                <label for="auto_refresh_interval">Auto Refresh Interval (minutes)</label>
+                                <input type="number" id="auto_refresh_interval" name="auto_refresh_interval"
+                                    value="{{ display_form.auto_refresh_interval.data }}" min="1" max="30"
+                                    class="form-input">
+                                <small class="form-help">How often to refresh data automatically (1-30 minutes)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="show_ads" {% if display_form.show_ads.data %}checked{%
+                                        endif %} class="form-checkbox">
+                                    <span class="checkbox-text">Show Advertisements</span>
+                                </label>
+                                <small class="form-help">Display promotional content (Pro users can disable)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="show_price_change" {% if
+                                        display_form.show_price_change.data %}checked{% endif %} class="form-checkbox">
+                                    <span class="checkbox-text">Show 24h Price Change</span>
+                                </label>
+                                <small class="form-help">Display 24-hour price change percentage</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="show_open_interest" {% if
+                                        display_form.show_open_interest.data %}checked{% endif %} class="form-checkbox">
+                                    <span class="checkbox-text">Show Open Interest</span>
+                                </label>
+                                <small class="form-help">Display open interest data</small>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="btn-icon">💾</span>
+                                    Save Display Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Export Settings Tab -->
+                <div class="settings-tab-content" id="export-tab">
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <h2>Export Settings</h2>
+                            <p>Configure data export preferences and API access</p>
+                        </div>
+
+                        <form method="POST" action="{{ url_for('settings.update_settings') }}" class="settings-form">
+                            {{ export_form.csrf_token }}
+                            <input type="hidden" name="form_type" value="export">
+
+                            <div class="form-group">
+                                <label for="default_export_format">Default Export Format</label>
+                                <select id="default_export_format" name="default_export_format" class="form-select">
+                                    <option value="txt" {% if export_form.default_export_format.data=='txt' %}selected{%
+                                        endif %}>Text (.txt)</option>
+                                    <option value="csv" {% if export_form.default_export_format.data=='csv' %}selected{%
+                                        endif %}>CSV (.csv)</option>
+                                    <option value="json" {% if export_form.default_export_format.data=='json'
+                                        %}selected{% endif %}>JSON (.json)</option>
+                                </select>
+                                <small class="form-help">Default format for watchlist exports</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="max_export_assets">Maximum Export Assets</label>
+                                <input type="number" id="max_export_assets" name="max_export_assets"
+                                    value="{{ export_form.max_export_assets.data }}" min="50" max="1000"
+                                    class="form-input">
+                                <small class="form-help">Maximum number of assets to include in exports</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="enable_api_access" {% if
+                                        export_form.enable_api_access.data %}checked{% endif %} class="form-checkbox">
+                                    <span class="checkbox-text">Enable API Access</span>
+                                </label>
+                                <small class="form-help">Allow programmatic access to your data (Elite tier
+                                    feature)</small>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="btn-icon">💾</span>
+                                    Save Export Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Notification Settings Tab -->
+                <div class="settings-tab-content" id="notifications-tab">
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <h2>Notification Settings</h2>
+                            <p>Configure how and when you receive notifications</p>
+                        </div>
+
+                        <form method="POST" action="{{ url_for('settings.update_settings') }}" class="settings-form">
+                            {{ notification_form.csrf_token }}
+                            <input type="hidden" name="form_type" value="notification">
+
+                            <div class="form-group">
+                                <label for="email_frequency">Email Alert Frequency</label>
+                                <select id="email_frequency" name="email_frequency" class="form-select">
+                                    <option value="immediate" {% if notification_form.email_frequency.data=='immediate'
+                                        %}selected{% endif %}>Immediate</option>
+                                    <option value="hourly" {% if notification_form.email_frequency.data=='hourly'
+                                        %}selected{% endif %}>Hourly Digest</option>
+                                    <option value="daily" {% if notification_form.email_frequency.data=='daily'
+                                        %}selected{% endif %}>Daily Digest</option>
+                                </select>
+                                <small class="form-help">How often to receive email notifications</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="volume_spike_alerts" {% if
+                                        notification_form.volume_spike_alerts.data %}checked{% endif %}
+                                        class="form-checkbox">
+                                    <span class="checkbox-text">Volume Spike Alerts</span>
+                                </label>
+                                <small class="form-help">Get notified of unusual volume activity</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="funding_rate_alerts" {% if
+                                        notification_form.funding_rate_alerts.data %}checked{% endif %}
+                                        class="form-checkbox">
+                                    <span class="checkbox-text">Funding Rate Alerts</span>
+                                </label>
+                                <small class="form-help">Get notified of extreme funding rates</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="quiet_hours_enabled" {% if
+                                        notification_form.quiet_hours_enabled.data %}checked{% endif %}
+                                        class="form-checkbox">
+                                    <span class="checkbox-text">Enable Quiet Hours</span>
+                                </label>
+                                <small class="form-help">Disable notifications during specified hours</small>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="quiet_start_hour">Quiet Hours Start</label>
+                                    <input type="number" id="quiet_start_hour" name="quiet_start_hour"
+                                        value="{{ notification_form.quiet_start_hour.data }}" min="0" max="23"
+                                        class="form-input">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="quiet_end_hour">Quiet Hours End</label>
+                                    <input type="number" id="quiet_end_hour" name="quiet_end_hour"
+                                        value="{{ notification_form.quiet_end_hour.data }}" min="0" max="23"
+                                        class="form-input">
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="btn-icon">💾</span>
+                                    Save Notification Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Advanced Settings Tab -->
+                <div class="settings-tab-content" id="advanced-tab">
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <h2>Advanced Settings</h2>
+                            <p>Configure advanced Pro tier features and performance options</p>
+                        </div>
+
+                        <form method="POST" action="{{ url_for('settings.update_settings') }}" class="settings-form">
+                            {{ advanced_form.csrf_token }}
+                            <input type="hidden" name="form_type" value="advanced">
+
+                            <div class="form-group">
+                                <label for="custom_filters">Custom Filters (JSON)</label>
+                                <textarea id="custom_filters" name="custom_filters" class="form-textarea" rows="4"
+                                    placeholder='{"min_funding_rate": -0.01, "max_funding_rate": 0.01}'>{{ advanced_form.custom_filters.data }}</textarea>
+                                <small class="form-help">Advanced filtering options in JSON format</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="data_retention_days">Data Retention (days)</label>
+                                <input type="number" id="data_retention_days" name="data_retention_days"
+                                    value="{{ advanced_form.data_retention_days.data }}" min="7" max="365"
+                                    class="form-input">
+                                <small class="form-help">How long to keep historical data (7-365 days)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="max_concurrent_requests">Max Concurrent API Requests</label>
+                                <input type="number" id="max_concurrent_requests" name="max_concurrent_requests"
+                                    value="{{ advanced_form.max_concurrent_requests.data }}" min="1" max="10"
+                                    class="form-input">
+                                <small class="form-help">Maximum simultaneous API requests (1-10)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="debug_mode" {% if advanced_form.debug_mode.data
+                                        %}checked{% endif %} class="form-checkbox">
+                                    <span class="checkbox-text">Debug Mode</span>
+                                </label>
+                                <small class="form-help">Enable detailed logging and error reporting</small>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="btn-icon">💾</span>
+                                    Save Advanced Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function () {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.settings-tab-content');
+
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetTab = btn.getAttribute('data-tab');
+
+                    // Remove active class from all tabs and contents
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+
+                    // Add active class to clicked tab and corresponding content
+                    btn.classList.add('active');
+                    document.getElementById(targetTab + '-tab').classList.add('active');
+                });
+            });
+        });
+
+        // Mobile menu functionality
+        function toggleMobileMenu() {
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const menu = document.getElementById('mobileMenu');
+
+            overlay.classList.toggle('active');
+            menu.classList.toggle('active');
+        }
+
+        // Auto-hide flash messages
+        setTimeout(() => {
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(msg => {
+                msg.style.opacity = '0';
+                setTimeout(() => msg.remove(), 300);
+            });
+        }, 5000);
+    </script>
+</body>
+
+</html>

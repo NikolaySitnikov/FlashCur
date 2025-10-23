@@ -1,4 +1,5 @@
-/* Error Pages Styling - Matches Dashboard Dark/Light Theme */
+/* CSS Cache Busting - v7.7 */
+/* Error Pages Styling - Dark Theme Only */
 
 /* ══════════════════════════════════════════════════════════════════════════════
    ERROR CONTAINER
@@ -11,13 +12,8 @@
     align-items: center;
     justify-content: center;
     padding: 2rem;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
     position: relative;
-}
-
-.error-theme-toggle {
-    position: absolute;
-    top: 2rem;
-    right: 2rem;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -85,22 +81,8 @@
     line-height: 1;
 }
 
-.light-theme .error-code {
-    background: linear-gradient(135deg, #10b981, #059669);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
 .error-code.error-500 {
     background: linear-gradient(135deg, #ff4757, #ff3838);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.light-theme .error-code.error-500 {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -113,19 +95,11 @@
     margin: 0 0 1rem 0;
 }
 
-.light-theme .error-title {
-    color: #1f2937;
-}
-
 .error-message {
     font-size: 1.2rem;
     color: #b0b0b0;
     margin: 0 0 3rem 0;
     line-height: 1.6;
-}
-
-.light-theme .error-message {
-    color: #6b7280;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -151,26 +125,39 @@
     text-decoration: none;
     border-radius: 12px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    cursor: pointer;
 }
 
 .error-btn.primary {
-    background: linear-gradient(135deg, #00ff88, #00cc6a);
-    color: #1a1a1a;
-    box-shadow: 0 8px 25px rgba(0, 255, 136, 0.3);
+    position: relative;
+    background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+    color: #0a0a0a;
+    box-shadow: 0 10px 30px rgba(0, 255, 136, 0.35),
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    overflow: hidden;
 }
 
-.light-theme .error-btn.primary {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: #ffffff;
+.error-btn.primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.6s ease;
+}
+
+.error-btn.primary:hover::before {
+    left: 100%;
 }
 
 .error-btn.primary:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(0, 255, 136, 0.4);
-}
-
-.light-theme .error-btn.primary:hover {
-    box-shadow: 0 12px 35px rgba(16, 185, 129, 0.4);
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 16px 40px rgba(0, 255, 136, 0.45),
+        0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 .error-btn.secondary {
@@ -179,20 +166,9 @@
     border: 2px solid #404040;
 }
 
-.light-theme .error-btn.secondary {
-    background: rgba(0, 0, 0, 0.05);
-    color: #1f2937;
-    border-color: #d1d5db;
-}
-
 .error-btn.secondary:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: #00ff88;
-}
-
-.light-theme .error-btn.secondary:hover {
-    background: rgba(0, 0, 0, 0.08);
-    border-color: #10b981;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -205,10 +181,6 @@
     margin: 0;
 }
 
-.light-theme .error-help {
-    color: #6b7280;
-}
-
 .help-link {
     color: #00ff88;
     font-weight: 700;
@@ -216,17 +188,9 @@
     transition: color 0.3s ease;
 }
 
-.light-theme .help-link {
-    color: #10b981;
-}
-
 .help-link:hover {
     color: #00cc6a;
     text-decoration: underline;
-}
-
-.light-theme .help-link:hover {
-    color: #059669;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -234,6 +198,10 @@
    ══════════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
+    .error-container {
+        padding: 1rem;
+    }
+
     .error-code {
         font-size: 6rem;
     }

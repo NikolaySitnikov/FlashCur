@@ -8,6 +8,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, create_default_alert_preferences, get_user_by_email
+from datetime import datetime, timezone
 import config
 import logging
 
@@ -71,7 +72,6 @@ def register():
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
-        theme = request.form.get('theme', 'dark')
 
         # Validation
         errors = []
@@ -97,15 +97,16 @@ def register():
         if errors:
             for error in errors:
                 flash(error, 'error')
-            return render_template('register.html', email=email, theme=theme)
+            return render_template('register.html', email=email)
 
         try:
             # Create new user (default to Free tier)
+            # New users start with email_confirmed=False (will be confirmed via email)
             new_user = User(
                 email=email,
                 tier=config.TIERS['free'],
                 is_active=True,
-                theme_preference=theme
+                email_confirmed=False  # Require email confirmation for new users
             )
             new_user.set_password(password)
 
@@ -120,21 +121,65 @@ def register():
 
             # Log successful registration
             logger.info(
-                f"✅ New user registered: {email} (Tier: Free, Theme: {theme})")
+                f"✅ New user registered: {email} (Tier: Free)")
             current_app.logger.info(f"New registration: {email}")
+
+            # Send confirmation email
+            from email_utils import send_confirmation_email, is_email_configured
+            from flask_mail import Mail
+
+            # Check if email is configured
+            if is_email_configured():
+                try:
+                    mail = Mail(current_app)
+                    # Use request host for dynamic IP support (works on any network)
+                    base_url = f"http://{request.host}"
+                    success, error = send_confirmation_email(
+                        new_user, mail, base_url)
+
+                    if success:
+                        logger.info(f"📧 Confirmation email sent to {email}")
+                        flash(
+                            f'🎉 Account created! Check your email ({email}) to confirm your account.',
+                            'success'
+                        )
+                    else:
+                        logger.warning(
+                            f"⚠️ Failed to send confirmation email to {email}: {error}")
+                        flash(
+                            f'✅ Account created, but we couldn\'t send the confirmation email. '
+                            f'You can still log in, but email features may be limited.',
+                            'warning'
+                        )
+                except Exception as email_error:
+                    logger.error(
+                        f"❌ Error sending confirmation email: {str(email_error)}")
+                    flash(
+                        f'✅ Account created! Email confirmation failed, but you can still log in.',
+                        'warning'
+                    )
+            else:
+                # Email not configured (development mode)
+                logger.warning(
+                    f"⚠️ Email not configured - skipping confirmation email for {email}")
+                # Auto-confirm in development if email is not configured
+                new_user.email_confirmed = True
+                new_user.email_confirmed_at = datetime.now(timezone.utc)
+                db.session.commit()
+                flash(
+                    f'🎉 Welcome to Binance Dashboard! Your Free tier account has been created.',
+                    'success'
+                )
 
             # Auto-login after registration
             login_user(new_user, remember=True)
-
-            flash(
-                f'🎉 Welcome to Binance Dashboard! Your Free tier account has been created.', 'success')
             return redirect(url_for('index'))
 
         except Exception as e:
             db.session.rollback()
             logger.error(f"❌ Registration failed for {email}: {str(e)}")
             flash(f'❌ Registration failed: {str(e)}', 'error')
-            return render_template('register.html', email=email, theme=theme)
+            return render_template('register.html', email=email)
 
     # GET request - show registration form
     return render_template('register.html')
@@ -278,3 +323,122 @@ def api_check_auth():
         'authenticated': current_user.is_authenticated,
         'tier': current_user.tier if current_user.is_authenticated else 0
     })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EMAIL CONFIRMATION ROUTES (Pro Tier Step 2)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@auth_bp.route('/confirm/<token>')
+def confirm_email(token):
+    """
+    Email confirmation endpoint.
+    Verifies token and confirms user's email address.
+
+    Args:
+        token: URL-safe confirmation token
+
+    Returns:
+        Redirect to login or dashboard with flash message
+    """
+    from email_utils import confirm_token
+
+    # Verify token and get email
+    email = confirm_token(token)
+
+    if email is None:
+        flash('❌ The confirmation link is invalid or has expired (1 hour limit).', 'error')
+        return redirect(url_for('auth.login'))
+
+    # Find user
+    user = get_user_by_email(email)
+
+    if not user:
+        flash('❌ User not found. Please register again.', 'error')
+        return redirect(url_for('auth.register'))
+
+    # Check if already confirmed
+    if user.email_confirmed:
+        flash('✅ Email already confirmed! You can log in.', 'info')
+        return redirect(url_for('auth.login'))
+
+    # Confirm email
+    try:
+        user.email_confirmed = True
+        user.email_confirmed_at = datetime.now(timezone.utc)
+        db.session.commit()
+
+        logger.info(f"✅ Email confirmed for user: {email}")
+
+        flash(
+            '🎉 Email confirmed successfully! Your account is now active.',
+            'success'
+        )
+
+        # If user is not logged in, redirect to login
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+
+        # If already logged in, redirect to dashboard
+        return redirect(url_for('index'))
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"❌ Error confirming email for {email}: {str(e)}")
+        flash(f'❌ Error confirming email: {str(e)}', 'error')
+        return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/resend-confirmation', methods=['POST'])
+@login_required
+def resend_confirmation():
+    """
+    Resend confirmation email to current user.
+    Only works if user is logged in but email not confirmed.
+
+    Returns:
+        JSON response with success status
+    """
+    # Log at the very start to confirm request is received
+    logger.info(
+        f"📧 RESEND EMAIL REQUEST received for user: {current_user.email}")
+
+    from email_utils import send_confirmation_email
+
+    # Check if already confirmed
+    if current_user.email_confirmed:
+        return jsonify({
+            'success': False,
+            'message': 'Email already confirmed!'
+        }), 400
+
+    try:
+        # Get mail instance from current_app
+        from flask_mail import Mail
+        mail = Mail(current_app)
+
+        # Use request host for dynamic IP support (works on any network)
+        base_url = f"http://{request.host}"
+        success, error = send_confirmation_email(current_user, mail, base_url)
+
+        if success:
+            logger.info(f"📧 Resent confirmation email to {current_user.email}")
+            return jsonify({
+                'success': True,
+                'message': 'Confirmation email sent! Check your inbox.'
+            }), 200
+        else:
+            logger.error(
+                f"❌ Failed to resend confirmation to {current_user.email}: {error}")
+            return jsonify({
+                'success': False,
+                'message': f'Failed to send email: {error}'
+            }), 500
+
+    except Exception as e:
+        logger.error(
+            f"❌ Error in resend_confirmation for {current_user.email}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500

@@ -1,0 +1,386 @@
+/* Modern Design System - Base Variables and Utilities */
+/* CSS Cache Busting - v8.0 - Modernized 2025 */
+
+:root {
+    /* Modern Color Palette */
+    --color-primary: #00ff88;
+    --color-primary-dark: #00cc6a;
+    --color-primary-light: #33ffaa;
+
+    --color-bg-primary: #0a0a0a;
+    --color-bg-secondary: #1a1a1a;
+    --color-bg-tertiary: #2d2d2d;
+    --color-bg-elevated: #2a2a2a;
+
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #e0e0e0;
+    --color-text-muted: #b0b0b0;
+    --color-text-disabled: #888888;
+
+    --color-accent-blue: #3b82f6;
+    --color-accent-purple: #a855f7;
+    --color-accent-red: #ff4757;
+
+    --color-border: #404040;
+    --color-border-light: #505050;
+
+    /* Modern Spacing System (8px base) */
+    --space-xs: 0.5rem;
+    /* 8px */
+    --space-sm: 1rem;
+    /* 16px */
+    --space-md: 1.5rem;
+    /* 24px */
+    --space-lg: 2rem;
+    /* 32px */
+    --space-xl: 3rem;
+    /* 48px */
+    --space-2xl: 4rem;
+    /* 64px */
+    --space-3xl: 6rem;
+    /* 96px */
+
+    /* Modern Typography Scale */
+    --font-xs: 0.75rem;
+    /* 12px */
+    --font-sm: 0.875rem;
+    /* 14px */
+    --font-base: 1rem;
+    /* 16px */
+    --font-md: 1.125rem;
+    /* 18px */
+    --font-lg: 1.25rem;
+    /* 20px */
+    --font-xl: 1.5rem;
+    /* 24px */
+    --font-2xl: 2rem;
+    /* 32px */
+    --font-3xl: 2.5rem;
+    /* 40px */
+    --font-4xl: 3rem;
+    /* 48px */
+    --font-5xl: 4rem;
+    /* 64px */
+
+    /* Modern Shadows */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.25);
+    --shadow-2xl: 0 20px 40px rgba(0, 0, 0, 0.3);
+    --shadow-glow: 0 0 20px rgba(0, 255, 136, 0.3);
+    --shadow-glow-strong: 0 0 40px rgba(0, 255, 136, 0.5);
+
+    /* Modern Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-2xl: 32px;
+    --radius-full: 9999px;
+
+    /* Modern Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: 600ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    /* Modern Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-bg-strong: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-blur: blur(20px);
+
+    /* Z-index Scale */
+    --z-base: 1;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal: 400;
+    --z-popover: 500;
+    --z-tooltip: 600;
+}
+
+/* Modern Utility Classes */
+
+/* Glassmorphism Card */
+.glass-card {
+    background: var(--glass-bg-strong);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl), var(--shadow-glow);
+}
+
+/* Gradient Text */
+.gradient-text {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.gradient-text-blue {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.gradient-text-purple {
+    background: linear-gradient(135deg, #a855f7, #9333ea);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Modern Buttons */
+.btn-modern {
+    position: relative;
+    overflow: hidden;
+    transition: all var(--transition-base);
+}
+
+.btn-modern::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width var(--transition-slow), height var(--transition-slow);
+}
+
+.btn-modern:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+/* Smooth Entrance Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(0, 255, 136, 0.6);
+    }
+}
+
+/* Animation Classes */
+.animate-fade-in-up {
+    animation: fadeInUp 0.6s var(--transition-base) both;
+}
+
+.animate-fade-in-down {
+    animation: fadeInDown 0.6s var(--transition-base) both;
+}
+
+.animate-fade-in-left {
+    animation: fadeInLeft 0.6s var(--transition-base) both;
+}
+
+.animate-fade-in-right {
+    animation: fadeInRight 0.6s var(--transition-base) both;
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.6s var(--transition-base) both;
+}
+
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+.animate-glow {
+    animation: glow 2s ease-in-out infinite;
+}
+
+/* Stagger animations */
+.stagger-1 {
+    animation-delay: 0.1s;
+}
+
+.stagger-2 {
+    animation-delay: 0.2s;
+}
+
+.stagger-3 {
+    animation-delay: 0.3s;
+}
+
+.stagger-4 {
+    animation-delay: 0.4s;
+}
+
+.stagger-5 {
+    animation-delay: 0.5s;
+}
+
+/* Modern Hover Effects */
+.hover-lift {
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-2xl);
+}
+
+.hover-glow {
+    transition: box-shadow var(--transition-base);
+}
+
+.hover-glow:hover {
+    box-shadow: var(--shadow-glow-strong);
+}
+
+/* Modern Focus States */
+.focus-ring:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.3);
+}
+
+/* Skeleton Loading */
+@keyframes skeleton {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.skeleton {
+    background: linear-gradient(90deg,
+            var(--color-bg-tertiary) 0%,
+            var(--color-bg-elevated) 50%,
+            var(--color-bg-tertiary) 100%);
+    background-size: 200% 100%;
+    animation: skeleton 1.5s ease-in-out infinite;
+    border-radius: var(--radius-md);
+}
+
+/* Modern Scrollbar */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+}
+
+/* Modern Selection */
+::selection {
+    background: var(--color-primary);
+    color: var(--color-bg-primary);
+}
+
+::-moz-selection {
+    background: var(--color-primary);
+    color: var(--color-bg-primary);
+}

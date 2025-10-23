@@ -1,0 +1,67 @@
+===================================================================================
+EMAIL BUTTON DEBUGGING INFORMATION
+===================================================================================
+
+RENDERED BUTTON HTML (minified, single line):
+------------------------------------------------------------------------------------
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: auto; margin: 0 auto;"><tr><td role="presentation" style="font-family: Arial, Helvetica, sans-serif; font-size: 16px; vertical-align: top; background-color: #00cc6a; border-radius: 8px; text-align: center; border: none;"><a href="{{ confirmation_url }}" target="_blank" style="display: inline-block; color: #1a1a1a; background-color: #00cc6a; border: solid 1px #00cc6a; border-radius: 8px; box-sizing: border-box; cursor: pointer; text-decoration: none; font-size: 16px; font-weight: 700; margin: 0; padding: 16px 32px; border-color: #00cc6a; min-width: 200px;">Confirm Email Address</a></td></tr></table>
+------------------------------------------------------------------------------------
+
+EXAMPLE CONFIRMATION URL:
+http://localhost:5000/confirm/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+URL LENGTH: ~134 characters (well within Gmail's limit of 2000)
+
+STRUCTURE ANALYSIS:
+✓ Bulletproof button pattern (nested tables)
+✓ Single line (no newlines in critical sections)
+✓ MSO compatibility (mso-table-lspace/rspace)
+✓ Target="_blank" for mobile WebView
+✓ Min-width: 200px (44+ touch target)
+✓ Emoji outside <a> tag
+✓ Proper role="presentation" attributes
+✓ Border on both <td> and <a> for max compatibility
+
+CSS PROPERTIES ON <a> TAG:
+- display: inline-block
+- color: #1a1a1a (dark text)
+- background-color: #00cc6a (green button)
+- border: solid 1px #00cc6a
+- border-radius: 8px
+- box-sizing: border-box
+- cursor: pointer
+- text-decoration: none
+- font-size: 16px
+- font-weight: 700
+- margin: 0
+- padding: 16px 32px (generous touch target)
+- min-width: 200px
+
+GMAIL MOBILE APP COMPATIBILITY CHECKLIST:
+✓ No complex CSS that Gmail strips
+✓ Table-based layout (not div-based)
+✓ Inline styles only
+✓ No external CSS dependencies
+✓ No JavaScript
+✓ No form elements
+✓ No iframes
+✓ URL is properly formatted (no spaces/newlines)
+✓ Link text is plain text (no nested HTML)
+✓ Target="_blank" for external link handling
+
+POTENTIAL REMAINING ISSUES:
+? Gmail app may still strip certain CSS properties on mobile
+? Android Gmail app has known bugs with CSS buttons
+? May need to test with actual SendGrid delivery (not just HTML preview)
+
+NEXT DEBUGGING STEPS IF STILL NOT WORKING:
+1. Check "Show Original" in Gmail to see if SendGrid is modifying HTML
+2. Test in Gmail web interface (desktop) vs. mobile app
+3. Test on both iOS and Android Gmail apps
+4. Check if URL is being wrapped/modified by Gmail's link scanner
+5. Try sending to a different email provider (Outlook, Yahoo) to isolate issue
+6. Consider using VML buttons for Outlook/MSO clients (industry fallback)
+
+FILES FOR YOUR EXPERT:
+- RENDERED_EMAIL_FOR_DEBUGGING.html (full rendered email to test locally)
+- This file (EMAIL_DEBUG_INFO.txt) with technical details
