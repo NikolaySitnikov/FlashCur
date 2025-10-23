@@ -32,6 +32,15 @@ eth-account>=0.10.0
 # Token Generation (for email confirmation)
 itsdangerous>=2.1.0
 
+# Production Server
+gunicorn>=21.2.0
+
+# Database (for production)
+psycopg2-binary>=2.9.7
+
+# CORS Support
+Flask-CORS>=4.0.0
+
 # Future enhancements (Elite tier)
 # twilio>=8.0.0  # SMS alerts for Elite tier
 # Flask-SocketIO>=5.3.0  # Real-time websocket updates
