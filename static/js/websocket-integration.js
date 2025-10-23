@@ -45,10 +45,19 @@ class WebSocketIntegration {
                 console.log('🎨 Elite tier update triggered');
                 this.updateDashboard();
             } else {
-                // Free/Pro tier: force update when we have real data (not just connection state)
+                // Free/Pro tier: force update when we have COMPLETE data (both ticker and funding rates)
                 if (state.lastUpdate && state.bySymbol && Object.keys(state.bySymbol).length > 0) {
-                    console.log('🎨 Free/Pro tier - forcing update with real data');
-                    this.updateDashboard();
+                    // Check if we have funding rate data (not just ticker data)
+                    const hasFundingRates = Object.values(state.bySymbol).some(symbol => 
+                        symbol.fundingRate !== undefined && symbol.fundingRate !== null
+                    );
+                    
+                    if (hasFundingRates) {
+                        console.log('🎨 Free/Pro tier - forcing update with COMPLETE data (including funding rates)');
+                        this.updateDashboard();
+                    } else {
+                        console.log('📊 Free/Pro tier - skipping update (ticker data only, no funding rates yet)');
+                    }
                 } else {
                     console.log('📊 Free/Pro tier - no update (no real data yet)');
                 }
