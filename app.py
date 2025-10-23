@@ -729,9 +729,22 @@ alert_thread.start()
 # ──────────────────────────────────────────────────────────────
 
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Railway deployment"""
+    return {'status': 'healthy', 'service': 'VolSpike'}, 200
+
 @app.route('/')
+def home():
+    """Public home page - redirects to login or dashboard"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    else:
+        return redirect(url_for('auth.login'))
+
+@app.route('/dashboard')
 @login_required
-def index():
+def dashboard():
     """
     Main dashboard page (requires authentication).
 
