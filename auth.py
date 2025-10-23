@@ -66,7 +66,7 @@ def register():
     """
     # If already logged in, redirect to dashboard
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -173,7 +173,7 @@ def register():
 
             # Auto-login after registration
             login_user(new_user, remember=True)
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
 
         except Exception as e:
             db.session.rollback()
@@ -199,7 +199,7 @@ def login():
     """
     # If already logged in, redirect to dashboard
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -238,7 +238,7 @@ def login():
         # Get the page they were trying to access (or default to dashboard)
         next_page = request.args.get('next')
         if not next_page or not next_page.startswith('/'):
-            next_page = url_for('index')
+            next_page = url_for('dashboard')
 
         flash(
             f'✅ Welcome back, {user.email}! You are on the {user.tier_name} tier.', 'success')
