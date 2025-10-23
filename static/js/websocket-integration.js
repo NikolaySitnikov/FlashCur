@@ -36,19 +36,31 @@ class WebSocketIntegration {
             // Update connection indicator based on store state
             this.updateConnectionIndicator(state.connectionState);
 
-            const hasSymbols = state.bySymbol && Object.keys(state.bySymbol).length > 0;
-            const hasFundingRates = hasSymbols && Object.values(state.bySymbol)
-                .some(s => s.fundingRate !== undefined && s.fundingRate !== null);
+            // A) Calculate data completeness telemetry
+            const values = Object.values(state.bySymbol);
+            const total = values.length;
+            const withFunding = values.filter(s => s.fundingRate != null).length;
+            const withPrice   = values.filter(s => Number.isFinite(s.lastPrice)).length;
+            const withVol     = values.filter(s => Number.isFinite(s.vol24hQuote)).length;
 
-            // ✅ First paint must wait for funding to avoid "N/A" flash
+            const pctPrice = total ? withPrice / total : 0;
+            const pctVol   = total ? withVol   / total : 0;
+            const hasFundingRates = withFunding > 0;
+            const datasetComplete = hasFundingRates && (pctPrice >= 0.6) && (pctVol >= 0.6);
+
+            // F) Add focused diagnostics
+            console.log('🧮 completeness',
+                { total, withFunding, withPrice, withVol,
+                    pctPrice: pctPrice.toFixed(2), pctVol: pctVol.toFixed(2) });
+
+            // ✅ First paint must wait for COMPLETE data (both streams)
             if (!this.firstPaintDone) {
-                if (!hasFundingRates) {
-                    // Keep the loader visible; do nothing until funding arrives.
-                    console.log('📊 Waiting for funding rates before first paint...');
+                if (!datasetComplete) {
+                    console.log('⏳ Waiting for COMPLETE data (funding + ticker) before first paint...',
+                        { total, withFunding, withPrice, withVol, pctPrice, pctVol });
                     return;
                 }
-                // We have funding — do the initial paint now
-                console.log('🎨 First complete paint (with funding rates)');
+                console.log('🎨 First complete paint (funding + ticker)');
                 this.updateDashboard();
                 this.firstPaintDone = true;
                 this.hasShownCompleteData = true;
@@ -68,6 +80,17 @@ class WebSocketIntegration {
                 // Elite continues below (realtime after first complete paint)
             }
 
+            // B) One-time hydration repaint for Free/Pro
+            this._lastCompleteness = this._lastCompleteness || { pctPrice: 0, pctVol: 0 };
+            const improved = (pctPrice - this._lastCompleteness.pctPrice >= 0.2) ||
+                             (pctVol   - this._lastCompleteness.pctVol   >= 0.2);
+
+            if (this.firstPaintDone && this.userTier < 2 && improved) {
+                console.log('💧 Hydration repaint (Free/Pro): ticker completeness significantly improved.');
+                this.updateDashboard();
+                this._lastCompleteness = { pctPrice, pctVol };
+            }
+
             // After initial complete paint:
             if (this.userTier >= 2) {
                 // Elite -> real-time updates on every store change
@@ -84,15 +107,30 @@ class WebSocketIntegration {
         console.log('🧪 Forcing a connection state ping to trigger notify');
         this.store.setConnectionState('connected');
 
-        // Optional safety valve: If funding is delayed, do a fallback paint after 8 seconds
+        // C) Safer 8-second fallback
         this.initialFallbackTimer = setTimeout(() => {
             if (!this.firstPaintDone) {
-                console.warn('⏳ Funding delayed — doing a fallback initial paint without funding');
-                this.updateDashboard();
-                this.firstPaintDone = true;
-                // For Free/Pro, also start timers so UI isn't stuck
-                if (this.userTier < 2 && !this.updateInterval) {
-                    this.startUIUpdates();
+                // Get current completeness state
+                const values = Object.values(this.store.getState().bySymbol);
+                const total = values.length;
+                const withFunding = values.filter(s => s.fundingRate != null).length;
+                const withPrice   = values.filter(s => Number.isFinite(s.lastPrice)).length;
+                const withVol     = values.filter(s => Number.isFinite(s.vol24hQuote)).length;
+                const pctPrice = total ? withPrice / total : 0;
+                const pctVol   = total ? withVol   / total : 0;
+                const hasFundingRates = withFunding > 0;
+                const enoughTicker = pctPrice >= 0.4 && pctVol >= 0.4;
+                
+                if (hasFundingRates && enoughTicker) {
+                    console.warn('⏳ Fallback: close enough, painting.');
+                    this.updateDashboard();
+                    this.firstPaintDone = true;
+                    if (this.userTier < 2 && !this.updateInterval) {
+                        this.startUIUpdates();
+                    }
+                } else {
+                    console.warn('⏳ Fallback: insufficient real data, showing sample instead.');
+                    this.showSampleData(); // don't set firstPaintDone; real data will replace it
                 }
             }
         }, 8000);
@@ -286,6 +324,31 @@ class WebSocketIntegration {
         this.checkSpikeAlerts();
     }
 
+    // Show sample data when real data is insufficient
+    showSampleData() {
+        console.log('📊 Showing sample data due to insufficient real data');
+        // Create sample data for display
+        const sampleData = [
+            { symbol: 'BTCUSDT', lastPrice: 45000, vol24hQuote: 2000000000, fundingRate: 0.0001 },
+            { symbol: 'ETHUSDT', lastPrice: 3000, vol24hQuote: 1500000000, fundingRate: -0.0002 },
+            { symbol: 'BNBUSDT', lastPrice: 300, vol24hQuote: 800000000, fundingRate: 0.0003 }
+        ];
+        
+        // Update store with sample data temporarily
+        sampleData.forEach(item => {
+            this.store.state.bySymbol[item.symbol] = {
+                symbol: item.symbol,
+                lastPrice: item.lastPrice,
+                vol24hQuote: item.vol24hQuote,
+                fundingRate: item.fundingRate,
+                lastUpdate: Date.now()
+            };
+        });
+        
+        // Trigger a single update
+        this.updateDashboard();
+    }
+
     // Update connection indicator
     updateConnectionIndicator(state) {
         const indicator = document.getElementById('connection-indicator');
@@ -436,13 +499,21 @@ class WebSocketIntegration {
         const missingFunding = filteredSymbols.filter(s => s.fundingRate == null).slice(0, 5).map(s => s.symbol);
         console.log('🔎 symbols missing fundingRate (first 5):', missingFunding);
 
-        // Keep your filter for the rows, but don't gate the loader on it
-        const rows = filteredSymbols.length ? filteredSymbols : symbols.slice(0, 50);
+        // E) Progressive $100M filter during bring-up
+        let rows = symbols.filter(s => Number.isFinite(s.vol24hQuote) && s.vol24hQuote >= 1e8);
+        if (rows.length < 20) rows = symbols.filter(s => Number.isFinite(s.vol24hQuote)).slice(0, 50);
+        if (rows.length < 20) rows = symbols.slice(0, 50);
         const displayItems = this.mapToDisplayItems(rows);
 
         // Store data in global cache for sorting (like working version)
         window.originalDataCache = [...displayItems];
         window.dataCache = this.applySorting([...displayItems]);
+
+        // F) Add focused diagnostics right before painting
+        const preview = rows.slice(0,5).map(x => ({
+            s: x.symbol, p: x.lastPrice, qv: x.vol24hQuote, r: x.fundingRate
+        }));
+        console.log('🎛️ sample rows before paint:', preview);
 
         // Update tables with sorted data
         this.updateTable('tableBody', window.dataCache);
@@ -535,6 +606,12 @@ class WebSocketIntegration {
         if (!tbody) {
             console.warn('⚠️ Missing table body:', tableId);
             return;
+        }
+
+        // D) Never "erase" table on empty selection
+        if (!symbols || symbols.length === 0) {
+            console.warn(`⚠️ updateTable(${tableId}): empty dataset; keeping previous rows`);
+            return; // Keep existing rows
         }
 
         // Clear existing rows
