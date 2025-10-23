@@ -114,37 +114,37 @@ class WebSocketIntegration {
 
     // Update market data table
     updateMarketTable() {
-        const symbols = this.store.getSymbols({
-            endsWith: 'USDT',
-            limit: 200,
-            sortBy: 'vol24hQuote'
+        const symbols = this.store.getSymbols({ 
+            endsWith: 'USDT', 
+            limit: 200, 
+            sortBy: 'vol24hQuote' 
         });
 
         console.log('📊 Market table update - symbols count:', symbols.length);
 
-        // If no data from WebSocket, show sample data after 5 seconds
+        // If no data from WebSocket, show sample data after 3 seconds
         if (symbols.length === 0) {
             // Only show sample data if we've been trying for a while
             if (!this.sampleDataShown) {
                 setTimeout(() => {
-                    const currentSymbols = this.store.getSymbols({
-                        endsWith: 'USDT',
-                        limit: 200,
-                        sortBy: 'vol24hQuote'
+                    const currentSymbols = this.store.getSymbols({ 
+                        endsWith: 'USDT', 
+                        limit: 200, 
+                        sortBy: 'vol24hQuote' 
                     });
                     if (currentSymbols.length === 0) {
-                        console.log('⏰ No real data after 5 seconds, showing sample data');
+                        console.log('⏰ No real data after 3 seconds, showing sample data');
                         this.showSampleData();
                         this.sampleDataShown = true;
                     }
-                }, 5000);
+                }, 3000);
             }
             return;
         }
 
         // Update desktop table
         this.updateTable('marketTableBody', symbols);
-
+        
         // Update mobile table
         this.updateTable('mobileMarketTableBody', symbols);
     }
@@ -266,11 +266,23 @@ class WebSocketIntegration {
     }
 }
 
+// Global error handler to catch JavaScript errors
+window.addEventListener('error', (event) => {
+    console.error('❌ Global JavaScript error caught:', event.error);
+    console.error('❌ Error details:', event.message, event.filename, event.lineno);
+    
+    // If WebSocket integration fails, show fallback data
+    if (!window.wsIntegration || !window.wsIntegration.isConnected) {
+        console.log('📊 WebSocket integration failed, showing fallback data');
+        showFallbackData();
+    }
+});
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Starting VolSpike WebSocket integration...');
 
-    // Test WebSocket connection
+    // Test WebSocket connection with proper error handling
     console.log('🔍 Testing WebSocket connection...');
     try {
         const testWs = new WebSocket('wss://fstream.binance.com/stream?streams=!ticker@arr');
@@ -281,16 +293,65 @@ document.addEventListener('DOMContentLoaded', () => {
         testWs.onerror = (error) => {
             console.error('❌ WebSocket connection failed:', error);
         };
+        testWs.onclose = () => {
+            console.log('🔍 Test WebSocket closed');
+        };
     } catch (error) {
         console.error('❌ WebSocket creation failed:', error);
     }
 
-    // Create global instance
-    window.wsIntegration = new WebSocketIntegration();
-    window.wsIntegration.init();
-
-    console.log('✅ VolSpike WebSocket integration started');
+    // Create global instance with error handling
+    try {
+        window.wsIntegration = new WebSocketIntegration();
+        window.wsIntegration.init();
+        console.log('✅ VolSpike WebSocket integration started');
+    } catch (error) {
+        console.error('❌ Failed to initialize WebSocket integration:', error);
+        // Show sample data as fallback
+        showFallbackData();
+    }
 });
+
+// Fallback function to show sample data
+function showFallbackData() {
+    console.log('📊 Showing fallback data due to WebSocket failure');
+    const sampleData = [
+        { symbol: 'BTCUSDT', lastPrice: 43250.50, changePct: 2.45, vol24hQuote: 1250000000, vol1hQuote: 52000000, fundingRate: 0.0001, spike3x: false },
+        { symbol: 'ETHUSDT', lastPrice: 2650.75, changePct: -1.23, vol24hQuote: 980000000, vol1hQuote: 41000000, fundingRate: 0.0002, spike3x: true },
+        { symbol: 'ADAUSDT', lastPrice: 0.4850, changePct: 3.67, vol24hQuote: 450000000, vol1hQuote: 18000000, fundingRate: 0.0001, spike3x: false },
+        { symbol: 'SOLUSDT', lastPrice: 98.25, changePct: 5.12, vol24hQuote: 320000000, vol1hQuote: 15000000, fundingRate: 0.0003, spike3x: true }
+    ];
+    
+    // Update desktop table
+    const desktopTable = document.getElementById('marketTableBody');
+    if (desktopTable) {
+        desktopTable.innerHTML = sampleData.map(item => `
+            <tr>
+                <td>${item.symbol}</td>
+                <td>${item.lastPrice.toFixed(4)}</td>
+                <td class="${item.changePct >= 0 ? 'text-green-500' : 'text-red-500'}">${item.changePct.toFixed(2)}%</td>
+                <td>${Math.round(item.vol24hQuote).toLocaleString()}</td>
+                <td>${item.fundingRate.toFixed(4)}</td>
+                <td>${Math.round(item.vol1hQuote).toLocaleString()}</td>
+                <td>${item.spike3x ? '🔥' : ''}</td>
+            </tr>
+        `).join('');
+    }
+    
+    // Update mobile table
+    const mobileTable = document.getElementById('mobileMarketTableBody');
+    if (mobileTable) {
+        mobileTable.innerHTML = sampleData.map(item => `
+            <tr>
+                <td>${item.symbol}</td>
+                <td>${item.lastPrice.toFixed(4)}</td>
+                <td class="${item.changePct >= 0 ? 'text-green-500' : 'text-red-500'}">${item.changePct.toFixed(2)}%</td>
+                <td>${Math.round(item.vol1hQuote).toLocaleString()}</td>
+                <td>${item.spike3x ? '🔥' : ''}</td>
+            </tr>
+        `).join('');
+    }
+}
 
 // Export for use in other modules
 window.WebSocketIntegration = WebSocketIntegration;
