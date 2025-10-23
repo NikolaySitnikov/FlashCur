@@ -15,6 +15,7 @@ class WebSocketIntegration {
         this.reconnectTimeout = null;
         this.updateInterval = null;   // tier-paced UI paint timer (Free/Pro)
         this.firstPaintDone = false;  // track one-time initial paint for Free/Pro
+        this.hasShownCompleteData = false;  // track whether we've painted with funding rates
         this.sampleDataShown = false;
         this.userTier = 0;            // 0=Free,1=Pro,2=Elite
         this.refreshInterval = 15 * 60 * 1000;
@@ -31,40 +32,44 @@ class WebSocketIntegration {
         // Subscribe to store changes for real-time updates
         this.unsubscribe = this.store.subscribe((state) => {
             console.log('📥 Store subscription callback ENTERED. state.lastUpdate:', state.lastUpdate);
-            console.log('📥 firstPaintDone:', this.firstPaintDone, 'userTier:', this.userTier);
+            console.log('📥 firstPaintDone:', this.firstPaintDone, 'hasShownCompleteData:', this.hasShownCompleteData, 'userTier:', this.userTier);
             // Update connection indicator based on store state
             this.updateConnectionIndicator(state.connectionState);
 
-            // Handle first paint for all tiers
-            if (!this.firstPaintDone) {
-                console.log('🎨 First paint triggered by store subscription');
-                this.updateDashboard();
-                this.firstPaintDone = true;
-            } else if (this.userTier >= 2) {
-                // Elite tier: paint on every store change after first paint
-                console.log('🎨 Elite tier update triggered');
-                this.updateDashboard();
-            } else {
-                // Free/Pro tier: force update ONLY for first paint when we have COMPLETE data
-                if (state.lastUpdate && state.bySymbol && Object.keys(state.bySymbol).length > 0) {
-                    // Check if we have funding rate data (not just ticker data)
-                    const hasFundingRates = Object.values(state.bySymbol).some(symbol => 
-                        symbol.fundingRate !== undefined && symbol.fundingRate !== null
-                    );
-                    
-                    if (hasFundingRates && !this.firstPaintDone) {
-                        console.log('🎨 Free/Pro tier - forcing FIRST update with COMPLETE data (including funding rates)');
-                        this.updateDashboard();
-                        this.firstPaintDone = true;
-                    } else if (hasFundingRates && this.firstPaintDone) {
-                        console.log('📊 Free/Pro tier - skipping update (first paint done, use tier-based timer)');
-                    } else {
-                        console.log('📊 Free/Pro tier - skipping update (ticker data only, no funding rates yet)');
-                    }
+            // Elite: paint every store change after first paint
+            if (this.userTier >= 2) {
+                if (!this.firstPaintDone) {
+                    console.log('🎨 Elite tier - first paint triggered by store subscription');
+                    this.updateDashboard();
+                    this.firstPaintDone = true;
                 } else {
-                    console.log('📊 Free/Pro tier - no update (no real data yet)');
+                    console.log('🎨 Elite tier - real-time update triggered');
+                    this.updateDashboard();
                 }
+                return;
             }
+
+            // Free/Pro tiers
+            const hasSymbols = state.bySymbol && Object.keys(state.bySymbol).length > 0;
+            const hasFundingRates = hasSymbols && Object.values(state.bySymbol)
+                .some(s => s.fundingRate !== undefined && s.fundingRate !== null);
+
+            // 1) Ensure the UI unblocks quickly (first paint of any kind)
+            if (!this.firstPaintDone && hasSymbols) {
+                console.log('🎨 Free/Pro tier - first paint (symbols only, funding may be N/A)');
+                this.updateDashboard();          // can render N/A for funding at first
+                this.firstPaintDone = true;      // loader gone
+            }
+
+            // 2) Ensure we paint once when COMPLETE data (with funding) arrives
+            //    This must NOT be gated by firstPaintDone
+            if (hasFundingRates && !this.hasShownCompleteData) {
+                console.log('🎨 Free/Pro tier - complete data paint (with funding rates)');
+                this.updateDashboard();          // upgrade the UI with funding
+                this.hasShownCompleteData = true;
+            }
+
+            // After that, Free/Pro rely on the tier timer (startUIUpdates) you already have
         });
         console.log('✅ Subscribed. unsubscribe is function?', typeof this.unsubscribe === 'function');
 
