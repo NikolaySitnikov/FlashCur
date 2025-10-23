@@ -112,7 +112,7 @@ class WebSocketIntegration {
         const status = states[state] || states['disconnected'];
         indicator.textContent = status.text;
         indicator.className = `text-sm font-medium ${status.class}`;
-        
+
         // Update the connection state in the store
         this.store.setConnectionState(state);
     }
@@ -125,13 +125,30 @@ class WebSocketIntegration {
             sortBy: 'vol24hQuote'
         });
 
-        // Filter to only show tokens with >$10M volume (less restrictive)
+        // Filter to only show tokens with >$100M volume
         const filteredSymbols = symbols.filter(symbol => 
-            symbol.vol24hQuote && symbol.vol24hQuote >= 10000000
+            symbol.vol24hQuote && symbol.vol24hQuote >= 100000000
         );
 
         console.log('📊 Market table update - symbols count:', symbols.length);
-        console.log('📊 After $10M filter - symbols count:', filteredSymbols.length);
+        console.log('📊 After $100M filter - symbols count:', filteredSymbols.length);
+        
+        // Debug: Show first few symbols and their volumes
+        if (symbols.length > 0) {
+            console.log('📊 First 5 symbols with volumes:', symbols.slice(0, 5).map(s => ({
+                symbol: s.symbol,
+                volume: s.vol24hQuote,
+                volumeFormatted: s.vol24hQuote ? (s.vol24hQuote / 1000000).toFixed(1) + 'M' : 'N/A'
+            })));
+        }
+        
+        if (filteredSymbols.length > 0) {
+            console.log('📊 First 5 filtered symbols:', filteredSymbols.slice(0, 5).map(s => ({
+                symbol: s.symbol,
+                volume: s.vol24hQuote,
+                volumeFormatted: s.vol24hQuote ? (s.vol24hQuote / 1000000).toFixed(1) + 'M' : 'N/A'
+            })));
+        }
 
         // If no data from WebSocket, show sample data after 3 seconds
         if (symbols.length === 0) {
@@ -180,11 +197,17 @@ class WebSocketIntegration {
 
     // Update specific table
     updateTable(tableId, symbols) {
+        console.log(`📊 updateTable called for ${tableId} with ${symbols.length} symbols`);
         const tbody = document.getElementById(tableId);
-        if (!tbody) return;
+        if (!tbody) {
+            console.error(`❌ Table body not found: ${tableId}`);
+            return;
+        }
 
         // Clear existing rows
         tbody.innerHTML = '';
+
+        console.log(`📊 Adding ${symbols.length} rows to ${tableId}`);
 
         // Add new rows - match HTML template column order
         symbols.forEach(({ symbol, lastPrice, changePct, vol24hQuote, vol1hQuote, fundingRate, spike3x, markPrice, openInterest, liquidationRisk }) => {
