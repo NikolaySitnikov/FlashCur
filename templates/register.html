@@ -56,8 +56,13 @@
                         <span class="label-icon">🔒</span>
                         Password
                     </label>
-                    <input type="password" id="password" name="password" class="form-input" placeholder="••••••••"
-                        minlength="8" required>
+                    <div class="password-input-container">
+                        <input type="password" id="password" name="password" class="form-input" placeholder="••••••••"
+                            minlength="8" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                            <span class="password-toggle-icon">👁️</span>
+                        </button>
+                    </div>
                     <p class="form-hint">Minimum 8 characters</p>
                 </div>
 
@@ -66,8 +71,13 @@
                         <span class="label-icon">✅</span>
                         Confirm Password
                     </label>
-                    <input type="password" id="confirm_password" name="confirm_password" class="form-input"
-                        placeholder="••••••••" minlength="8" required>
+                    <div class="password-input-container">
+                        <input type="password" id="confirm_password" name="confirm_password" class="form-input"
+                            placeholder="••••••••" minlength="8" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword('confirm_password')">
+                            <span class="password-toggle-icon">👁️</span>
+                        </button>
+                    </div>
                 </div>
 
 
@@ -116,6 +126,19 @@
     </div>
 
     <script>
+        // Password visibility toggle
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const toggleIcon = input.parentElement.querySelector('.password-toggle-icon');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                toggleIcon.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                toggleIcon.textContent = '👁️';
+            }
+        }
 
         // Password match validation
         document.getElementById('confirm_password').addEventListener('input', function () {

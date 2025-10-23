@@ -59,8 +59,13 @@
                         <span class="label-icon">🔒</span>
                         Password
                     </label>
-                    <input type="password" id="password" name="password" class="form-input" placeholder="••••••••"
-                        required>
+                    <div class="password-input-container">
+                        <input type="password" id="password" name="password" class="form-input" placeholder="••••••••"
+                            required>
+                        <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                            <span class="password-toggle-icon">👁️</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="form-group form-checkbox">
@@ -124,6 +129,20 @@
 
     <script>
         // Dark mode only - no theme toggle needed
+
+        // Password visibility toggle
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const toggleIcon = input.parentElement.querySelector('.password-toggle-icon');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                toggleIcon.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                toggleIcon.textContent = '👁️';
+            }
+        }
 
         // Auto-hide flash messages after 5 seconds
         document.addEventListener('DOMContentLoaded', () => {
