@@ -873,7 +873,7 @@ def debug_users():
                 "is_active": user.is_active,
                 "email_confirmed": user.email_confirmed
             })
-        
+
         return {
             "total_users": len(users),
             "users": user_data,
@@ -882,20 +882,21 @@ def debug_users():
     except Exception as e:
         return {"error": str(e)}, 500
 
+
 @app.route('/debug/login-test')
 def debug_login_test():
     """Debug route to test login functionality"""
     try:
         from werkzeug.security import check_password_hash
-        
+
         # Test user lookup
         user = User.query.filter_by(email="test-free@example.com").first()
         if not user:
             return {"error": "User not found"}, 404
-        
+
         # Test password check
         password_valid = check_password_hash(user.password_hash, "password123")
-        
+
         return {
             "user_found": True,
             "user_email": user.email,
