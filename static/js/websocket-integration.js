@@ -10,7 +10,7 @@ class WebSocketIntegration {
         this.ws = null;
         this.store = window.marketStore;
         console.log('🔗 wsIntegration.store === window.marketStore ?',
-                    this.store === window.marketStore, this.store);
+            this.store === window.marketStore, this.store);
         this.isConnected = false;
         this.reconnectTimeout = null;
         this.updateInterval = null;   // tier-paced UI paint timer (Free/Pro)
@@ -31,6 +31,7 @@ class WebSocketIntegration {
         // Subscribe to store changes for real-time updates
         this.unsubscribe = this.store.subscribe((state) => {
             console.log('📥 Store subscription callback ENTERED. state.lastUpdate:', state.lastUpdate);
+            console.log('📥 firstPaintDone:', this.firstPaintDone, 'userTier:', this.userTier);
             // Update connection indicator based on store state
             this.updateConnectionIndicator(state.connectionState);
 
@@ -41,7 +42,10 @@ class WebSocketIntegration {
                 this.firstPaintDone = true;
             } else if (this.userTier >= 2) {
                 // Elite tier: paint on every store change after first paint
+                console.log('🎨 Elite tier update triggered');
                 this.updateDashboard();
+            } else {
+                console.log('📊 Free/Pro tier - no update (firstPaintDone=true, userTier<2)');
             }
         });
         console.log('✅ Subscribed. unsubscribe is function?', typeof this.unsubscribe === 'function');
@@ -148,7 +152,7 @@ class WebSocketIntegration {
         if (this.store !== window.marketStore) {
             console.warn('⚠️ this.store !== window.marketStore (possible double instance)');
         }
-        
+
         try {
             console.log('📨 Received WebSocket message:', message.stream, message.data?.length || 0, 'items');
 

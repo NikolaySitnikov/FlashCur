@@ -24,7 +24,7 @@ class MarketStore {
         console.log('🧷 MarketStore.subscribe called. Current size BEFORE add:', this.listeners.size);
         this.listeners.add(fn);
         console.log('🧷 MarketStore.subscribe AFTER add. Size:', this.listeners.size);
-        
+
         return () => {
             console.log('🧷 MarketStore.unsubscribe called. Size BEFORE delete:', this.listeners.size);
             this.listeners.delete(fn);
