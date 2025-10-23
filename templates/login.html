@@ -98,7 +98,8 @@
                 </p>
             </div>
 
-            <!-- Test Accounts Info (for development) -->
+            <!-- Test Accounts Info (hidden in production) -->
+            {% if config.DEBUG %}
             <div class="test-accounts-info">
                 <details>
                     <summary class="test-summary">🔧 Test Accounts</summary>
@@ -110,6 +111,7 @@
                     </div>
                 </details>
             </div>
+            {% endif %}
         </div>
 
         <!-- Footer -->
