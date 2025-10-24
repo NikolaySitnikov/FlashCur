@@ -1389,8 +1389,15 @@ body.light-theme {
 @media (hover: hover) {
     .table-container:hover {
         box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4),
-            0 0 0 1px rgba(0, 255, 136, 0.2),
-            0 12px 40px rgba(0, 255, 136, 0.2);
+            0 0 0 1px rgba(0, 255, 136, 0.2);
+        /* Removed the blur shadow that was causing overflow */
+    }
+}
+
+/* Desktop safety net - prevent overflow on wide screens */
+@media (min-width: 1200px) {
+    .table-container:hover {
+        overflow-x: clip;
     }
 }
 
@@ -1455,7 +1462,7 @@ body.light-theme {
 
 .data-table tr:hover {
     background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.08), transparent);
-    transform: scale(1.005);
+    transform: scaleY(1.005);
     box-shadow: 0 4px 12px rgba(0, 255, 136, 0.1);
 }
 
@@ -2414,10 +2421,22 @@ body.light-theme {
     /* Space for overlay arrow */
 }
 
-/* Hide line breaks on wider screens */
+/* Hide line breaks on wider screens but preserve spaces */
 @media (min-width: 769px) {
     .data-table th.sortable br {
         display: none;
+    }
+
+    /* On wide screens, show header-main and header-unit on same line with space */
+    .data-table th.sortable .header-main::after {
+        content: " ";
+    }
+}
+
+/* Mobile: show header-main and header-unit on separate lines */
+@media (max-width: 768px) {
+    .data-table th.sortable .header-main::after {
+        content: "";
     }
 }
 
@@ -2652,53 +2671,6 @@ th.pro-column {
         overflow: visible !important;
         touch-action: auto !important;
     }
-
-    /* Fix mobile table layout gap */
-    .mobile-market-data {
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-
-    .mobile-market-data .table-container {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    /* Mobile table column fixes for Free tier (4 columns) */
-    .mobile-layout .data-table {
-        font-size: 0.8rem;
-        table-layout: fixed;
-        width: 100%;
-    }
-
-    .mobile-layout .data-table th,
-    .mobile-layout .data-table td {
-        padding: 0.6rem 0.4rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* Free tier mobile columns: Asset(20%), Volume(25%), Funding(25%), Price(30%) */
-    .mobile-layout .data-table th:nth-child(1),
-    .mobile-layout .data-table td:nth-child(1) {
-        width: 20%;
-    }
-
-    .mobile-layout .data-table th:nth-child(2),
-    .mobile-layout .data-table td:nth-child(2) {
-        width: 25%;
-    }
-
-    .mobile-layout .data-table th:nth-child(3),
-    .mobile-layout .data-table td:nth-child(3) {
-        width: 25%;
-    }
-
-    .mobile-layout .data-table th:nth-child(4),
-    .mobile-layout .data-table td:nth-child(4) {
-        width: 30%;
-    }
 }
 
 /* Touch-specific optimizations */
@@ -2816,7 +2788,7 @@ th.pro-column {
 html,
 body,
 .app {
-    overflow-x: visible;
+    overflow-x: hidden;
 }
 
 /* 1) Keep Alerts on the right (no wrapping) from 1025–1350px; 
@@ -2891,6 +2863,13 @@ td.pro-column {
     opacity: 0;
 }
 
+/* Desktop guardrail: prevent horizontal scroll on wide screens only when not needed */
+@media (min-width: 1200px) {
+    .table-container:hover {
+        overflow-x: clip;
+    }
+}
+
 
 /* 6) Small-screen tab centering – robust grid so labels/badge can't throw it off */
 @media (max-width: 768px) {
@@ -2934,4 +2913,84 @@ td.pro-column {
 .data-table th.pro-column[data-column="liquidation_risk"],
 .data-table td.pro-column[data-column="liquidation_risk"] {
     min-width: 120px;
+}
+
+/* Mobile: relax layout so headers can wrap and icons fit */
+@media (max-width: 768px) {
+    .data-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    /* Set specific column widths for mobile */
+    .data-table th:nth-child(1),
+    .data-table td:nth-child(1) {
+        width: 28%;
+    }
+
+    /* Asset */
+    .data-table th:nth-child(2),
+    .data-table td:nth-child(2) {
+        width: 24%;
+    }
+
+    /* Volume */
+    .data-table th:nth-child(3),
+    .data-table td:nth-child(3) {
+        width: 26%;
+    }
+
+    /* Funding Rate */
+    .data-table th:nth-child(4),
+    .data-table td:nth-child(4) {
+        width: 22%;
+    }
+
+    /* Price */
+
+    .data-table th.sortable {
+        white-space: normal;
+        line-height: 1.05;
+        padding-right: 18px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .data-table td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .data-table .sort-indicator {
+        right: 4px;
+        font-size: 0.55rem;
+    }
+
+    /* Remove min-width constraints on mobile */
+    .data-table th,
+    .data-table td {
+        min-width: 0;
+    }
+
+    /* Ensure funding badges don't cause overflow */
+    .data-table td .funding-badge {
+        display: inline-block;
+        white-space: nowrap;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+/* Guardrail for overflow prevention */
+@media (max-width: 480px) {
+    .table-container {
+        overflow-x: auto;
+    }
+}
+
+@media (min-width: 481px) {
+    .table-container {
+        overflow-x: clip;
+    }
 }

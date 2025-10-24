@@ -148,7 +148,8 @@
                                         Asset <span class="sort-indicator"></span>
                                     </th>
                                     <th class="sortable" data-column="volume" onclick="handleSort('volume')">
-                                        Volume<br>(24h, $) <span class="sort-indicator"></span>
+                                        <span class="header-main">Volume</span><span class="header-unit"> (24h,
+                                            $)</span> <span class="sort-indicator"></span>
                                     </th>
                                     {% if current_user.is_authenticated and current_user.tier >= 1 %}
                                     <th class="sortable pro-column" data-column="price_change_pct"
@@ -158,10 +159,12 @@
                                     {% endif %}
                                     <th class="sortable" data-column="funding_rate"
                                         onclick="handleSort('funding_rate')">
-                                        Funding Rate<br>(%) <span class="sort-indicator"></span>
+                                        <span class="header-main">Funding Rate</span><span class="header-unit">
+                                            (%)</span> <span class="sort-indicator"></span>
                                     </th>
                                     <th class="sortable" data-column="price" onclick="handleSort('price')">
-                                        Price<br>(USDT) <span class="sort-indicator"></span>
+                                        <span class="header-main">Price</span><span class="header-unit"> (USDT)</span>
+                                        <span class="sort-indicator"></span>
                                     </th>
                                     {% if current_user.is_authenticated and current_user.tier >= 1 %}
                                     <th class="sortable pro-column" data-column="open_interest"
@@ -243,7 +246,9 @@
                                             {% endif %}
                                             <th class="sortable" data-column="funding_rate"
                                                 onclick="handleSort('funding_rate')">
-                                                Funding Rate<br>(%) <span class="sort-indicator"></span>
+                                                <span class="header-main">Funding</span><br><span
+                                                    class="header-unit">Rate (%)</span> <span
+                                                    class="sort-indicator"></span>
                                             </th>
                                             <th class="sortable" data-column="price" onclick="handleSort('price')">
                                                 Price<br>(USDT) <span class="sort-indicator"></span>

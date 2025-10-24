@@ -184,6 +184,14 @@ class WebSocketIntegration {
             }
         });
 
+        // Initialize scroll indicators
+        this.updateScrollIndicators();
+
+        // Add resize listener to update scroll indicators
+        window.addEventListener('resize', () => {
+            this.updateScrollIndicators();
+        });
+
         console.log('✅ WebSocket integration initialized');
     }
 
@@ -710,7 +718,22 @@ class WebSocketIntegration {
         this.isConnected = false;
         console.log('🔌 WebSocket integration disconnected');
     }
+
 }
+
+/**
+ * Update scroll indicators for table containers
+ * (define as a prototype method so `this.updateScrollIndicators()` works)
+ */
+WebSocketIntegration.prototype.updateScrollIndicators = function () {
+    const containers = [document.getElementById('tableContainer'), document.getElementById('mobileTableContainer')]
+        .filter(Boolean);
+    containers.forEach((container) => {
+        const hasScroll = container.scrollWidth > container.clientWidth + 2; // small epsilon
+        container.classList.toggle('has-scroll', hasScroll);
+        container.classList.toggle('scrolled', container.scrollLeft > 0);
+    });
+};
 
 // Global error handler to catch JavaScript errors
 window.addEventListener('error', (event) => {
@@ -814,6 +837,11 @@ function showFallbackData() {
                 <td class="px-4 py-2">${formatPrice(item.lastPrice)}</td>
             </tr>
         `).join('');
+    }
+
+    // Update scroll indicators after table updates
+    if (window.wsIntegration && typeof window.wsIntegration.updateScrollIndicators === 'function') {
+        window.wsIntegration.updateScrollIndicators();
     }
 }
 
