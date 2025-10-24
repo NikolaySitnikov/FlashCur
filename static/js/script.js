@@ -269,6 +269,27 @@ async function displayDataProgressive(data) {
     }, totalAnimationTime);
 }
 
+function setRowDataAttributes(row, item) {
+    if (!row || !item) return;
+
+    const setValue = (key, value) => {
+        if (value === null || value === undefined || (typeof value === 'number' && !Number.isFinite(value))) {
+            delete row.dataset[key];
+            return;
+        }
+        row.dataset[key] = String(value);
+    };
+
+    row.dataset.symbol = item.asset || '';
+    setValue('asset', item.asset || item.symbol || '');
+    setValue('volume', Number.isFinite(item.volume) ? item.volume : Number.isFinite(item.volume_usd) ? item.volume_usd : null);
+    setValue('price', Number.isFinite(item.price) ? item.price : null);
+    setValue('fundingRate', Number.isFinite(item.funding_rate) ? item.funding_rate : null);
+    setValue('priceChangePct', Number.isFinite(item.price_change_pct) ? item.price_change_pct : null);
+    setValue('openInterest', Number.isFinite(item.open_interest_usd) ? item.open_interest_usd : null);
+    setValue('liquidationRisk', item.liquidation_risk ?? null);
+}
+
 // Create Table Row with Rolling Animations
 function createTableRow(item, index) {
     const row = document.createElement('tr');
@@ -342,6 +363,8 @@ function createTableRow(item, index) {
 
         row.appendChild(liqRiskCell);
     }
+
+    setRowDataAttributes(row, item);
 
     return row;
 }
@@ -794,6 +817,7 @@ function syncSortStateToWindow() {
 window.handleSort = handleSort;
 window.applySorting = applySorting;
 window.updateSortIndicators = updateSortIndicators;
+window.setRowDataAttributes = setRowDataAttributes;
 
 function renderSortedTables(sortedData) {
     if (!Array.isArray(sortedData)) {
@@ -843,6 +867,259 @@ function renderSortedTables(sortedData) {
 }
 
 window.renderSortedTables = renderSortedTables;
+
+function replaceTableBody(tbodyElement, rows, proEnabled) {
+    if (!tbodyElement) return;
+
+    const fragment = document.createDocumentFragment();
+    rows.forEach(item => {
+        fragment.appendChild(buildStaticRow(item, proEnabled));
+    });
+
+    while (tbodyElement.firstChild) {
+        tbodyElement.removeChild(tbodyElement.firstChild);
+    }
+
+    tbodyElement.appendChild(fragment);
+}
+
+function buildStaticRow(item, proEnabled) {
+    const tr = document.createElement('tr');
+
+    const assetCell = document.createElement('td');
+    assetCell.className = 'px-4 py-2 font-medium';
+    assetCell.textContent = item.asset || '-';
+    tr.appendChild(assetCell);
+
+    const volumeCell = document.createElement('td');
+    volumeCell.className = 'px-4 py-2';
+    volumeCell.textContent = resolveVolumeDisplay(item);
+    tr.appendChild(volumeCell);
+
+    if (proEnabled) {
+        const priceChangeCell = document.createElement('td');
+        priceChangeCell.className = 'px-4 py-2 pro-column';
+        const priceChangeValue = parseNumber(item.price_change_pct);
+        const priceChangeDisplay = resolvePriceChangeDisplay(item, priceChangeValue);
+
+        if (Number.isFinite(priceChangeValue)) {
+            if (priceChangeValue > 0) {
+                priceChangeCell.classList.add('price-change-positive', 'text-green-600');
+            } else if (priceChangeValue < 0) {
+                priceChangeCell.classList.add('price-change-negative', 'text-red-600');
+            }
+        }
+
+        priceChangeCell.textContent = priceChangeDisplay;
+        tr.appendChild(priceChangeCell);
+    }
+
+    const fundingCell = document.createElement('td');
+    fundingCell.className = 'px-4 py-2';
+    fundingCell.innerHTML = resolveFundingDisplay(item);
+    tr.appendChild(fundingCell);
+
+    const priceCell = document.createElement('td');
+    priceCell.className = 'px-4 py-2';
+    priceCell.textContent = resolvePriceDisplay(item);
+    tr.appendChild(priceCell);
+
+    if (proEnabled) {
+        const oiCell = document.createElement('td');
+        oiCell.className = 'px-4 py-2 pro-column';
+        oiCell.textContent = resolveOpenInterestDisplay(item);
+        tr.appendChild(oiCell);
+
+        const liqCell = document.createElement('td');
+        liqCell.className = 'px-4 py-2 pro-column';
+        applyLiquidationStyling(liqCell, item.liquidation_risk);
+        tr.appendChild(liqCell);
+    }
+
+    setRowDataAttributes(tr, item);
+
+    return tr;
+}
+
+function resolveVolumeDisplay(item) {
+    if (item.volume_formatted) return item.volume_formatted;
+    if (Number.isFinite(item.volume)) return formatCompactUsd(item.volume);
+    return '-';
+}
+
+function resolvePriceDisplay(item) {
+    if (item.price_formatted) return item.price_formatted;
+    if (Number.isFinite(item.price)) return formatPrice(item.price);
+    return '-';
+}
+
+function resolveFundingDisplay(item) {
+    if (item.funding_formatted) return item.funding_formatted;
+    if (Number.isFinite(item.funding_rate)) {
+        return formatFundingRate(item.funding_rate);
+    }
+    return 'N/A';
+}
+
+function resolveOpenInterestDisplay(item) {
+    if (item.open_interest_formatted) return item.open_interest_formatted;
+    if (Number.isFinite(item.open_interest_usd)) return formatCompactUsd(item.open_interest_usd);
+    if (Number.isFinite(item.open_interest)) return formatCompactUsd(item.open_interest * (item.price || 1));
+    return '-';
+}
+
+function resolvePriceChangeDisplay(item, rawValue) {
+    if (item.price_change_formatted) return item.price_change_formatted;
+    if (Number.isFinite(rawValue)) {
+        const sign = rawValue > 0 ? '+' : '';
+        return `${sign}${rawValue.toFixed(2)}%`;
+    }
+    return '-';
+}
+
+function applyLiquidationStyling(cell, value) {
+    if (value === null || value === undefined || value === '') {
+        cell.textContent = '-';
+        return;
+    }
+
+    if (typeof value === 'string') {
+        const normalized = value.toLowerCase();
+        cell.textContent = value;
+        if (normalized === 'high') {
+            cell.classList.add('liq-risk-high');
+        } else if (normalized === 'medium') {
+            cell.classList.add('liq-risk-medium');
+        } else if (normalized === 'low') {
+            cell.classList.add('liq-risk-low');
+        }
+        return;
+    }
+
+    const numericValue = parseNumber(value);
+    if (Number.isFinite(numericValue)) {
+        cell.textContent = numericValue.toFixed(2);
+        return;
+    }
+
+    cell.textContent = '-';
+}
+
+function formatCompactUsd(value) {
+    if (!Number.isFinite(value)) return '-';
+    const absValue = Math.abs(value);
+    if (absValue >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+    if (absValue >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+    if (absValue >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+    return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function formatPrice(value) {
+    if (!Number.isFinite(value)) return '-';
+    if (value < 0.01) return `$${value.toFixed(6)}`;
+    if (value < 1) return `$${value.toFixed(4)}`;
+    if (value < 100) return `$${value.toFixed(3)}`;
+    return `$${value.toFixed(2)}`;
+}
+
+function formatFundingRate(value) {
+    if (!Number.isFinite(value)) return 'N/A';
+    const numeric = Math.abs(value) > 1 ? value : value * 100;
+    return `${numeric.toFixed(4)}%`;
+}
+
+function parseNumber(value) {
+    if (Number.isFinite(value)) return value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function getSourceDataForSorting() {
+    const integration = window.wsIntegration || {};
+    const candidates = [
+        integration._lastNonEmptyRows,
+        window.dataCache,
+        dataCache,
+        window.originalDataCache,
+        originalDataCache
+    ];
+
+    for (const candidate of candidates) {
+        if (Array.isArray(candidate) && candidate.length) {
+            return candidate;
+        }
+    }
+
+    for (const candidate of candidates) {
+        if (Array.isArray(candidate)) {
+            return candidate;
+        }
+    }
+
+    return [];
+}
+
+// Apply sorting to data array
+function applySorting(data) {
+    const helpers = window.sortingHelpers;
+    if (helpers && typeof helpers.applySort === 'function') {
+        const sorted = helpers.applySort(Array.isArray(data) ? data : [], sortState);
+        if (Array.isArray(sorted)) {
+            return sorted;
+        }
+        if (Array.isArray(data)) {
+            return [...data];
+        }
+        return [];
+    }
+
+    if (!Array.isArray(data) || !sortState.column || !sortState.direction) {
+        return Array.isArray(data) ? [...data] : [];
+    }
+
+    const column = sortState.column;
+    const direction = sortState.direction === 'asc' ? 1 : -1;
+    const fallback = [...data].map((item, index) => ({ item, index }));
+
+    const getNumeric = (value) => (Number.isFinite(value) ? value : Number.NaN);
+
+    fallback.sort((a, b) => {
+        let aVal;
+        let bVal;
+
+        switch (column) {
+            case 'asset':
+                aVal = typeof a.item.asset === 'string' ? a.item.asset : '';
+                bVal = typeof b.item.asset === 'string' ? b.item.asset : '';
+                if (aVal === bVal) {
+                    return a.index - b.index;
+                }
+                return direction * aVal.localeCompare(bVal);
+            case 'volume':
+                aVal = getNumeric(a.item.volume);
+                bVal = getNumeric(b.item.volume);
+                break;
+            case 'price_change_pct':
+                aVal = getNumeric(a.item.price_change_pct);
+                bVal = getNumeric(b.item.price_change_pct);
+                break;
+            case 'funding_rate':
+                aVal = getNumeric(a.item.funding_rate);
+                bVal = getNumeric(b.item.funding_rate);
+                break;
+            case 'price':
+                aVal = getNumeric(a.item.price);
+                bVal = getNumeric(b.item.price);
+                break;
+            case 'open_interest':
+                aVal = getNumeric(a.item.open_interest_usd);
+                bVal = getNumeric(b.item.open_interest_usd);
+                break;
+            default:
+                return a.index - b.index;
+        }
+    }
+}
 
 function replaceTableBody(tbodyElement, rows, proEnabled) {
     if (!tbodyElement) return;
@@ -1104,6 +1381,25 @@ function applySorting(data) {
         return direction * diff;
     });
 
+=======
+        if (!Number.isFinite(aVal) && !Number.isFinite(bVal)) {
+            return a.index - b.index;
+        }
+        if (!Number.isFinite(aVal)) {
+            return 1;
+        }
+        if (!Number.isFinite(bVal)) {
+            return -1;
+        }
+
+        const diff = aVal - bVal;
+        if (diff === 0) {
+            return a.index - b.index;
+        }
+        return direction * diff;
+    });
+
+>>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-ehfrhc
     return fallback.map(entry => entry.item);
 }
 

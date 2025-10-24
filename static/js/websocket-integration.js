@@ -656,7 +656,11 @@ class WebSocketIntegration {
         // Add new rows using mapped data format
         symbols.forEach((item) => {
             const tr = document.createElement('tr');
-            tr.dataset.symbol = item.asset; // stable key
+            if (typeof window.setRowDataAttributes === 'function') {
+                window.setRowDataAttributes(tr, item);
+            } else {
+                tr.dataset.symbol = item.asset || item.symbol || '';
+            }
 
             tr.innerHTML = `
                 <td class="px-4 py-2 font-medium">${item.asset}</td>
@@ -665,7 +669,10 @@ class WebSocketIntegration {
                 <td class="px-4 py-2">${item.funding_formatted}</td>
                 <td class="px-4 py-2">${item.price_formatted}</td>
                 ${isPro ? `<td class="px-4 py-2">${item.open_interest_formatted}</td>` : ''}
-                ${isPro ? `<td class="px-4 py-2">${item.liquidation_risk ? item.liquidation_risk.toFixed(2) : '-'}</td>` : ''}
+                ${isPro ? `<td class="px-4 py-2">${typeof item.liquidation_risk === 'number'
+                    ? item.liquidation_risk.toFixed(2)
+                    : (item.liquidation_risk || '-')
+                }</td>` : ''}
             `;
 
             newTbody.appendChild(tr);
