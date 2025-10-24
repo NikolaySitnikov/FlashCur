@@ -729,8 +729,16 @@ WebSocketIntegration.prototype.updateScrollIndicators = function () {
     const containers = [document.getElementById('tableContainer'), document.getElementById('mobileTableContainer')]
         .filter(Boolean);
     containers.forEach((container) => {
-        const hasScroll = container.scrollWidth > container.clientWidth + 2; // small epsilon
-        container.classList.toggle('has-scroll', hasScroll);
+        if (typeof updateHorizontalOverflowState === 'function') {
+            updateHorizontalOverflowState(container);
+        } else {
+            const hasScroll = container.scrollWidth - container.clientWidth > 2;
+            container.classList.toggle('has-scroll', hasScroll);
+            if (!hasScroll) {
+                container.classList.remove('scrolled');
+            }
+        }
+
         container.classList.toggle('scrolled', container.scrollLeft > 0);
     });
 };
