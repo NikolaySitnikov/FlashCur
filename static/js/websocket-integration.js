@@ -449,18 +449,29 @@ class WebSocketIntegration {
             }))
         );
 
-        return symbols.map(s => ({
-            // names the working code expects:
-            asset: s.symbol.replace('USDT', ''),
-            volume_formatted: formatVolume(s.vol24hQuote),
-            funding_formatted: formatFunding(s.fundingRate),
-            price_formatted: formatPrice(s.lastPrice),
-            // also keep raw if you need coloring/sorting
-            funding_rate: s.fundingRate ?? null,
-            price_change_pct: s.changePct ?? null,
-            open_interest_formatted: s.openInterest ? formatVolume(s.openInterest) : '-',
-            liquidation_risk: s.liquidationRisk ?? null
-        }));
+        return symbols.map(s => {
+            const volumeValue = Number(s.vol24hQuote);
+            const priceValue = Number(s.lastPrice);
+            const changePctValue = Number(s.changePct);
+            const fundingValue = Number(s.fundingRate);
+            const openInterestValue = Number(s.openInterest);
+            const liquidationRiskValue = Number(s.liquidationRisk);
+
+            return {
+                // names the working code expects:
+                asset: s.symbol.replace('USDT', ''),
+                volume: Number.isFinite(volumeValue) ? volumeValue : 0,
+                volume_formatted: formatVolume(s.vol24hQuote),
+                funding_rate: Number.isFinite(fundingValue) ? fundingValue : null,
+                funding_formatted: formatFunding(s.fundingRate),
+                price: Number.isFinite(priceValue) ? priceValue : 0,
+                price_formatted: formatPrice(s.lastPrice),
+                price_change_pct: Number.isFinite(changePctValue) ? changePctValue : null,
+                open_interest_usd: Number.isFinite(openInterestValue) ? openInterestValue : null,
+                open_interest_formatted: s.openInterest ? formatVolume(s.openInterest) : '-',
+                liquidation_risk: Number.isFinite(liquidationRiskValue) ? liquidationRiskValue : null
+            };
+        });
     }
 
     // Update market data table
@@ -512,7 +523,10 @@ class WebSocketIntegration {
         // Map & sort
         const displayItems = this.mapToDisplayItems(rows);
         window.originalDataCache = [...displayItems];
-        window.dataCache = this.applySorting([...displayItems]);
+        const sorter = (typeof window.applySorting === 'function')
+            ? window.applySorting.bind(window)
+            : this.applySorting.bind(this);
+        window.dataCache = sorter([...displayItems]);
 
         // Choose rows to paint, falling back to cache if needed
         const rowsForPaint = (window.dataCache && window.dataCache.length) ? window.dataCache : this._lastNonEmptyRows;
@@ -534,60 +548,80 @@ class WebSocketIntegration {
         }
     }
 
-    // Apply sorting to data array (like working version)
+    // Apply sorting to data array (shared helper aware)
     applySorting(data) {
-        if (!window.sortState || !window.sortState.column || !window.sortState.direction) {
-            // No sorting - return original order
-            return data;
+        const helpers = window.sortingHelpers;
+        const state = window.sortState || {};
+
+        if (helpers && typeof helpers.applySort === 'function') {
+            return helpers.applySort(Array.isArray(data) ? data : [], state);
         }
 
-        const sorted = [...data];
+        if (!Array.isArray(data) || !state.column || !state.direction) {
+            return Array.isArray(data) ? [...data] : [];
+        }
 
-        sorted.sort((a, b) => {
-            let aVal, bVal;
+        const column = state.column;
+        const direction = state.direction === 'asc' ? 1 : -1;
+        const working = [...data].map((item, index) => ({ item, index }));
 
-            switch (window.sortState.column) {
-                case 'asset':
-                    aVal = a.asset;
-                    bVal = b.asset;
-                    break;
+        const getNumeric = (value) => (Number.isFinite(value) ? value : Number.NaN);
+
+        working.sort((a, b) => {
+            let aVal;
+            let bVal;
+
+            switch (column) {
+                case 'asset': {
+                    const assetA = typeof a.item.asset === 'string' ? a.item.asset : '';
+                    const assetB = typeof b.item.asset === 'string' ? b.item.asset : '';
+                    if (assetA === assetB) {
+                        return a.index - b.index;
+                    }
+                    return direction * assetA.localeCompare(assetB);
+                }
                 case 'volume':
-                    aVal = a.volume_formatted ? parseFloat(a.volume_formatted.replace(/[$,BMK]/g, '')) : 0;
-                    bVal = b.volume_formatted ? parseFloat(b.volume_formatted.replace(/[$,BMK]/g, '')) : 0;
+                    aVal = getNumeric(a.item.volume);
+                    bVal = getNumeric(b.item.volume);
                     break;
                 case 'price_change_pct':
-                    aVal = a.price_change_pct !== undefined ? a.price_change_pct : -Infinity;
-                    bVal = b.price_change_pct !== undefined ? b.price_change_pct : -Infinity;
+                    aVal = getNumeric(a.item.price_change_pct);
+                    bVal = getNumeric(b.item.price_change_pct);
                     break;
                 case 'funding_rate':
-                    aVal = a.funding_rate !== null ? a.funding_rate : -Infinity;
-                    bVal = b.funding_rate !== null ? b.funding_rate : -Infinity;
+                    aVal = getNumeric(a.item.funding_rate);
+                    bVal = getNumeric(b.item.funding_rate);
                     break;
                 case 'price':
-                    aVal = a.price_formatted ? parseFloat(a.price_formatted.replace(/[$,]/g, '')) : 0;
-                    bVal = b.price_formatted ? parseFloat(b.price_formatted.replace(/[$,]/g, '')) : 0;
+                    aVal = getNumeric(a.item.price);
+                    bVal = getNumeric(b.item.price);
                     break;
                 case 'open_interest':
-                    aVal = a.open_interest_formatted ? parseFloat(a.open_interest_formatted.replace(/[$,BMK]/g, '')) : -Infinity;
-                    bVal = b.open_interest_formatted ? parseFloat(b.open_interest_formatted.replace(/[$,BMK]/g, '')) : -Infinity;
+                    aVal = getNumeric(a.item.open_interest_usd);
+                    bVal = getNumeric(b.item.open_interest_usd);
                     break;
                 default:
-                    return 0;
+                    return a.index - b.index;
             }
 
-            // Compare values
-            let comparison = 0;
-            if (typeof aVal === 'string') {
-                comparison = aVal.localeCompare(bVal);
-            } else {
-                comparison = aVal - bVal;
+            if (!Number.isFinite(aVal) && !Number.isFinite(bVal)) {
+                return a.index - b.index;
+            }
+            if (!Number.isFinite(aVal)) {
+                return 1;
+            }
+            if (!Number.isFinite(bVal)) {
+                return -1;
             }
 
-            // Apply direction
-            return window.sortState.direction === 'asc' ? comparison : -comparison;
+            const diff = aVal - bVal;
+            if (diff === 0) {
+                return a.index - b.index;
+            }
+            return direction * diff;
         });
 
-        return sorted;
+        return working.map(entry => entry.item);
     }
 
 
@@ -729,8 +763,17 @@ WebSocketIntegration.prototype.updateScrollIndicators = function () {
     const containers = [document.getElementById('tableContainer'), document.getElementById('mobileTableContainer')]
         .filter(Boolean);
     containers.forEach((container) => {
-        const hasScroll = container.scrollWidth > container.clientWidth + 2; // small epsilon
-        container.classList.toggle('has-scroll', hasScroll);
+        if (typeof updateHorizontalOverflowState === 'function') {
+            const table = container.querySelector('table');
+            updateHorizontalOverflowState(container, table);
+        } else {
+            const hasScroll = container.scrollWidth - container.clientWidth > 2;
+            container.classList.toggle('has-scroll', hasScroll);
+            if (!hasScroll) {
+                container.classList.remove('scrolled');
+            }
+        }
+
         container.classList.toggle('scrolled', container.scrollLeft > 0);
     });
 };
