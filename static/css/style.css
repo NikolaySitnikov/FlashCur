@@ -2623,13 +2623,13 @@ th.pro-column {
         overflow-y: hidden !important;
         /* Enable iOS momentum scrolling */
         -webkit-overflow-scrolling: touch !important;
-        /* Allow ONLY horizontal touch panning */
-        touch-action: pan-x !important;
+        /* Allow horizontal scrolling without blocking vertical page scroll */
+        touch-action: auto !important;
         /* Disable smooth scroll (causes snap-back) */
         scroll-behavior: auto !important;
-        /* Prevent overscroll bounce */
+        /* Prevent overscroll bounce on the x-axis while allowing vertical propagation */
         overscroll-behavior-x: contain !important;
-        overscroll-behavior-y: none !important;
+        overscroll-behavior-y: auto !important;
         /* Remove ALL transforms */
         transform: none !important;
         will-change: auto !important;
@@ -2678,8 +2678,8 @@ th.pro-column {
     .table-container {
         /* Optimize for touch devices */
         overflow-x: scroll !important;
-        touch-action: pan-x !important;
-        /* Allow horizontal panning ONLY */
+        touch-action: auto !important;
+        /* Allow horizontal interaction without blocking vertical page scroll */
         -webkit-overflow-scrolling: touch !important;
         scroll-snap-type: none !important;
         /* Disable any scroll snapping */

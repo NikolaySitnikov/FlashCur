@@ -5,6 +5,7 @@ let originalDataCache = []; // Store original order from API
 let isDataLoading = false;
 let isAnimating = false; // Track if table animation is in progress
 let currentTab = 'market-data';
+let tabsInitialized = false;
 let unreadAlertsCount = 0;
 let lastViewedAlertsCount = 0;
 
@@ -49,6 +50,7 @@ let sortState = {
     column: null,      // 'asset', 'volume', 'funding_rate', 'price', or null
     direction: null    // 'asc', 'desc', or null (default)
 };
+syncSortStateToWindow();
 
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', async function () {
@@ -64,22 +66,28 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 // Tab Management
 function initializeTabs() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const mobileTabButtons = document.querySelectorAll('.mobile-tab-button');
+    if (tabsInitialized) return;
 
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.getAttribute('data-tab');
-            switchTab(targetTab);
-        });
+    const allTabButtons = document.querySelectorAll('.tab-button, .mobile-tab-button');
+    allTabButtons.forEach(button => {
+        if (button.tagName === 'BUTTON' && !button.getAttribute('type')) {
+            button.setAttribute('type', 'button');
+        }
     });
 
-    mobileTabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.getAttribute('data-tab');
-            switchTab(targetTab);
-        });
-    });
+    document.addEventListener('click', handleTabButtonClick, { passive: false });
+    tabsInitialized = true;
+}
+
+function handleTabButtonClick(event) {
+    const targetButton = event.target.closest('.tab-button, .mobile-tab-button');
+    if (!targetButton) return;
+
+    const targetTab = targetButton.getAttribute('data-tab');
+    if (!targetTab) return;
+
+    event.preventDefault();
+    switchTab(targetTab);
 }
 
 function switchTab(tabName) {
@@ -111,9 +119,7 @@ function switchTab(tabName) {
         ['tableContainer', 'mobileTableContainer'].forEach(id => {
             const c = document.getElementById(id);
             if (!c) return;
-            const has = c.scrollWidth > c.clientWidth + 1;
-            c.classList.toggle('has-scroll', has);
-            if (!has) c.classList.remove('scrolled');
+            updateHorizontalOverflowState(c);
         });
     }
 }
@@ -158,6 +164,8 @@ async function loadData() {
         if (result.success) {
             originalDataCache = result.data; // Store original order
             dataCache = applySorting([...result.data]); // Apply current sorting
+            window.originalDataCache = [...originalDataCache];
+            window.dataCache = [...dataCache];
             hasProMetrics = result.has_pro_metrics || false; // Track Pro metrics availability
             hideLoading(); // Hide loading first
             await displayDataProgressive(dataCache);
@@ -176,9 +184,7 @@ async function loadData() {
             ['tableContainer', 'mobileTableContainer'].forEach(id => {
                 const container = document.getElementById(id);
                 if (container) {
-                    const hasScroll = container.scrollWidth > container.clientWidth + 1;
-                    container.classList.toggle('has-scroll', hasScroll);
-                    if (!hasScroll) container.classList.remove('scrolled');
+                    updateHorizontalOverflowState(container);
                 }
             });
         }, 100);
@@ -692,6 +698,7 @@ function loadSortState() {
             sortState = { column: null, direction: null };
         }
     }
+    syncSortStateToWindow();
 }
 
 // Save sorting state to localStorage
@@ -737,22 +744,237 @@ function handleSort(column) {
         }
     }
 
+    syncSortStateToWindow();
     saveSortState();
 
-    // Apply sorting and redisplay - use fresh copy of original data
-    if (window.originalDataCache && window.originalDataCache.length > 0) {
-        // WebSocket data available - use WebSocket sorting
-        window.dataCache = window.wsIntegration ? window.wsIntegration.applySorting([...window.originalDataCache]) : [...window.originalDataCache];
-        if (window.wsIntegration && window.wsIntegration.updateTable) {
-            window.wsIntegration.updateTable('tableBody', window.dataCache);
-            window.wsIntegration.updateTable('mobileTableBody', window.dataCache);
-        }
-    } else {
-        // Fallback to original system
-        dataCache = applySorting([...originalDataCache]);
-        displayDataProgressive(dataCache);
-    }
+    const sourceData = (window.originalDataCache && window.originalDataCache.length > 0)
+        ? window.originalDataCache
+        : originalDataCache;
+
+    const sorter = (window.wsIntegration && typeof window.wsIntegration.applySorting === 'function')
+        ? window.wsIntegration.applySorting.bind(window.wsIntegration)
+        : applySorting;
+
+    const sortedData = sorter ? sorter([...sourceData]) : [];
+
+    renderSortedTables(sortedData);
     updateSortIndicators();
+}
+
+function syncSortStateToWindow() {
+    window.sortState = { ...sortState };
+}
+
+window.handleSort = handleSort;
+window.applySorting = applySorting;
+
+function renderSortedTables(sortedData) {
+    if (!Array.isArray(sortedData)) {
+        return;
+    }
+
+    dataCache = [...sortedData];
+    window.dataCache = [...sortedData];
+
+    const proEnabled = Boolean(
+        hasProMetrics ||
+        document.querySelector('#dataTable thead .pro-column') ||
+        document.querySelector('#mobileDataTable thead .pro-column')
+    );
+
+    const desktopBody = document.getElementById('tableBody');
+    const mobileBody = document.getElementById('mobileTableBody');
+
+    if (desktopBody) {
+        replaceTableBody(desktopBody, sortedData, proEnabled);
+    }
+
+    if (mobileBody) {
+        replaceTableBody(mobileBody, sortedData, proEnabled);
+    }
+
+    const desktopContainer = document.getElementById('tableContainer');
+    const mobileContainer = document.getElementById('mobileTableContainer');
+
+    if (desktopContainer) {
+        desktopContainer.style.display = 'block';
+        updateHorizontalOverflowState(desktopContainer, desktopContainer.querySelector('table'));
+    }
+
+    if (mobileContainer) {
+        mobileContainer.style.display = 'block';
+        updateHorizontalOverflowState(mobileContainer, mobileContainer.querySelector('table'));
+    }
+
+    if (window.wsIntegration) {
+        window.wsIntegration._lastNonEmptyRows = [...sortedData];
+        if (typeof window.wsIntegration.updateScrollIndicators === 'function') {
+            window.wsIntegration.updateScrollIndicators();
+        }
+    }
+}
+
+window.renderSortedTables = renderSortedTables;
+
+function replaceTableBody(tbodyElement, rows, proEnabled) {
+    if (!tbodyElement) return;
+
+    const fragment = document.createDocumentFragment();
+    rows.forEach(item => {
+        fragment.appendChild(buildStaticRow(item, proEnabled));
+    });
+
+    tbodyElement.replaceChildren(fragment);
+}
+
+function buildStaticRow(item, proEnabled) {
+    const tr = document.createElement('tr');
+    tr.dataset.symbol = item.asset || '';
+
+    const assetCell = document.createElement('td');
+    assetCell.className = 'px-4 py-2 font-medium';
+    assetCell.textContent = item.asset || '-';
+    tr.appendChild(assetCell);
+
+    const volumeCell = document.createElement('td');
+    volumeCell.className = 'px-4 py-2';
+    volumeCell.textContent = resolveVolumeDisplay(item);
+    tr.appendChild(volumeCell);
+
+    if (proEnabled) {
+        const priceChangeCell = document.createElement('td');
+        priceChangeCell.className = 'px-4 py-2 pro-column';
+        const priceChangeValue = parseNumber(item.price_change_pct);
+        const priceChangeDisplay = resolvePriceChangeDisplay(item, priceChangeValue);
+
+        if (Number.isFinite(priceChangeValue)) {
+            if (priceChangeValue > 0) {
+                priceChangeCell.classList.add('price-change-positive', 'text-green-600');
+            } else if (priceChangeValue < 0) {
+                priceChangeCell.classList.add('price-change-negative', 'text-red-600');
+            }
+        }
+
+        priceChangeCell.textContent = priceChangeDisplay;
+        tr.appendChild(priceChangeCell);
+    }
+
+    const fundingCell = document.createElement('td');
+    fundingCell.className = 'px-4 py-2';
+    fundingCell.innerHTML = resolveFundingDisplay(item);
+    tr.appendChild(fundingCell);
+
+    const priceCell = document.createElement('td');
+    priceCell.className = 'px-4 py-2';
+    priceCell.textContent = resolvePriceDisplay(item);
+    tr.appendChild(priceCell);
+
+    if (proEnabled) {
+        const oiCell = document.createElement('td');
+        oiCell.className = 'px-4 py-2 pro-column';
+        oiCell.textContent = resolveOpenInterestDisplay(item);
+        tr.appendChild(oiCell);
+
+        const liqCell = document.createElement('td');
+        liqCell.className = 'px-4 py-2 pro-column';
+        applyLiquidationStyling(liqCell, item.liquidation_risk);
+        tr.appendChild(liqCell);
+    }
+
+    return tr;
+}
+
+function resolveVolumeDisplay(item) {
+    if (item.volume_formatted) return item.volume_formatted;
+    if (Number.isFinite(item.volume)) return formatCompactUsd(item.volume);
+    return '-';
+}
+
+function resolvePriceDisplay(item) {
+    if (item.price_formatted) return item.price_formatted;
+    if (Number.isFinite(item.price)) return formatPrice(item.price);
+    return '-';
+}
+
+function resolveFundingDisplay(item) {
+    if (item.funding_formatted) return item.funding_formatted;
+    if (Number.isFinite(item.funding_rate)) {
+        return formatFundingRate(item.funding_rate);
+    }
+    return 'N/A';
+}
+
+function resolveOpenInterestDisplay(item) {
+    if (item.open_interest_formatted) return item.open_interest_formatted;
+    if (Number.isFinite(item.open_interest_usd)) return formatCompactUsd(item.open_interest_usd);
+    if (Number.isFinite(item.open_interest)) return formatCompactUsd(item.open_interest * (item.price || 1));
+    return '-';
+}
+
+function resolvePriceChangeDisplay(item, rawValue) {
+    if (item.price_change_formatted) return item.price_change_formatted;
+    if (Number.isFinite(rawValue)) {
+        const sign = rawValue > 0 ? '+' : '';
+        return `${sign}${rawValue.toFixed(2)}%`;
+    }
+    return '-';
+}
+
+function applyLiquidationStyling(cell, value) {
+    if (value === null || value === undefined || value === '') {
+        cell.textContent = '-';
+        return;
+    }
+
+    if (typeof value === 'string') {
+        const normalized = value.toLowerCase();
+        cell.textContent = value;
+        if (normalized === 'high') {
+            cell.classList.add('liq-risk-high');
+        } else if (normalized === 'medium') {
+            cell.classList.add('liq-risk-medium');
+        } else if (normalized === 'low') {
+            cell.classList.add('liq-risk-low');
+        }
+        return;
+    }
+
+    const numericValue = parseNumber(value);
+    if (Number.isFinite(numericValue)) {
+        cell.textContent = numericValue.toFixed(2);
+        return;
+    }
+
+    cell.textContent = '-';
+}
+
+function formatCompactUsd(value) {
+    if (!Number.isFinite(value)) return '-';
+    const absValue = Math.abs(value);
+    if (absValue >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+    if (absValue >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+    if (absValue >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+    return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function formatPrice(value) {
+    if (!Number.isFinite(value)) return '-';
+    if (value < 0.01) return `$${value.toFixed(6)}`;
+    if (value < 1) return `$${value.toFixed(4)}`;
+    if (value < 100) return `$${value.toFixed(3)}`;
+    return `$${value.toFixed(2)}`;
+}
+
+function formatFundingRate(value) {
+    if (!Number.isFinite(value)) return 'N/A';
+    const numeric = Math.abs(value) > 1 ? value : value * 100;
+    return `${numeric.toFixed(4)}%`;
+}
+
+function parseNumber(value) {
+    if (Number.isFinite(value)) return value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : NaN;
 }
 
 // Apply sorting to data array
@@ -986,6 +1208,69 @@ function showNotification(message, type = 'info') {
 /**
  * Check if table container is scrollable and add visual indicator
  */
+// Allow a little wiggle room so rounding errors or borders don't trigger overflow states
+const HORIZONTAL_SCROLL_TOLERANCE_WIDE = 48;
+const HORIZONTAL_SCROLL_TOLERANCE_DEFAULT = 16;
+
+function resolveMeasurementTarget(container, measurementTarget) {
+    if (measurementTarget) return measurementTarget;
+    const table = container.querySelector('table');
+    return table || container;
+}
+
+function measureHorizontalOverflow(container, measurementTarget) {
+    if (!container) {
+        return { overflowAmount: 0, hasOverflow: false };
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    if (!containerRect || containerRect.width <= 0) {
+        return { overflowAmount: 0, hasOverflow: false };
+    }
+
+    const target = resolveMeasurementTarget(container, measurementTarget);
+
+    const viewportWidth = Math.floor(container.clientWidth || containerRect.width || 0);
+    const contentWidth = Math.ceil((target?.scrollWidth || target?.offsetWidth || 0));
+    const overflowAmount = Math.max(contentWidth - viewportWidth, 0);
+
+    const tolerance = viewportWidth >= 1200
+        ? HORIZONTAL_SCROLL_TOLERANCE_WIDE
+        : HORIZONTAL_SCROLL_TOLERANCE_DEFAULT;
+
+    return {
+        overflowAmount,
+        hasOverflow: overflowAmount > tolerance
+    };
+}
+
+function updateHorizontalOverflowState(container, measurementTarget) {
+    if (!container) return false;
+
+    const { hasOverflow } = measureHorizontalOverflow(container, measurementTarget);
+
+    container.classList.toggle('has-scroll', hasOverflow);
+
+    if (hasOverflow) {
+        container.style.setProperty('overflow-x', 'auto', 'important');
+    } else {
+        container.style.setProperty('overflow-x', 'hidden', 'important');
+    }
+
+    if (!hasOverflow) {
+        container.classList.remove('scrolled');
+        if (container.scrollLeft !== 0) {
+            container.scrollLeft = 0;
+        }
+    }
+
+    return hasOverflow;
+}
+
+function hasHorizontalOverflow(container, measurementTarget) {
+    return measureHorizontalOverflow(container, measurementTarget).hasOverflow;
+}
+
 function checkTableScroll(container) {
     if (!container) return;
 
@@ -993,11 +1278,7 @@ function checkTableScroll(container) {
     if (!table) return;
 
     // Check if content is wider than container
-    if (table.scrollWidth > container.clientWidth) {
-        container.classList.add('has-scroll');
-    } else {
-        container.classList.remove('has-scroll');
-    }
+    updateHorizontalOverflowState(container, table);
 }
 
 // Check scroll on window resize
@@ -1040,13 +1321,25 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
         if (!container) return;
 
         function updateScrollState() {
-            const hasScroll = container.scrollWidth > container.clientWidth + 1;
-            container.classList.toggle('has-scroll', hasScroll);
+            updateHorizontalOverflowState(container);
+        }
 
-            // Remove scrolled class if no scroll needed
-            if (!hasScroll) {
-                container.classList.remove('scrolled');
+        if (container.__overflowWired) {
+            updateScrollState();
+            return;
+        }
+        container.__overflowWired = true;
+
+        if (typeof ResizeObserver !== 'undefined' && !container.__overflowObserver) {
+            const observer = new ResizeObserver(() => updateScrollState());
+            observer.observe(container);
+
+            const table = container.querySelector('table');
+            if (table) {
+                observer.observe(table);
             }
+
+            container.__overflowObserver = observer;
         }
 
         // Initial check
@@ -1061,8 +1354,13 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
         // Update on resize
         window.addEventListener('resize', updateScrollState);
 
-        // Update when data loads
-        container.addEventListener('DOMSubtreeModified', updateScrollState);
+        if (typeof MutationObserver !== 'undefined' && !container.__overflowMutationObserver) {
+            const mutationObserver = new MutationObserver(() => updateScrollState());
+            mutationObserver.observe(container, { childList: true, subtree: true });
+            container.__overflowMutationObserver = mutationObserver;
+        } else {
+            container.addEventListener('DOMSubtreeModified', updateScrollState);
+        }
     }
 
     // Initialize for both desktop and mobile containers
@@ -1085,7 +1383,8 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
     function armHint(container) {
         if (!container) return;
         const show = () => {
-            if (container.scrollWidth > container.clientWidth + 1 && !localStorage.getItem(HINT_KEY)) {
+            const hasScroll = updateHorizontalOverflowState(container);
+            if (hasScroll && !localStorage.getItem(HINT_KEY)) {
                 container.classList.add('show-hint');
                 // auto-hide after 2.5s and never show again
                 setTimeout(() => {

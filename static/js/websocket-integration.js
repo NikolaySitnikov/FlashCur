@@ -449,18 +449,29 @@ class WebSocketIntegration {
             }))
         );
 
-        return symbols.map(s => ({
-            // names the working code expects:
-            asset: s.symbol.replace('USDT', ''),
-            volume_formatted: formatVolume(s.vol24hQuote),
-            funding_formatted: formatFunding(s.fundingRate),
-            price_formatted: formatPrice(s.lastPrice),
-            // also keep raw if you need coloring/sorting
-            funding_rate: s.fundingRate ?? null,
-            price_change_pct: s.changePct ?? null,
-            open_interest_formatted: s.openInterest ? formatVolume(s.openInterest) : '-',
-            liquidation_risk: s.liquidationRisk ?? null
-        }));
+        return symbols.map(s => {
+            const volumeValue = Number(s.vol24hQuote);
+            const priceValue = Number(s.lastPrice);
+            const changePctValue = Number(s.changePct);
+            const fundingValue = Number(s.fundingRate);
+            const openInterestValue = Number(s.openInterest);
+            const liquidationRiskValue = Number(s.liquidationRisk);
+
+            return {
+                // names the working code expects:
+                asset: s.symbol.replace('USDT', ''),
+                volume: Number.isFinite(volumeValue) ? volumeValue : 0,
+                volume_formatted: formatVolume(s.vol24hQuote),
+                funding_rate: Number.isFinite(fundingValue) ? fundingValue : null,
+                funding_formatted: formatFunding(s.fundingRate),
+                price: Number.isFinite(priceValue) ? priceValue : 0,
+                price_formatted: formatPrice(s.lastPrice),
+                price_change_pct: Number.isFinite(changePctValue) ? changePctValue : null,
+                open_interest_usd: Number.isFinite(openInterestValue) ? openInterestValue : null,
+                open_interest_formatted: s.openInterest ? formatVolume(s.openInterest) : '-',
+                liquidation_risk: Number.isFinite(liquidationRiskValue) ? liquidationRiskValue : null
+            };
+        });
     }
 
     // Update market data table
@@ -512,7 +523,10 @@ class WebSocketIntegration {
         // Map & sort
         const displayItems = this.mapToDisplayItems(rows);
         window.originalDataCache = [...displayItems];
-        window.dataCache = this.applySorting([...displayItems]);
+        const sorter = (typeof window.applySorting === 'function')
+            ? window.applySorting.bind(window)
+            : this.applySorting.bind(this);
+        window.dataCache = sorter([...displayItems]);
 
         // Choose rows to paint, falling back to cache if needed
         const rowsForPaint = (window.dataCache && window.dataCache.length) ? window.dataCache : this._lastNonEmptyRows;
@@ -552,8 +566,8 @@ class WebSocketIntegration {
                     bVal = b.asset;
                     break;
                 case 'volume':
-                    aVal = a.volume_formatted ? parseFloat(a.volume_formatted.replace(/[$,BMK]/g, '')) : 0;
-                    bVal = b.volume_formatted ? parseFloat(b.volume_formatted.replace(/[$,BMK]/g, '')) : 0;
+                    aVal = Number.isFinite(a.volume) ? a.volume : 0;
+                    bVal = Number.isFinite(b.volume) ? b.volume : 0;
                     break;
                 case 'price_change_pct':
                     aVal = a.price_change_pct !== undefined ? a.price_change_pct : -Infinity;
@@ -564,12 +578,12 @@ class WebSocketIntegration {
                     bVal = b.funding_rate !== null ? b.funding_rate : -Infinity;
                     break;
                 case 'price':
-                    aVal = a.price_formatted ? parseFloat(a.price_formatted.replace(/[$,]/g, '')) : 0;
-                    bVal = b.price_formatted ? parseFloat(b.price_formatted.replace(/[$,]/g, '')) : 0;
+                    aVal = Number.isFinite(a.price) ? a.price : 0;
+                    bVal = Number.isFinite(b.price) ? b.price : 0;
                     break;
                 case 'open_interest':
-                    aVal = a.open_interest_formatted ? parseFloat(a.open_interest_formatted.replace(/[$,BMK]/g, '')) : -Infinity;
-                    bVal = b.open_interest_formatted ? parseFloat(b.open_interest_formatted.replace(/[$,BMK]/g, '')) : -Infinity;
+                    aVal = Number.isFinite(a.open_interest_usd) ? a.open_interest_usd : -Infinity;
+                    bVal = Number.isFinite(b.open_interest_usd) ? b.open_interest_usd : -Infinity;
                     break;
                 default:
                     return 0;
@@ -729,8 +743,17 @@ WebSocketIntegration.prototype.updateScrollIndicators = function () {
     const containers = [document.getElementById('tableContainer'), document.getElementById('mobileTableContainer')]
         .filter(Boolean);
     containers.forEach((container) => {
-        const hasScroll = container.scrollWidth > container.clientWidth + 2; // small epsilon
-        container.classList.toggle('has-scroll', hasScroll);
+        if (typeof updateHorizontalOverflowState === 'function') {
+            const table = container.querySelector('table');
+            updateHorizontalOverflowState(container, table);
+        } else {
+            const hasScroll = container.scrollWidth - container.clientWidth > 2;
+            container.classList.toggle('has-scroll', hasScroll);
+            if (!hasScroll) {
+                container.classList.remove('scrolled');
+            }
+        }
+
         container.classList.toggle('scrolled', container.scrollLeft > 0);
     });
 };
