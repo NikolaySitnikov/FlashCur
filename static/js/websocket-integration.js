@@ -738,6 +738,7 @@ WebSocketIntegration.prototype.updateScrollIndicators = function () {
                 container.classList.remove('scrolled');
             }
         }
+
         container.classList.toggle('scrolled', container.scrollLeft > 0);
     });
 };
