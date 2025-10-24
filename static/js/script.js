@@ -111,7 +111,7 @@ function switchTab(tabName) {
         ['tableContainer', 'mobileTableContainer'].forEach(id => {
             const c = document.getElementById(id);
             if (!c) return;
-            const has = c.scrollWidth > c.clientWidth + 1;
+            const has = hasHorizontalOverflow(c);
             c.classList.toggle('has-scroll', has);
             if (!has) c.classList.remove('scrolled');
         });
@@ -176,7 +176,7 @@ async function loadData() {
             ['tableContainer', 'mobileTableContainer'].forEach(id => {
                 const container = document.getElementById(id);
                 if (container) {
-                    const hasScroll = container.scrollWidth > container.clientWidth + 1;
+                    const hasScroll = hasHorizontalOverflow(container);
                     container.classList.toggle('has-scroll', hasScroll);
                     if (!hasScroll) container.classList.remove('scrolled');
                 }
@@ -986,6 +986,17 @@ function showNotification(message, type = 'info') {
 /**
  * Check if table container is scrollable and add visual indicator
  */
+const HORIZONTAL_SCROLL_TOLERANCE = 2;
+
+function hasHorizontalOverflow(container, measurementTarget = container) {
+    if (!container || !measurementTarget) return false;
+
+    const scrollWidth = Math.ceil(measurementTarget.scrollWidth || 0);
+    const clientWidth = Math.floor(container.clientWidth || 0);
+
+    return scrollWidth - clientWidth > HORIZONTAL_SCROLL_TOLERANCE;
+}
+
 function checkTableScroll(container) {
     if (!container) return;
 
@@ -993,10 +1004,11 @@ function checkTableScroll(container) {
     if (!table) return;
 
     // Check if content is wider than container
-    if (table.scrollWidth > container.clientWidth) {
-        container.classList.add('has-scroll');
-    } else {
-        container.classList.remove('has-scroll');
+    const hasOverflow = hasHorizontalOverflow(container, table);
+    container.classList.toggle('has-scroll', hasOverflow);
+
+    if (!hasOverflow) {
+        container.classList.remove('scrolled');
     }
 }
 
@@ -1040,7 +1052,7 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
         if (!container) return;
 
         function updateScrollState() {
-            const hasScroll = container.scrollWidth > container.clientWidth + 1;
+            const hasScroll = hasHorizontalOverflow(container);
             container.classList.toggle('has-scroll', hasScroll);
 
             // Remove scrolled class if no scroll needed
@@ -1085,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
     function armHint(container) {
         if (!container) return;
         const show = () => {
-            if (container.scrollWidth > container.clientWidth + 1 && !localStorage.getItem(HINT_KEY)) {
+            if (hasHorizontalOverflow(container) && !localStorage.getItem(HINT_KEY)) {
                 container.classList.add('show-hint');
                 // auto-hide after 2.5s and never show again
                 setTimeout(() => {

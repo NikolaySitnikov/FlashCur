@@ -729,7 +729,9 @@ WebSocketIntegration.prototype.updateScrollIndicators = function () {
     const containers = [document.getElementById('tableContainer'), document.getElementById('mobileTableContainer')]
         .filter(Boolean);
     containers.forEach((container) => {
-        const hasScroll = container.scrollWidth > container.clientWidth + 2; // small epsilon
+        const hasScroll = typeof hasHorizontalOverflow === 'function'
+            ? hasHorizontalOverflow(container)
+            : container.scrollWidth - container.clientWidth > 2; // fallback with small epsilon
         container.classList.toggle('has-scroll', hasScroll);
         container.classList.toggle('scrolled', container.scrollLeft > 0);
     });
