@@ -73,14 +73,23 @@ function initializeTabs() {
         if (button.tagName === 'BUTTON' && !button.getAttribute('type')) {
             button.setAttribute('type', 'button');
         }
-    });
 
-    document.addEventListener('click', handleTabButtonClick, { passive: false });
+        if (!button.__volTabHandler) {
+            const handler = (event) => {
+                handleTabButtonClick(event);
+            };
+
+            button.addEventListener('click', handler);
+            button.__volTabHandler = handler;
+        }
+    });
     tabsInitialized = true;
 }
 
 function handleTabButtonClick(event) {
-    const targetButton = event.target.closest('.tab-button, .mobile-tab-button');
+    const targetButton = event.currentTarget instanceof HTMLElement
+        ? event.currentTarget
+        : event.target.closest('.tab-button, .mobile-tab-button');
     if (!targetButton) return;
 
     const targetTab = targetButton.getAttribute('data-tab');
@@ -747,15 +756,32 @@ function handleSort(column) {
     syncSortStateToWindow();
     saveSortState();
 
-    const sourceData = (window.originalDataCache && window.originalDataCache.length > 0)
-        ? window.originalDataCache
-        : originalDataCache;
+    const sourceData = getSourceDataForSorting();
+    if (!Array.isArray(sourceData)) {
+        console.warn('⚠️ No sortable data available.');
+        updateSortIndicators();
+        return;
+    }
 
     const sorter = (window.wsIntegration && typeof window.wsIntegration.applySorting === 'function')
         ? window.wsIntegration.applySorting.bind(window.wsIntegration)
         : applySorting;
 
-    const sortedData = sorter ? sorter([...sourceData]) : [];
+    let workingCopy;
+    try {
+        workingCopy = Array.isArray(sourceData) ? [...sourceData] : [];
+    } catch (error) {
+        console.error('❌ Failed to copy source data for sorting:', error);
+        workingCopy = [];
+    }
+
+    const sortedData = sorter ? sorter(workingCopy) : workingCopy;
+
+    if (!Array.isArray(sortedData)) {
+        console.warn('⚠️ Sorter returned a non-array result, skipping render.');
+        updateSortIndicators();
+        return;
+    }
 
     renderSortedTables(sortedData);
     updateSortIndicators();
@@ -767,9 +793,11 @@ function syncSortStateToWindow() {
 
 window.handleSort = handleSort;
 window.applySorting = applySorting;
+window.updateSortIndicators = updateSortIndicators;
 
 function renderSortedTables(sortedData) {
     if (!Array.isArray(sortedData)) {
+        console.warn('⚠️ renderSortedTables called without an array.');
         return;
     }
 
@@ -977,7 +1005,28 @@ function parseNumber(value) {
     return Number.isFinite(parsed) ? parsed : NaN;
 }
 
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-oluz46
+function getSourceDataForSorting() {
+    const candidates = [
+        window.originalDataCache,
+        originalDataCache,
+        window.dataCache,
+        dataCache
+    ];
+
+    for (const candidate of candidates) {
+        if (Array.isArray(candidate) && candidate.length) {
+            return candidate;
+        }
+    }
+
+    for (const candidate of candidates) {
+        if (Array.isArray(candidate)) {
+            return candidate;
+        }
+    }
+
+    return [];
+}
 // Apply sorting to data array
 function applySorting(data) {
     if (!sortState.column || !sortState.direction) {
