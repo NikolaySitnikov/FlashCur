@@ -113,6 +113,7 @@ function switchTab(tabName) {
             if (!c) return;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             const has = hasHorizontalOverflow(c);
             c.classList.toggle('has-scroll', has);
             if (!has) c.classList.remove('scrolled');
@@ -122,6 +123,9 @@ function switchTab(tabName) {
 =======
             updateHorizontalOverflowState(c);
 >>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lvaveo
+=======
+            updateHorizontalOverflowState(c);
+>>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-qoustq
         });
     }
 }
@@ -186,6 +190,7 @@ async function loadData() {
                 if (container) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                     const hasScroll = hasHorizontalOverflow(container);
                     container.classList.toggle('has-scroll', hasScroll);
                     if (!hasScroll) container.classList.remove('scrolled');
@@ -195,6 +200,9 @@ async function loadData() {
 =======
                     updateHorizontalOverflowState(container);
 >>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lvaveo
+=======
+                    updateHorizontalOverflowState(container);
+>>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-qoustq
                 }
             });
         }, 100);
@@ -1003,19 +1011,45 @@ function showNotification(message, type = 'info') {
  * Check if table container is scrollable and add visual indicator
  */
 // Allow a little wiggle room so rounding errors or borders don't trigger overflow states
-const HORIZONTAL_SCROLL_TOLERANCE = 16;
+const HORIZONTAL_SCROLL_TOLERANCE = 32;
+
+function normalizeWidths(values) {
+    return values
+        .map(value => (typeof value === 'number' && Number.isFinite(value) ? value : 0))
+        .filter(value => value > 0)
+        .map(value => Math.round(value * 1000) / 1000);
+}
 
 function measureHorizontalOverflow(container, measurementTarget) {
     if (!container) {
         return { overflowAmount: 0, hasOverflow: false };
     }
 
+    const containerRect = container.getBoundingClientRect();
+    if (!containerRect || containerRect.width < 1) {
+        return { overflowAmount: 0, hasOverflow: false };
+    }
+
     const target = measurementTarget || container.querySelector('table') || container;
-    const containerScrollWidth = Math.ceil(container.scrollWidth || 0);
-    const targetScrollWidth = Math.ceil(target?.scrollWidth || 0);
-    const referenceWidth = Math.max(containerScrollWidth, targetScrollWidth);
-    const clientWidth = Math.floor(container.clientWidth || 0);
-    const overflowAmount = Math.max(referenceWidth - clientWidth, 0);
+    const targetRect = target?.getBoundingClientRect();
+
+    const containerWidths = normalizeWidths([
+        container.clientWidth,
+        container.offsetWidth,
+        containerRect?.width
+    ]);
+
+    const contentWidths = normalizeWidths([
+        target?.clientWidth,
+        target?.scrollWidth,
+        target?.offsetWidth,
+        targetRect?.width,
+        container.scrollWidth
+    ]);
+
+    const viewportWidth = containerWidths.length ? Math.max(...containerWidths) : 0;
+    const contentWidth = contentWidths.length ? Math.max(...contentWidths) : viewportWidth;
+    const overflowAmount = Math.max(contentWidth - viewportWidth, 0);
 
     return {
         overflowAmount,
@@ -1056,6 +1090,7 @@ function checkTableScroll(container) {
     // Check if content is wider than container
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     const hasOverflow = hasHorizontalOverflow(container, table);
     container.classList.toggle('has-scroll', hasOverflow);
 
@@ -1068,6 +1103,9 @@ function checkTableScroll(container) {
 =======
     updateHorizontalOverflowState(container, table);
 >>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lvaveo
+=======
+    updateHorizontalOverflowState(container, table);
+>>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-qoustq
 }
 
 // Check scroll on window resize
@@ -1174,6 +1212,7 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
         const show = () => {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             if (hasHorizontalOverflow(container) && !localStorage.getItem(HINT_KEY)) {
 =======
             const hasScroll = updateHorizontalOverflowState(container);
@@ -1183,6 +1222,10 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
             const hasScroll = updateHorizontalOverflowState(container);
             if (hasScroll && !localStorage.getItem(HINT_KEY)) {
 >>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lvaveo
+=======
+            const hasScroll = updateHorizontalOverflowState(container);
+            if (hasScroll && !localStorage.getItem(HINT_KEY)) {
+>>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-qoustq
                 container.classList.add('show-hint');
                 // auto-hide after 2.5s and never show again
                 setTimeout(() => {

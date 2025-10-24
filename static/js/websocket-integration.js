@@ -730,7 +730,8 @@ WebSocketIntegration.prototype.updateScrollIndicators = function () {
         .filter(Boolean);
     containers.forEach((container) => {
         if (typeof updateHorizontalOverflowState === 'function') {
-            updateHorizontalOverflowState(container);
+            const table = container.querySelector('table');
+            updateHorizontalOverflowState(container, table);
         } else {
             const hasScroll = container.scrollWidth - container.clientWidth > 2;
             container.classList.toggle('has-scroll', hasScroll);
