@@ -27,15 +27,22 @@
             this.store = global.marketStore;
             this.table = null;
             this.unsubscribe = null;
+            this.ws = null;
+            this.wsUnsubscribe = null;
+            this.wsStatusUnsubscribe = null;
             this.isConnected = false;
             this._lastRows = [];
+            this.hasHydrated = false;
         }
 
         init() {
-            this.table = global.marketTable || null;
+            if (!this.store && global.marketStore) {
+                this.store = global.marketStore;
+            }
+
+            this.table = global.marketTable || global.tableController || null;
             this.subscribeToStore();
-            this.updateConnectionIndicator('connecting');
-            this.isConnected = true;
+            this.initializeWebSocket();
             this.updateScrollIndicators();
         }
 
@@ -44,7 +51,114 @@
                 this.unsubscribe();
                 this.unsubscribe = null;
             }
+            this.teardownWebSocket();
             this.isConnected = false;
+            this.hasHydrated = false;
+        }
+
+        initializeWebSocket() {
+            if (this.ws) {
+                this.teardownWebSocket();
+            }
+
+            const WsCtor = global.BinanceWS;
+            if (typeof WsCtor !== 'function') {
+                console.warn('🟡 BinanceWS class not available; skipping live updates.');
+                this.handleWsStatus('disconnected');
+                return;
+            }
+
+            this.ws = new WsCtor(['!ticker@arr', '!markPrice@arr']);
+            this.wsUnsubscribe = this.ws.on(message => this.handleWsMessage(message));
+            this.wsStatusUnsubscribe = this.ws.onStatusChange(status => this.handleWsStatus(status));
+            try {
+                this.ws.start();
+                global.binanceWsClient = this.ws;
+            } catch (error) {
+                console.error('❌ Failed to start Binance WebSocket:', error);
+                this.handleWsStatus('disconnected');
+            }
+        }
+
+        teardownWebSocket() {
+            if (typeof this.wsUnsubscribe === 'function') {
+                this.wsUnsubscribe();
+                this.wsUnsubscribe = null;
+            }
+
+            if (typeof this.wsStatusUnsubscribe === 'function') {
+                this.wsStatusUnsubscribe();
+                this.wsStatusUnsubscribe = null;
+            }
+
+            if (this.ws && typeof this.ws.stop === 'function') {
+                try {
+                    this.ws.stop();
+                } catch (error) {
+                    console.error('❌ Failed to stop Binance WebSocket:', error);
+                }
+            }
+
+            this.ws = null;
+        }
+
+        handleWsStatus(status) {
+            const normalized = (status || '').toLowerCase();
+
+            this.isConnected = normalized === 'connected';
+
+            if (this.store && typeof this.store.setConnectionState === 'function') {
+                this.store.setConnectionState(normalized);
+            } else {
+                this.updateConnectionIndicator(normalized);
+            }
+        }
+
+        handleWsMessage(message) {
+            if (!message || typeof message !== 'object') {
+                return;
+            }
+
+            const streamName = String(message.stream || message.topic || '').toLowerCase();
+            const payload = this.resolvePayloadArray(message);
+
+            if (!payload.length) {
+                return;
+            }
+
+            if (streamName.includes('ticker')) {
+                if (this.store && typeof this.store.updateTickers === 'function') {
+                    this.store.updateTickers(payload);
+                }
+                return;
+            }
+
+            if (streamName.includes('markprice')) {
+                if (this.store && typeof this.store.updateMarkPrices === 'function') {
+                    this.store.updateMarkPrices(payload);
+                }
+            }
+        }
+
+        resolvePayloadArray(message) {
+            if (!message) return [];
+
+            const candidates = [
+                message.data,
+                message.data?.data,
+                message.payload,
+                message.result,
+                message.params?.data,
+                message
+            ];
+
+            for (const candidate of candidates) {
+                if (Array.isArray(candidate)) {
+                    return candidate;
+                }
+            }
+
+            return [];
         }
 
         subscribeToStore() {
@@ -64,12 +178,29 @@
 
             this.updateConnectionIndicator(state.connectionState || 'connected');
 
+            if (!this.table && (global.marketTable || global.tableController)) {
+                this.table = global.marketTable || global.tableController;
+            }
+
             const rows = this.extractRows(state);
             if (!rows.length) {
                 return;
             }
 
             this._lastRows = rows;
+
+            if (!this.hasHydrated) {
+                if (typeof hideLoading === 'function') {
+                    hideLoading();
+                }
+                if (typeof showDownloadButton === 'function') {
+                    showDownloadButton();
+                }
+                if (typeof updateLastUpdated === 'function') {
+                    updateLastUpdated();
+                }
+                this.hasHydrated = true;
+            }
 
             if (this.table) {
                 this.table.ingest(rows, { replaceSource: true });
