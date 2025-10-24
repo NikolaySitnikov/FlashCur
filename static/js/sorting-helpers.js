@@ -1,74 +1,107 @@
 (function initializeSortingHelpers(global) {
     if (!global) return;
 
+    const STRIP_HTML_REGEX = /<[^>]*>/g;
+    const NON_NUMERIC_REGEX = /[^0-9eE+\-\.]/g;
+
     const stripHtmlTags = (value) => {
         if (typeof value !== 'string') return value;
-        return value.replace(/<[^>]*>/g, '');
+        return value.replace(STRIP_HTML_REGEX, '');
     };
 
-    const parseNumericString = (value, options = {}) => {
-        if (typeof value !== 'string') return Number.NaN;
-        const { percentAsDecimal = false } = options;
-        let cleaned = stripHtmlTags(value)
-            .replace(/[$,]/g, '')
-            .replace(/\s+/g, '')
-            .trim();
+    const normalizeSuffix = (value = '') => {
+        if (!value.length) return '';
+        return value.slice(-1).toUpperCase();
+    };
 
+    const parseNumericString = (value, { treatPercentAs = 'raw' } = {}) => {
+        if (value === null || value === undefined) {
+            return Number.NaN;
+        }
+
+        if (typeof value === 'number') {
+            return Number.isFinite(value) ? value : Number.NaN;
+        }
+
+        if (typeof value !== 'string') {
+            return Number.NaN;
+        }
+
+        let cleaned = stripHtmlTags(value).trim();
         if (!cleaned) {
             return Number.NaN;
         }
 
         let multiplier = 1;
-        let hasPercent = false;
+        let percentDetected = false;
 
         if (cleaned.endsWith('%')) {
-            hasPercent = true;
+            percentDetected = true;
             cleaned = cleaned.slice(0, -1);
         }
 
-        const suffix = cleaned.slice(-1).toUpperCase();
+        const suffix = normalizeSuffix(cleaned);
         if (['K', 'M', 'B', 'T'].includes(suffix)) {
             switch (suffix) {
                 case 'K':
-                    multiplier *= 1e3;
+                    multiplier = 1e3;
                     break;
                 case 'M':
-                    multiplier *= 1e6;
+                    multiplier = 1e6;
                     break;
                 case 'B':
-                    multiplier *= 1e9;
+                    multiplier = 1e9;
                     break;
                 case 'T':
-                    multiplier *= 1e12;
+                    multiplier = 1e12;
                     break;
                 default:
-                    break;
+                    multiplier = 1;
             }
             cleaned = cleaned.slice(0, -1);
         }
 
-        const numeric = parseFloat(cleaned);
+        cleaned = cleaned
+            .replace(/[,\s]/g, '')
+            .replace(/\$/g, '')
+            .replace(/--/g, '-')
+            .replace(/\((.*)\)/, '-$1');
+
+        if (!cleaned) {
+            return Number.NaN;
+        }
+
+        // Allow scientific notation and decimals only
+        if (NON_NUMERIC_REGEX.test(cleaned.replace(/[eE][+\-]?\d+$/, ''))) {
+            cleaned = cleaned.replace(NON_NUMERIC_REGEX, '');
+        }
+
+        const numeric = Number.parseFloat(cleaned);
         if (!Number.isFinite(numeric)) {
             return Number.NaN;
         }
 
-        if (hasPercent && percentAsDecimal) {
-            return numeric * multiplier * 0.01;
+        if (percentDetected) {
+            if (treatPercentAs === 'decimal') {
+                return numeric * multiplier * 0.01;
+            }
+            return numeric * multiplier;
         }
 
         return numeric * multiplier;
     };
 
-    const coerceNumeric = (primaryValue, fallbacks = [], options = {}) => {
-        if (Number.isFinite(primaryValue)) {
-            return primaryValue;
-        }
+    const resolveFromObject = (item, keys, { treatPercentAs } = {}) => {
+        if (!item || !keys) return Number.NaN;
+        const lookupKeys = Array.isArray(keys) ? keys : [keys];
 
-        const sources = Array.isArray(fallbacks) ? fallbacks : [fallbacks];
-        for (const candidate of sources) {
-            const parsed = parseNumericString(candidate, options);
-            if (Number.isFinite(parsed)) {
-                return parsed;
+        for (const key of lookupKeys) {
+            if (key in item) {
+                const rawValue = item[key];
+                const numeric = parseNumericString(rawValue, { treatPercentAs });
+                if (Number.isFinite(numeric)) {
+                    return numeric;
+                }
             }
         }
 
@@ -76,44 +109,44 @@
     };
 
     const normalizeAsset = (item) => {
-        if (typeof item?.asset === 'string' && item.asset.trim().length) {
-            return item.asset.trim().toUpperCase();
+        const candidates = [
+            item?.asset,
+            item?.symbol,
+            item?.pair,
+            item?.datasetAsset
+        ];
+
+        for (const candidate of candidates) {
+            if (typeof candidate === 'string' && candidate.trim()) {
+                return candidate.replace(/USDT$/i, '').trim().toUpperCase();
+            }
         }
-        if (typeof item?.symbol === 'string' && item.symbol.trim().length) {
-            return item.symbol.replace(/USDT$/i, '').trim().toUpperCase();
-        }
+
         return '';
     };
 
+    const columnKeyMap = {
+        volume: ['volume', 'volume_usd', 'volume_quote', 'vol24hQuote', 'notional'],
+        price_change_pct: ['price_change_pct', 'change_pct', 'changePct', 'price_change_formatted'],
+        funding_rate: ['funding_rate', 'fundingRate', 'funding_formatted'],
+        price: ['price', 'lastPrice', 'price_formatted'],
+        open_interest: ['open_interest_usd', 'open_interest', 'oiUsd', 'open_interest_formatted']
+    };
+
     const buildSortMeta = (item, column) => {
-        switch (column) {
-            case 'asset': {
-                const value = normalizeAsset(item);
-                return { type: 'string', value, missing: value.length === 0 };
-            }
-            case 'volume': {
-                const value = coerceNumeric(item?.volume, item?.volume_formatted);
-                return { type: 'number', value, missing: !Number.isFinite(value) };
-            }
-            case 'price_change_pct': {
-                const value = coerceNumeric(item?.price_change_pct, item?.price_change_formatted);
-                return { type: 'number', value, missing: !Number.isFinite(value) };
-            }
-            case 'funding_rate': {
-                const value = coerceNumeric(item?.funding_rate, item?.funding_formatted);
-                return { type: 'number', value, missing: !Number.isFinite(value) };
-            }
-            case 'price': {
-                const value = coerceNumeric(item?.price, item?.price_formatted);
-                return { type: 'number', value, missing: !Number.isFinite(value) };
-            }
-            case 'open_interest': {
-                const value = coerceNumeric(item?.open_interest_usd, item?.open_interest_formatted);
-                return { type: 'number', value, missing: !Number.isFinite(value) };
-            }
-            default:
-                return { type: 'number', value: Number.NaN, missing: true };
+        if (column === 'asset') {
+            const value = normalizeAsset(item);
+            return { type: 'string', value, missing: value.length === 0 };
         }
+
+        const treatPercentAs = (column === 'price_change_pct' || column === 'funding_rate') ? 'raw' : 'decimal';
+        const numeric = resolveFromObject(item, columnKeyMap[column] || column, { treatPercentAs });
+
+        return {
+            type: 'number',
+            value: numeric,
+            missing: !Number.isFinite(numeric)
+        };
     };
 
     const compareByMeta = (left, right, column, direction) => {
@@ -131,42 +164,41 @@
         }
 
         if (aMeta.type === 'string' || bMeta.type === 'string') {
-            const comparison = aMeta.value.localeCompare(bMeta.value);
+            const comparison = aMeta.value.localeCompare(bMeta.value, undefined, { sensitivity: 'base' });
             if (comparison !== 0) {
                 return direction === 'asc' ? comparison : -comparison;
             }
             return left.index - right.index;
         }
 
-        const diff = aMeta.value - bMeta.value;
-        if (Number.isFinite(diff) && diff !== 0) {
-            return direction === 'asc' ? diff : -diff;
+        if (aMeta.value === bMeta.value) {
+            return left.index - right.index;
         }
 
-        return left.index - right.index;
+        const multiplier = direction === 'asc' ? 1 : -1;
+        return (aMeta.value - bMeta.value) * multiplier;
     };
 
     const applySort = (data, state = {}) => {
         if (!Array.isArray(data)) {
             return [];
         }
-        if (!state.column || !state.direction) {
+
+        const column = state.column;
+        const direction = state.direction === 'asc' ? 'asc' : state.direction === 'desc' ? 'desc' : null;
+
+        if (!column || !direction) {
             return [...data];
         }
 
-        const direction = state.direction === 'asc' ? 'asc' : 'desc';
         const working = data.map((item, index) => ({ item, index }));
-
-        working.sort((a, b) => compareByMeta(a, b, state.column, direction));
-
+        working.sort((left, right) => compareByMeta(left, right, column, direction));
         return working.map(entry => entry.item);
     };
 
     const helpers = {
         stripHtmlTags,
         parseNumericString,
-        coerceNumeric,
-        buildSortMeta,
         applySort
     };
 

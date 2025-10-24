@@ -1355,7 +1355,7 @@ body.light-theme {
     background: rgba(26, 26, 26, 0.7);
     border-radius: 20px;
     overflow-y: hidden;
-    overflow-x: auto;
+    overflow-x: hidden;
     width: 100%;
     max-width: 100%;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3),
@@ -1376,7 +1376,12 @@ body.light-theme {
     will-change: scroll-position;
 }
 
+.table-container.is-scrollable {
+    overflow-x: auto;
+}
+
 /* Add scroll indicator for wide tables */
+.table-container.is-scrollable,
 .table-container.has-scroll {
     background:
         linear-gradient(90deg, rgba(0, 0, 0, 0.15) 0%, transparent 20px),
@@ -2654,11 +2659,13 @@ th.pro-column {
     }
 
     /* Padding for scroll hint */
+    .table-container.is-scrollable,
     .table-container.has-scroll {
         padding-top: 3rem;
     }
 
     /* Mobile scroll hint */
+    .table-container.is-scrollable::before,
     .table-container.has-scroll::before {
         top: 0.5rem;
         padding: 0.5rem 1rem;
@@ -2854,6 +2861,7 @@ td.pro-column {
 }
 
 /* Show fade when scrollable */
+.table-container.is-scrollable::after,
 .table-container.has-scroll::after {
     opacity: 1;
 }
