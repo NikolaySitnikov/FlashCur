@@ -747,32 +747,17 @@ function handleSort(column) {
     syncSortStateToWindow();
     saveSortState();
 
-    // Apply sorting and redisplay - use fresh copy of original data
-    let sortedData = null;
+    const sourceData = (window.originalDataCache && window.originalDataCache.length > 0)
+        ? window.originalDataCache
+        : originalDataCache;
 
-    if (window.originalDataCache && window.originalDataCache.length > 0) {
-        if (window.wsIntegration && typeof window.wsIntegration.applySorting === 'function') {
-            sortedData = window.wsIntegration.applySorting([...window.originalDataCache]);
-        } else if (typeof window.applySorting === 'function') {
-            sortedData = window.applySorting([...window.originalDataCache]);
-        }
-    }
+    const sorter = (window.wsIntegration && typeof window.wsIntegration.applySorting === 'function')
+        ? window.wsIntegration.applySorting.bind(window.wsIntegration)
+        : applySorting;
 
-    if (sortedData) {
-        window.dataCache = [...sortedData];
-        if (window.wsIntegration && typeof window.wsIntegration.updateTable === 'function') {
-            window.wsIntegration.updateTable('tableBody', window.dataCache);
-            window.wsIntegration.updateTable('mobileTableBody', window.dataCache);
-        } else {
-            dataCache = [...window.dataCache];
-            displayDataProgressive(dataCache);
-        }
-    } else {
-        // Fallback to original system
-        dataCache = applySorting([...originalDataCache]);
-        window.dataCache = [...dataCache];
-        displayDataProgressive(dataCache);
-    }
+    const sortedData = sorter ? sorter([...sourceData]) : [];
+
+    renderSortedTables(sortedData);
     updateSortIndicators();
 }
 
@@ -783,6 +768,216 @@ function syncSortStateToWindow() {
 window.handleSort = handleSort;
 window.applySorting = applySorting;
 
+function renderSortedTables(sortedData) {
+    if (!Array.isArray(sortedData)) {
+        return;
+    }
+
+    dataCache = [...sortedData];
+    window.dataCache = [...sortedData];
+
+    const proEnabled = Boolean(
+        hasProMetrics ||
+        document.querySelector('#dataTable thead .pro-column') ||
+        document.querySelector('#mobileDataTable thead .pro-column')
+    );
+
+    const desktopBody = document.getElementById('tableBody');
+    const mobileBody = document.getElementById('mobileTableBody');
+
+    if (desktopBody) {
+        replaceTableBody(desktopBody, sortedData, proEnabled);
+    }
+
+    if (mobileBody) {
+        replaceTableBody(mobileBody, sortedData, proEnabled);
+    }
+
+    const desktopContainer = document.getElementById('tableContainer');
+    const mobileContainer = document.getElementById('mobileTableContainer');
+
+    if (desktopContainer) {
+        desktopContainer.style.display = 'block';
+        updateHorizontalOverflowState(desktopContainer, desktopContainer.querySelector('table'));
+    }
+
+    if (mobileContainer) {
+        mobileContainer.style.display = 'block';
+        updateHorizontalOverflowState(mobileContainer, mobileContainer.querySelector('table'));
+    }
+
+    if (window.wsIntegration) {
+        window.wsIntegration._lastNonEmptyRows = [...sortedData];
+        if (typeof window.wsIntegration.updateScrollIndicators === 'function') {
+            window.wsIntegration.updateScrollIndicators();
+        }
+    }
+}
+
+window.renderSortedTables = renderSortedTables;
+
+function replaceTableBody(tbodyElement, rows, proEnabled) {
+    if (!tbodyElement) return;
+
+    const fragment = document.createDocumentFragment();
+    rows.forEach(item => {
+        fragment.appendChild(buildStaticRow(item, proEnabled));
+    });
+
+    tbodyElement.replaceChildren(fragment);
+}
+
+function buildStaticRow(item, proEnabled) {
+    const tr = document.createElement('tr');
+    tr.dataset.symbol = item.asset || '';
+
+    const assetCell = document.createElement('td');
+    assetCell.className = 'px-4 py-2 font-medium';
+    assetCell.textContent = item.asset || '-';
+    tr.appendChild(assetCell);
+
+    const volumeCell = document.createElement('td');
+    volumeCell.className = 'px-4 py-2';
+    volumeCell.textContent = resolveVolumeDisplay(item);
+    tr.appendChild(volumeCell);
+
+    if (proEnabled) {
+        const priceChangeCell = document.createElement('td');
+        priceChangeCell.className = 'px-4 py-2 pro-column';
+        const priceChangeValue = parseNumber(item.price_change_pct);
+        const priceChangeDisplay = resolvePriceChangeDisplay(item, priceChangeValue);
+
+        if (Number.isFinite(priceChangeValue)) {
+            if (priceChangeValue > 0) {
+                priceChangeCell.classList.add('price-change-positive', 'text-green-600');
+            } else if (priceChangeValue < 0) {
+                priceChangeCell.classList.add('price-change-negative', 'text-red-600');
+            }
+        }
+
+        priceChangeCell.textContent = priceChangeDisplay;
+        tr.appendChild(priceChangeCell);
+    }
+
+    const fundingCell = document.createElement('td');
+    fundingCell.className = 'px-4 py-2';
+    fundingCell.innerHTML = resolveFundingDisplay(item);
+    tr.appendChild(fundingCell);
+
+    const priceCell = document.createElement('td');
+    priceCell.className = 'px-4 py-2';
+    priceCell.textContent = resolvePriceDisplay(item);
+    tr.appendChild(priceCell);
+
+    if (proEnabled) {
+        const oiCell = document.createElement('td');
+        oiCell.className = 'px-4 py-2 pro-column';
+        oiCell.textContent = resolveOpenInterestDisplay(item);
+        tr.appendChild(oiCell);
+
+        const liqCell = document.createElement('td');
+        liqCell.className = 'px-4 py-2 pro-column';
+        applyLiquidationStyling(liqCell, item.liquidation_risk);
+        tr.appendChild(liqCell);
+    }
+
+    return tr;
+}
+
+function resolveVolumeDisplay(item) {
+    if (item.volume_formatted) return item.volume_formatted;
+    if (Number.isFinite(item.volume)) return formatCompactUsd(item.volume);
+    return '-';
+}
+
+function resolvePriceDisplay(item) {
+    if (item.price_formatted) return item.price_formatted;
+    if (Number.isFinite(item.price)) return formatPrice(item.price);
+    return '-';
+}
+
+function resolveFundingDisplay(item) {
+    if (item.funding_formatted) return item.funding_formatted;
+    if (Number.isFinite(item.funding_rate)) {
+        return formatFundingRate(item.funding_rate);
+    }
+    return 'N/A';
+}
+
+function resolveOpenInterestDisplay(item) {
+    if (item.open_interest_formatted) return item.open_interest_formatted;
+    if (Number.isFinite(item.open_interest_usd)) return formatCompactUsd(item.open_interest_usd);
+    if (Number.isFinite(item.open_interest)) return formatCompactUsd(item.open_interest * (item.price || 1));
+    return '-';
+}
+
+function resolvePriceChangeDisplay(item, rawValue) {
+    if (item.price_change_formatted) return item.price_change_formatted;
+    if (Number.isFinite(rawValue)) {
+        const sign = rawValue > 0 ? '+' : '';
+        return `${sign}${rawValue.toFixed(2)}%`;
+    }
+    return '-';
+}
+
+function applyLiquidationStyling(cell, value) {
+    if (value === null || value === undefined || value === '') {
+        cell.textContent = '-';
+        return;
+    }
+
+    if (typeof value === 'string') {
+        const normalized = value.toLowerCase();
+        cell.textContent = value;
+        if (normalized === 'high') {
+            cell.classList.add('liq-risk-high');
+        } else if (normalized === 'medium') {
+            cell.classList.add('liq-risk-medium');
+        } else if (normalized === 'low') {
+            cell.classList.add('liq-risk-low');
+        }
+        return;
+    }
+
+    const numericValue = parseNumber(value);
+    if (Number.isFinite(numericValue)) {
+        cell.textContent = numericValue.toFixed(2);
+        return;
+    }
+
+    cell.textContent = '-';
+}
+
+function formatCompactUsd(value) {
+    if (!Number.isFinite(value)) return '-';
+    const absValue = Math.abs(value);
+    if (absValue >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+    if (absValue >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+    if (absValue >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+    return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function formatPrice(value) {
+    if (!Number.isFinite(value)) return '-';
+    if (value < 0.01) return `$${value.toFixed(6)}`;
+    if (value < 1) return `$${value.toFixed(4)}`;
+    if (value < 100) return `$${value.toFixed(3)}`;
+    return `$${value.toFixed(2)}`;
+}
+
+function formatFundingRate(value) {
+    if (!Number.isFinite(value)) return 'N/A';
+    const numeric = Math.abs(value) > 1 ? value : value * 100;
+    return `${numeric.toFixed(4)}%`;
+}
+
+function parseNumber(value) {
+    if (Number.isFinite(value)) return value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+>>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-oluz46
 // Apply sorting to data array
 function applySorting(data) {
     if (!sortState.column || !sortState.direction) {
