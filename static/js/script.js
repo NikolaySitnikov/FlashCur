@@ -271,6 +271,12 @@ function showError(message) {
 
 // Update Last Updated Time
 function updateLastUpdated() {
+    const target = document.getElementById('lastUpdated');
+    if (!target) {
+        console.warn('⚠️ Unable to update timestamp: #lastUpdated element not found.');
+        return;
+    }
+
     const now = new Date();
     const timeString = now.toLocaleString('en-US', {
         timeZone: 'America/Cancun',
@@ -282,7 +288,7 @@ function updateLastUpdated() {
         second: '2-digit'
     });
 
-    document.getElementById('lastUpdated').textContent = `Last Updated: ${timeString} (Tulum)`;
+    target.textContent = `Last Updated: ${timeString} (Tulum)`;
 }
 
 // Download Functionality
