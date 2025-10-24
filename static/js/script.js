@@ -164,6 +164,8 @@ async function loadData() {
         if (result.success) {
             originalDataCache = result.data; // Store original order
             dataCache = applySorting([...result.data]); // Apply current sorting
+            window.originalDataCache = [...originalDataCache];
+            window.dataCache = [...dataCache];
             hasProMetrics = result.has_pro_metrics || false; // Track Pro metrics availability
             hideLoading(); // Hide loading first
             await displayDataProgressive(dataCache);
@@ -746,16 +748,29 @@ function handleSort(column) {
     saveSortState();
 
     // Apply sorting and redisplay - use fresh copy of original data
+    let sortedData = null;
+
     if (window.originalDataCache && window.originalDataCache.length > 0) {
-        // WebSocket data available - use WebSocket sorting
-        window.dataCache = window.wsIntegration ? window.wsIntegration.applySorting([...window.originalDataCache]) : [...window.originalDataCache];
-        if (window.wsIntegration && window.wsIntegration.updateTable) {
+        if (window.wsIntegration && typeof window.wsIntegration.applySorting === 'function') {
+            sortedData = window.wsIntegration.applySorting([...window.originalDataCache]);
+        } else if (typeof window.applySorting === 'function') {
+            sortedData = window.applySorting([...window.originalDataCache]);
+        }
+    }
+
+    if (sortedData) {
+        window.dataCache = [...sortedData];
+        if (window.wsIntegration && typeof window.wsIntegration.updateTable === 'function') {
             window.wsIntegration.updateTable('tableBody', window.dataCache);
             window.wsIntegration.updateTable('mobileTableBody', window.dataCache);
+        } else {
+            dataCache = [...window.dataCache];
+            displayDataProgressive(dataCache);
         }
     } else {
         // Fallback to original system
         dataCache = applySorting([...originalDataCache]);
+        window.dataCache = [...dataCache];
         displayDataProgressive(dataCache);
     }
     updateSortIndicators();
@@ -766,6 +781,7 @@ function syncSortStateToWindow() {
 }
 
 window.handleSort = handleSort;
+window.applySorting = applySorting;
 
 // Apply sorting to data array
 function applySorting(data) {
