@@ -5,6 +5,7 @@ let originalDataCache = []; // Store original order from API
 let isDataLoading = false;
 let isAnimating = false; // Track if table animation is in progress
 let currentTab = 'market-data';
+let tabsInitialized = false;
 let unreadAlertsCount = 0;
 let lastViewedAlertsCount = 0;
 
@@ -49,6 +50,7 @@ let sortState = {
     column: null,      // 'asset', 'volume', 'funding_rate', 'price', or null
     direction: null    // 'asc', 'desc', or null (default)
 };
+syncSortStateToWindow();
 
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', async function () {
@@ -64,22 +66,28 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 // Tab Management
 function initializeTabs() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const mobileTabButtons = document.querySelectorAll('.mobile-tab-button');
+    if (tabsInitialized) return;
 
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.getAttribute('data-tab');
-            switchTab(targetTab);
-        });
+    const allTabButtons = document.querySelectorAll('.tab-button, .mobile-tab-button');
+    allTabButtons.forEach(button => {
+        if (button.tagName === 'BUTTON' && !button.getAttribute('type')) {
+            button.setAttribute('type', 'button');
+        }
     });
 
-    mobileTabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.getAttribute('data-tab');
-            switchTab(targetTab);
-        });
-    });
+    document.addEventListener('click', handleTabButtonClick, { passive: false });
+    tabsInitialized = true;
+}
+
+function handleTabButtonClick(event) {
+    const targetButton = event.target.closest('.tab-button, .mobile-tab-button');
+    if (!targetButton) return;
+
+    const targetTab = targetButton.getAttribute('data-tab');
+    if (!targetTab) return;
+
+    event.preventDefault();
+    switchTab(targetTab);
 }
 
 function switchTab(tabName) {
@@ -111,25 +119,7 @@ function switchTab(tabName) {
         ['tableContainer', 'mobileTableContainer'].forEach(id => {
             const c = document.getElementById(id);
             if (!c) return;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-            const has = hasHorizontalOverflow(c);
-            c.classList.toggle('has-scroll', has);
-            if (!has) c.classList.remove('scrolled');
-=======
             updateHorizontalOverflowState(c);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lyuvln
-=======
-            updateHorizontalOverflowState(c);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lvaveo
-=======
-            updateHorizontalOverflowState(c);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-qoustq
-=======
-            updateHorizontalOverflowState(c);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-5n0izu
         });
     }
 }
@@ -192,25 +182,7 @@ async function loadData() {
             ['tableContainer', 'mobileTableContainer'].forEach(id => {
                 const container = document.getElementById(id);
                 if (container) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                    const hasScroll = hasHorizontalOverflow(container);
-                    container.classList.toggle('has-scroll', hasScroll);
-                    if (!hasScroll) container.classList.remove('scrolled');
-=======
                     updateHorizontalOverflowState(container);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lyuvln
-=======
-                    updateHorizontalOverflowState(container);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lvaveo
-=======
-                    updateHorizontalOverflowState(container);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-qoustq
-=======
-                    updateHorizontalOverflowState(container);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-5n0izu
                 }
             });
         }, 100);
@@ -724,6 +696,7 @@ function loadSortState() {
             sortState = { column: null, direction: null };
         }
     }
+    syncSortStateToWindow();
 }
 
 // Save sorting state to localStorage
@@ -769,6 +742,7 @@ function handleSort(column) {
         }
     }
 
+    syncSortStateToWindow();
     saveSortState();
 
     // Apply sorting and redisplay - use fresh copy of original data
@@ -786,6 +760,12 @@ function handleSort(column) {
     }
     updateSortIndicators();
 }
+
+function syncSortStateToWindow() {
+    window.sortState = { ...sortState };
+}
+
+window.handleSort = handleSort;
 
 // Apply sorting to data array
 function applySorting(data) {
@@ -1088,28 +1068,7 @@ function checkTableScroll(container) {
     if (!table) return;
 
     // Check if content is wider than container
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const hasOverflow = hasHorizontalOverflow(container, table);
-    container.classList.toggle('has-scroll', hasOverflow);
-
-    if (!hasOverflow) {
-        container.classList.remove('scrolled');
-    }
-=======
     updateHorizontalOverflowState(container, table);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lyuvln
-=======
-    updateHorizontalOverflowState(container, table);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lvaveo
-=======
-    updateHorizontalOverflowState(container, table);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-qoustq
-=======
-    updateHorizontalOverflowState(container, table);
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-5n0izu
 }
 
 // Check scroll on window resize
@@ -1214,27 +1173,8 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
     function armHint(container) {
         if (!container) return;
         const show = () => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-            if (hasHorizontalOverflow(container) && !localStorage.getItem(HINT_KEY)) {
-=======
             const hasScroll = updateHorizontalOverflowState(container);
             if (hasScroll && !localStorage.getItem(HINT_KEY)) {
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lyuvln
-=======
-            const hasScroll = updateHorizontalOverflowState(container);
-            if (hasScroll && !localStorage.getItem(HINT_KEY)) {
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-lvaveo
-=======
-            const hasScroll = updateHorizontalOverflowState(container);
-            if (hasScroll && !localStorage.getItem(HINT_KEY)) {
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-qoustq
-=======
-            const hasScroll = updateHorizontalOverflowState(container);
-            if (hasScroll && !localStorage.getItem(HINT_KEY)) {
->>>>>>> origin/codex/fix-horizontally-scrollable-table-issues-5n0izu
                 container.classList.add('show-hint');
                 // auto-hide after 2.5s and never show again
                 setTimeout(() => {
