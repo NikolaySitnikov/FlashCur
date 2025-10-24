@@ -1029,58 +1029,82 @@ function getSourceDataForSorting() {
 }
 // Apply sorting to data array
 function applySorting(data) {
-    if (!sortState.column || !sortState.direction) {
-        // No sorting - return original order
-        return data;
+    const helpers = window.sortingHelpers;
+    if (helpers && typeof helpers.applySort === 'function') {
+        const sorted = helpers.applySort(Array.isArray(data) ? data : [], sortState);
+        if (Array.isArray(sorted)) {
+            return sorted;
+        }
+        if (Array.isArray(data)) {
+            return [...data];
+        }
+        return [];
     }
 
-    const sorted = [...data];
+    if (!Array.isArray(data) || !sortState.column || !sortState.direction) {
+        return Array.isArray(data) ? [...data] : [];
+    }
 
-    sorted.sort((a, b) => {
-        let aVal, bVal;
+    const column = sortState.column;
+    const direction = sortState.direction === 'asc' ? 1 : -1;
+    const fallback = [...data].map((item, index) => ({ item, index }));
 
-        switch (sortState.column) {
+    const getNumeric = (value) => (Number.isFinite(value) ? value : Number.NaN);
+
+    fallback.sort((a, b) => {
+        let aVal;
+        let bVal;
+
+        switch (column) {
             case 'asset':
-                aVal = a.asset;
-                bVal = b.asset;
-                break;
+                aVal = typeof a.item.asset === 'string' ? a.item.asset : '';
+                bVal = typeof b.item.asset === 'string' ? b.item.asset : '';
+                if (aVal === bVal) {
+                    return a.index - b.index;
+                }
+                return direction * aVal.localeCompare(bVal);
             case 'volume':
-                aVal = a.volume;
-                bVal = b.volume;
+                aVal = getNumeric(a.item.volume);
+                bVal = getNumeric(b.item.volume);
                 break;
             case 'price_change_pct':
-                aVal = a.price_change_pct !== undefined ? a.price_change_pct : -Infinity;
-                bVal = b.price_change_pct !== undefined ? b.price_change_pct : -Infinity;
+                aVal = getNumeric(a.item.price_change_pct);
+                bVal = getNumeric(b.item.price_change_pct);
                 break;
             case 'funding_rate':
-                aVal = a.funding_rate !== null ? a.funding_rate : -Infinity;
-                bVal = b.funding_rate !== null ? b.funding_rate : -Infinity;
+                aVal = getNumeric(a.item.funding_rate);
+                bVal = getNumeric(b.item.funding_rate);
                 break;
             case 'price':
-                aVal = a.price;
-                bVal = b.price;
+                aVal = getNumeric(a.item.price);
+                bVal = getNumeric(b.item.price);
                 break;
             case 'open_interest':
-                aVal = a.open_interest_usd !== null && a.open_interest_usd !== undefined ? a.open_interest_usd : -Infinity;
-                bVal = b.open_interest_usd !== null && b.open_interest_usd !== undefined ? b.open_interest_usd : -Infinity;
+                aVal = getNumeric(a.item.open_interest_usd);
+                bVal = getNumeric(b.item.open_interest_usd);
                 break;
             default:
-                return 0;
+                return a.index - b.index;
         }
 
-        // Compare values
-        let comparison = 0;
-        if (typeof aVal === 'string') {
-            comparison = aVal.localeCompare(bVal);
-        } else {
-            comparison = aVal - bVal;
+        if (!Number.isFinite(aVal) && !Number.isFinite(bVal)) {
+            return a.index - b.index;
+        }
+        if (!Number.isFinite(aVal)) {
+            return 1;
+        }
+        if (!Number.isFinite(bVal)) {
+            return -1;
         }
 
-        // Apply direction
-        return sortState.direction === 'asc' ? comparison : -comparison;
+        const diff = aVal - bVal;
+        if (diff === 0) {
+            return a.index - b.index;
+        }
+        return direction * diff;
     });
 
-    return sorted;
+    return fallback.map(entry => entry.item);
 }
 
 // Update visual sort indicators

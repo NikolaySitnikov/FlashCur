@@ -548,60 +548,80 @@ class WebSocketIntegration {
         }
     }
 
-    // Apply sorting to data array (like working version)
+    // Apply sorting to data array (shared helper aware)
     applySorting(data) {
-        if (!window.sortState || !window.sortState.column || !window.sortState.direction) {
-            // No sorting - return original order
-            return data;
+        const helpers = window.sortingHelpers;
+        const state = window.sortState || {};
+
+        if (helpers && typeof helpers.applySort === 'function') {
+            return helpers.applySort(Array.isArray(data) ? data : [], state);
         }
 
-        const sorted = [...data];
+        if (!Array.isArray(data) || !state.column || !state.direction) {
+            return Array.isArray(data) ? [...data] : [];
+        }
 
-        sorted.sort((a, b) => {
-            let aVal, bVal;
+        const column = state.column;
+        const direction = state.direction === 'asc' ? 1 : -1;
+        const working = [...data].map((item, index) => ({ item, index }));
 
-            switch (window.sortState.column) {
-                case 'asset':
-                    aVal = a.asset;
-                    bVal = b.asset;
-                    break;
+        const getNumeric = (value) => (Number.isFinite(value) ? value : Number.NaN);
+
+        working.sort((a, b) => {
+            let aVal;
+            let bVal;
+
+            switch (column) {
+                case 'asset': {
+                    const assetA = typeof a.item.asset === 'string' ? a.item.asset : '';
+                    const assetB = typeof b.item.asset === 'string' ? b.item.asset : '';
+                    if (assetA === assetB) {
+                        return a.index - b.index;
+                    }
+                    return direction * assetA.localeCompare(assetB);
+                }
                 case 'volume':
-                    aVal = Number.isFinite(a.volume) ? a.volume : 0;
-                    bVal = Number.isFinite(b.volume) ? b.volume : 0;
+                    aVal = getNumeric(a.item.volume);
+                    bVal = getNumeric(b.item.volume);
                     break;
                 case 'price_change_pct':
-                    aVal = a.price_change_pct !== undefined ? a.price_change_pct : -Infinity;
-                    bVal = b.price_change_pct !== undefined ? b.price_change_pct : -Infinity;
+                    aVal = getNumeric(a.item.price_change_pct);
+                    bVal = getNumeric(b.item.price_change_pct);
                     break;
                 case 'funding_rate':
-                    aVal = a.funding_rate !== null ? a.funding_rate : -Infinity;
-                    bVal = b.funding_rate !== null ? b.funding_rate : -Infinity;
+                    aVal = getNumeric(a.item.funding_rate);
+                    bVal = getNumeric(b.item.funding_rate);
                     break;
                 case 'price':
-                    aVal = Number.isFinite(a.price) ? a.price : 0;
-                    bVal = Number.isFinite(b.price) ? b.price : 0;
+                    aVal = getNumeric(a.item.price);
+                    bVal = getNumeric(b.item.price);
                     break;
                 case 'open_interest':
-                    aVal = Number.isFinite(a.open_interest_usd) ? a.open_interest_usd : -Infinity;
-                    bVal = Number.isFinite(b.open_interest_usd) ? b.open_interest_usd : -Infinity;
+                    aVal = getNumeric(a.item.open_interest_usd);
+                    bVal = getNumeric(b.item.open_interest_usd);
                     break;
                 default:
-                    return 0;
+                    return a.index - b.index;
             }
 
-            // Compare values
-            let comparison = 0;
-            if (typeof aVal === 'string') {
-                comparison = aVal.localeCompare(bVal);
-            } else {
-                comparison = aVal - bVal;
+            if (!Number.isFinite(aVal) && !Number.isFinite(bVal)) {
+                return a.index - b.index;
+            }
+            if (!Number.isFinite(aVal)) {
+                return 1;
+            }
+            if (!Number.isFinite(bVal)) {
+                return -1;
             }
 
-            // Apply direction
-            return window.sortState.direction === 'asc' ? comparison : -comparison;
+            const diff = aVal - bVal;
+            if (diff === 0) {
+                return a.index - b.index;
+            }
+            return direction * diff;
         });
 
-        return sorted;
+        return working.map(entry => entry.item);
     }
 
 
