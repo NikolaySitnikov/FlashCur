@@ -34,9 +34,12 @@
                     <div class="connection-status">
                         <span id="connection-indicator" class="text-sm font-medium text-yellow-500">🟡
                             Connecting...</span>
-                        <span class="text-xs text-gray-500 ml-2">Live from Binance WebSocket</span>
+                        <span id="connection-subtitle" class="text-xs text-gray-500 ml-2">Live from Binance WebSocket</span>
                     </div>
-                    <div class="websocket-notice">
+                    <p class="last-updated" id="lastUpdated" aria-live="polite">
+                        Last Updated: Waiting for data…
+                    </p>
+                    <div class="websocket-notice" id="liveNotice">
                         <span class="text-xs text-blue-600">⚡ Real-time data streaming</span>
                     </div>
                 </div>
@@ -130,9 +133,6 @@
                 <div class="market-data">
                     <div class="section-header">
                         <h2 class="section-title">📈 Market Data</h2>
-                        <p class="last-updated" id="lastUpdated" aria-live="polite">
-                            Last Updated: Waiting for data…
-                        </p>
                     </div>
 
                     <!-- Loading Indicator -->

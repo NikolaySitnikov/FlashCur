@@ -6,6 +6,8 @@
         T: 1e12
     };
 
+    const MIN_VOLUME_USD = 100_000_000;
+
     const DEFAULT_SORT_STATE = { column: null, direction: null };
 
     const OVERFLOW_TOLERANCE_NARROW = 8;
@@ -177,11 +179,12 @@
 
         ingest(rows = [], { replaceSource = true } = {}) {
             const normalized = Array.isArray(rows) ? rows.map(row => this.normalizeRow(row)) : [];
+            const filtered = normalized.filter(row => this.passesVolumeThreshold(row));
 
             if (replaceSource) {
-                this.sourceRows = normalized;
+                this.sourceRows = filtered;
             } else {
-                this.sourceRows = this.mergeRows(this.sourceRows, normalized);
+                this.sourceRows = this.mergeRows(this.sourceRows, filtered);
             }
 
             this.refreshDisplay();
@@ -189,7 +192,7 @@
 
         mergeRows(existing, incoming) {
             if (!Array.isArray(existing) || existing.length === 0) {
-                return incoming;
+                return incoming.filter(row => this.passesVolumeThreshold(row));
             }
 
             const byAsset = new Map();
@@ -201,7 +204,7 @@
                 byAsset.set(row.assetKey, row);
             });
 
-            return Array.from(byAsset.values());
+            return Array.from(byAsset.values()).filter(row => this.passesVolumeThreshold(row));
         }
 
         refreshDisplay() {
@@ -320,6 +323,7 @@
             const fundingCell = document.createElement('td');
             fundingCell.className = mode === 'desktop' ? 'px-4 py-2' : 'px-3 py-2';
             fundingCell.innerHTML = row.display.funding_rate;
+            this.applyFundingStyling(fundingCell, row.metrics.funding_rate);
             tr.appendChild(fundingCell);
 
             const priceCell = document.createElement('td');
@@ -405,6 +409,25 @@
                 entry.container.classList.toggle('is-scrollable', hasOverflow);
                 entry.container.style.overflowX = hasOverflow ? 'auto' : 'hidden';
             });
+        }
+
+        passesVolumeThreshold(row) {
+            if (!row || !row.metrics) return false;
+            const volume = row.metrics.volume;
+            return Number.isFinite(volume) && volume >= MIN_VOLUME_USD;
+        }
+
+        applyFundingStyling(cell, fundingRate) {
+            if (!cell) return;
+            if (!Number.isFinite(fundingRate)) {
+                return;
+            }
+
+            if (fundingRate > 0.03) {
+                cell.classList.add('funding-positive');
+            } else if (fundingRate < -0.03) {
+                cell.classList.add('funding-negative');
+            }
         }
 
         normalizeRow(raw = {}) {

@@ -433,6 +433,30 @@ body.light-theme {
     text-align: center;
 }
 
+.connection-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.header-center .websocket-notice {
+    margin-top: 0.25rem;
+}
+
+.text-yellow-500 {
+    color: #facc15;
+}
+
+.text-green-500 {
+    color: #22c55e;
+}
+
+.text-red-500 {
+    color: #ef4444;
+}
+
 .header-right {
     flex: 1;
     display: flex;

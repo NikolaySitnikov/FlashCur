@@ -13,9 +13,15 @@ let lastViewedAlertsCount = 0;
 
 // User tier and refresh settings
 let userTier = 0;
+let userFeatures = {};
 let refreshInterval = 15 * 60 * 1000; // Default to 15 min (Free tier)
 let refreshTimer = null;
 let hasProMetrics = false; // Track if Pro metrics are available
+
+if (typeof window !== 'undefined') {
+    window.userTier = typeof window.userTier === 'number' ? window.userTier : userTier;
+    window.userFeatures = window.userFeatures || userFeatures;
+}
 
 // Simple navigation menu toggle
 function toggleNavMenu() {
@@ -68,6 +74,34 @@ document.addEventListener('DOMContentLoaded', async function () {
     loadData();
     setupAutoRefresh();
 });
+
+function applyTierFeatures() {
+    if (typeof window !== 'undefined') {
+        window.userTier = userTier;
+        window.userFeatures = userFeatures;
+    }
+
+    const subtitle = document.getElementById('connection-subtitle');
+    const liveNotice = document.getElementById('liveNotice');
+    const hasLive = Boolean(userFeatures?.real_time_updates);
+
+    if (subtitle) {
+        if (hasLive) {
+            subtitle.textContent = 'Live from Binance WebSocket';
+        } else {
+            const minutes = Math.max(1, Math.round(refreshInterval / 60000));
+            subtitle.textContent = `Auto refresh every ${minutes} min`;
+        }
+    }
+
+    if (liveNotice) {
+        liveNotice.style.display = hasLive ? 'block' : 'none';
+    }
+
+    if (window.wsIntegration && typeof window.wsIntegration.updatePermissions === 'function') {
+        window.wsIntegration.updatePermissions(userTier, userFeatures);
+    }
+}
 
 // Tab Management
 function initializeTabs() {
@@ -178,6 +212,7 @@ async function loadData() {
 
         if (result.success) {
             hasProMetrics = result.has_pro_metrics || false;
+            userFeatures = userFeatures || {};
 
             if (tableController) {
                 tableController.setHasProMetrics(hasProMetrics);
@@ -288,7 +323,7 @@ function updateLastUpdated() {
         second: '2-digit'
     });
 
-    target.textContent = `Last Updated: ${timeString} (Tulum)`;
+    target.textContent = `Last Updated: ${timeString}`;
 }
 
 // Download Functionality
@@ -369,6 +404,7 @@ async function fetchUserTier() {
         if (result.authenticated) {
             userTier = result.tier;
             refreshInterval = result.refresh_interval;
+            userFeatures = result.features || {};
 
             console.log(`User tier: ${result.tier_name} (${userTier})`);
             console.log(`Refresh interval: ${refreshInterval / 1000 / 60} minutes`);
@@ -376,6 +412,7 @@ async function fetchUserTier() {
             // Guest user - default to Free tier settings
             userTier = 0;
             refreshInterval = 15 * 60 * 1000; // 15 minutes
+            userFeatures = result.features || {};
             console.log('Guest user - using Free tier limits');
         }
     } catch (error) {
@@ -383,7 +420,10 @@ async function fetchUserTier() {
         // Default to Free tier on error
         userTier = 0;
         refreshInterval = 15 * 60 * 1000;
+        userFeatures = {};
     }
+
+    applyTierFeatures();
 }
 
 function setupAutoRefresh() {
@@ -401,6 +441,7 @@ function setupAutoRefresh() {
     }, refreshInterval);
 
     console.log(`Auto-refresh set to ${refreshInterval / 1000 / 60} minutes`);
+    applyTierFeatures();
 }
 
 // Load real alerts from API
@@ -719,6 +760,7 @@ function buildStaticRow(item, proEnabled) {
     const fundingCell = document.createElement('td');
     fundingCell.className = 'px-4 py-2';
     fundingCell.innerHTML = resolveFundingDisplay(item);
+    applyFundingRateClasses(fundingCell, item.funding_rate);
     tr.appendChild(fundingCell);
 
     const priceCell = document.createElement('td');
@@ -761,6 +803,21 @@ function resolveFundingDisplay(item) {
         return formatFundingRate(item.funding_rate);
     }
     return 'N/A';
+}
+
+function applyFundingRateClasses(cell, rawValue) {
+    if (!cell) return;
+
+    const numeric = Number.isFinite(rawValue) ? rawValue : parseNumber(rawValue);
+    if (!Number.isFinite(numeric)) {
+        return;
+    }
+
+    if (numeric > 0.03) {
+        cell.classList.add('funding-positive');
+    } else if (numeric < -0.03) {
+        cell.classList.add('funding-negative');
+    }
 }
 
 function resolveOpenInterestDisplay(item) {

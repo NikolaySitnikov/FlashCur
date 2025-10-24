@@ -22,6 +22,8 @@
         return `${value.toFixed(4)}%`;
     }
 
+    const MIN_VOLUME_USD = 100_000_000;
+
     class WebSocketIntegration {
         constructor() {
             this.store = global.marketStore;
@@ -33,6 +35,7 @@
             this.isConnected = false;
             this._lastRows = [];
             this.hasHydrated = false;
+            this.liveUpdatesEnabled = false;
         }
 
         init() {
@@ -42,7 +45,9 @@
 
             this.table = global.marketTable || global.tableController || null;
             this.subscribeToStore();
-            this.initializeWebSocket();
+            const tier = typeof global.userTier === 'number' ? global.userTier : 0;
+            const features = global.userFeatures || {};
+            this.applyPermissions({ tier, features, startWebsocket: true });
             this.updateScrollIndicators();
         }
 
@@ -54,9 +59,42 @@
             this.teardownWebSocket();
             this.isConnected = false;
             this.hasHydrated = false;
+            this.liveUpdatesEnabled = false;
+        }
+
+        applyPermissions({ tier = 0, features = {}, startWebsocket = false } = {}) {
+            const allowLive = this.shouldEnableLiveUpdates(tier, features);
+            const previouslyEnabled = this.liveUpdatesEnabled;
+            this.liveUpdatesEnabled = allowLive;
+
+            if (!allowLive) {
+                if (previouslyEnabled) {
+                    this.teardownWebSocket();
+                }
+                this.handleWsStatus('disabled');
+                return;
+            }
+
+            if (allowLive && startWebsocket && !previouslyEnabled) {
+                this.initializeWebSocket();
+            }
+        }
+
+        shouldEnableLiveUpdates(tier, features) {
+            if (features && typeof features.real_time_updates === 'boolean') {
+                return Boolean(features.real_time_updates);
+            }
+            if (typeof tier === 'number') {
+                return tier >= 2;
+            }
+            return false;
         }
 
         initializeWebSocket() {
+            if (!this.liveUpdatesEnabled) {
+                return;
+            }
+
             if (this.ws) {
                 this.teardownWebSocket();
             }
@@ -64,10 +102,11 @@
             const WsCtor = global.BinanceWS;
             if (typeof WsCtor !== 'function') {
                 console.warn('🟡 BinanceWS class not available; skipping live updates.');
-                this.handleWsStatus('disconnected');
+                this.handleWsStatus('disabled');
                 return;
             }
 
+            this.handleWsStatus('connecting');
             this.ws = new WsCtor(['!ticker@arr', '!markPrice@arr']);
             this.wsUnsubscribe = this.ws.on(message => this.handleWsMessage(message));
             this.wsStatusUnsubscribe = this.ws.onStatusChange(status => this.handleWsStatus(status));
@@ -224,10 +263,17 @@
             const rows = symbols
                 .filter(item => item && typeof item.symbol === 'string' && item.symbol.endsWith('USDT'))
                 .map(item => this.mapSymbolToRow(item))
-                .filter(Boolean);
+                .filter(row => this.passesVolumeThreshold(row));
 
             rows.sort((a, b) => (b.volume || 0) - (a.volume || 0));
             return rows;
+        }
+
+        passesVolumeThreshold(row) {
+            if (!row || !Number.isFinite(row.volume)) {
+                return false;
+            }
+            return row.volume >= MIN_VOLUME_USD;
         }
 
         mapSymbolToRow(symbolState) {
@@ -304,6 +350,9 @@
             } else if (normalized === 'disconnected') {
                 display = '🔴 Disconnected';
                 color = 'text-red-500';
+            } else if (normalized === 'disabled') {
+                display = '🟠 Auto refresh';
+                color = 'text-yellow-500';
             }
 
             indicator.textContent = display;
@@ -313,6 +362,10 @@
     }
 
     global.WebSocketIntegration = WebSocketIntegration;
+
+    WebSocketIntegration.prototype.updatePermissions = function updatePermissions(tier, features = {}) {
+        this.applyPermissions({ tier, features, startWebsocket: true });
+    };
 
     document.addEventListener('DOMContentLoaded', () => {
         if (!global.wsIntegration) {
