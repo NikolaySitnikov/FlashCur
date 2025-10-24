@@ -61,9 +61,25 @@ syncSortStateToWindow();
 
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', async function () {
-    tableController = new MarketTableController();
-    tableController.attach();
-    window.marketTable = tableController;
+    const ControllerCtor = typeof window !== 'undefined' ? window.MarketTableController : undefined;
+    if (typeof ControllerCtor === 'function') {
+        try {
+            tableController = new ControllerCtor();
+            tableController.attach();
+            window.marketTable = tableController;
+            window.tableController = tableController;
+        } catch (error) {
+            console.error('⚠️ Failed to initialise MarketTableController, falling back to legacy renderer.', error);
+            tableController = null;
+            window.marketTable = null;
+            window.tableController = null;
+        }
+    } else {
+        console.warn('🟡 MarketTableController not available; using legacy table renderer.');
+        tableController = null;
+        window.marketTable = null;
+        window.tableController = null;
+    }
 
     initializeTheme();
     initializeTabs();
