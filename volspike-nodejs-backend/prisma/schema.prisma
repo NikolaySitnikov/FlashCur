@@ -1,0 +1,161 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  walletAddress     String?   @unique
+  tier              String    @default("free") // free, pro, elite
+  refreshInterval   Int       @default(900)    // seconds
+  theme             String    @default("light")
+  stripeCustomerId  String?   @unique
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  watchlists        Watchlist[]
+  alerts            Alert[]
+  preferences       Preference?
+  sessions          Session[]
+  accounts          Account[]
+  
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Contract {
+  id                String    @id @default(cuid())
+  symbol            String    @unique
+  isActive          Boolean   @default(true)
+  precision         Int
+  createdAt         DateTime  @default(now())
+  
+  watchlistItems    WatchlistItem[]
+  marketSnapshots   MarketSnapshot[]
+  alerts            Alert[]
+  
+  @@map("contracts")
+}
+
+// TimescaleDB hypertable for time-series data
+model MarketSnapshot {
+  id                String    @id @default(cuid())
+  contractId        String
+  price             Float
+  volume24h         Float
+  fundingRate       Float?
+  openInterest      Float?
+  timestamp         DateTime  @default(now())
+  
+  contract          Contract  @relation(fields: [contractId], references: [id])
+  
+  @@index([contractId, timestamp])
+  @@map("market_snapshots")
+}
+
+model Alert {
+  id                String    @id @default(cuid())
+  userId            String
+  contractId        String
+  reason            String    // "spike_3x", "volume_min", etc.
+  threshold         Float
+  triggeredValue    Float
+  isDelivered       Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  
+  user              User      @relation(fields: [userId], references: [id])
+  contract          Contract  @relation(fields: [contractId], references: [id])
+  
+  @@index([userId, createdAt])
+  @@map("alerts")
+}
+
+model Watchlist {
+  id                String    @id @default(cuid())
+  userId            String
+  name              String
+  createdAt         DateTime  @default(now())
+  
+  items             WatchlistItem[]
+  user              User      @relation(fields: [userId], references: [id])
+  
+  @@map("watchlists")
+}
+
+model WatchlistItem {
+  id                String    @id @default(cuid())
+  watchlistId       String
+  contractId        String
+  
+  watchlist         Watchlist @relation(fields: [watchlistId], references: [id])
+  contract          Contract  @relation(fields: [contractId], references: [id])
+  
+  @@unique([watchlistId, contractId])
+  @@map("watchlist_items")
+}
+
+model Preference {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  emailAlerts       Boolean   @default(true)
+  smsAlerts         Boolean   @default(false)
+  telegramAlerts    Boolean   @default(false)
+  discordAlerts     Boolean   @default(false)
+  volumeThreshold   Float     @default(3.0)
+  minQuoteVolume    Float     @default(1000000)
+  refreshInterval   Int       @default(900)
+  
+  user              User      @relation(fields: [userId], references: [id])
+  
+  @@map("preferences")
+}
+
+// Audit log for tracking sensitive actions
+model AuditLog {
+  id                String    @id @default(cuid())
+  userId            String
+  action            String
+  details           Json?
+  timestamp         DateTime  @default(now())
+  
+  @@index([userId, timestamp])
+  @@map("audit_logs")
+}

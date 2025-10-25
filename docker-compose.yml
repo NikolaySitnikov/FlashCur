@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_DB: volspike
+      POSTGRES_USER: volspike
+      POSTGRES_PASSWORD: volspike_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U volspike" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Node.js Backend
+  backend:
+    build:
+      context: ./volspike-nodejs-backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://volspike:volspike_password@postgres:5432/volspike
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./volspike-nodejs-backend:/app
+      - /app/node_modules
+
+  # Data Ingestion Service
+  ingestion:
+    build:
+      context: ./volspike-ingestion-service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://volspike:volspike_password@postgres:5432/volspike
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./volspike-ingestion-service:/app
+      - /app/node_modules
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./volspike-nextjs-frontend
+      dockerfile: Dockerfile
+    environment:
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_WS_URL=ws://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./volspike-nextjs-frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  redis_data:
