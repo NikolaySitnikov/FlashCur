@@ -218,10 +218,12 @@ export default function FlashCurLogin() {
                     box-shadow: 0 8px 25px rgba(0, 255, 136, 0.3);
                 }
 
-                .lightning-bolt-svg {
+                .logo-icon {
                     width: 40px;
                     height: 40px;
+                    color: #00ff88;
                     animation: lightningPulse 2s ease-in-out infinite alternate;
+                    filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.6));
                 }
 
                 @keyframes lightningPulse {
@@ -539,8 +541,8 @@ export default function FlashCurLogin() {
                     {/* Logo/Icon */}
                     <div className="auth-header">
                         <div className="auth-logo-container">
-                            <svg className="lightning-bolt-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#00ff88" stroke="#00ff88" strokeWidth="1.5" strokeLinejoin="round"/>
+                            <svg className="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
                             </svg>
                         </div>
                         <h1 className="auth-title">VolSpike</h1>
