@@ -10,6 +10,14 @@ const nextConfig = {
         NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
         NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
     },
+    webpack: (config) => {
+        config.resolve.fallback = {
+            ...config.resolve.fallback,
+            '@react-native-async-storage/async-storage': false,
+            'react-native': false,
+        };
+        return config;
+    },
     async rewrites() {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         return [
