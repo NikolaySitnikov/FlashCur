@@ -9,6 +9,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=7.8">
     <!-- WebSocket Integration Scripts -->
+    <script src="{{ url_for('static', filename='js/sorting-helpers.js') }}"></script>
     <script src="{{ url_for('static', filename='js/binance-ws.js') }}"></script>
     <script src="{{ url_for('static', filename='js/market-store.js') }}"></script>
     <script src="{{ url_for('static', filename='js/websocket-integration.js') }}"></script>
@@ -32,9 +33,12 @@
                     <div class="connection-status">
                         <span id="connection-indicator" class="text-sm font-medium text-yellow-500">🟡
                             Connecting...</span>
-                        <span class="text-xs text-gray-500 ml-2">Live from Binance WebSocket</span>
+                        <span id="connection-subtitle" class="text-xs text-gray-500 ml-2">Live from Binance WebSocket</span>
                     </div>
-                    <div class="websocket-notice">
+                    <p class="last-updated" id="lastUpdated" aria-live="polite">
+                        Last Updated: Waiting for data…
+                    </p>
+                    <div class="websocket-notice" id="liveNotice">
                         <span class="text-xs text-blue-600">⚡ Real-time data streaming</span>
                     </div>
                 </div>

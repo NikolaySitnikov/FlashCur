@@ -13,6 +13,7 @@ class BinanceWS {
         console.log('🔌 BinanceWS constructor - final URL:', this.url);
         this.ws = null;
         this.listeners = new Set();
+        this.statusListeners = new Set();
         this.backoff = 1000; // start with 1s
         this.stopped = false;
         this.reconnectAttempts = 0;
@@ -31,6 +32,7 @@ class BinanceWS {
             this.ws.close();
             this.ws = null;
         }
+        this.notifyStatus('disconnected');
     }
 
     on(fn) {
@@ -38,9 +40,25 @@ class BinanceWS {
         return () => this.listeners.delete(fn);
     }
 
+    onStatusChange(fn) {
+        this.statusListeners.add(fn);
+        return () => this.statusListeners.delete(fn);
+    }
+
+    notifyStatus(status) {
+        this.statusListeners.forEach(listener => {
+            try {
+                listener(status);
+            } catch (error) {
+                console.error('🔌 Status listener threw:', error);
+            }
+        });
+    }
+
     connect() {
         if (this.stopped) return;
 
+        this.notifyStatus('connecting');
         try {
             console.log('🔌 Creating WebSocket connection to:', this.url);
             this.ws = new WebSocket(this.url);
@@ -50,6 +68,7 @@ class BinanceWS {
                 console.log('🔌 WebSocket readyState:', this.ws.readyState);
                 this.backoff = 1000; // reset backoff on successful connection
                 this.reconnectAttempts = 0;
+                this.notifyStatus('connected');
             };
 
             this.ws.onmessage = (event) => {
@@ -66,6 +85,7 @@ class BinanceWS {
 
             this.ws.onclose = (event) => {
                 console.log('🔌 Binance WebSocket closed:', event.code, event.reason);
+                this.notifyStatus('disconnected');
                 if (!this.stopped) {
                     this.reconnect();
                 }
@@ -73,11 +93,13 @@ class BinanceWS {
 
             this.ws.onerror = (error) => {
                 console.error('🔌 Binance WebSocket error:', error);
+                this.notifyStatus('disconnected');
                 this.ws?.close();
             };
 
         } catch (error) {
             console.error('Error creating WebSocket connection:', error);
+            this.notifyStatus('disconnected');
             this.reconnect();
         }
     }
@@ -93,6 +115,7 @@ class BinanceWS {
 
         console.log(`🔄 Reconnecting in ${wait}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
+        this.notifyStatus('connecting');
         setTimeout(() => {
             if (!this.stopped) {
                 this.connect();
