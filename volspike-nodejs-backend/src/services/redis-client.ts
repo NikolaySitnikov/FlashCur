@@ -5,11 +5,11 @@ const logger = createLogger()
 
 // Initialize Redis client
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-    retryDelayOnFailover: 100,
     maxRetriesPerRequest: 3,
     lazyConnect: true,
     connectTimeout: 10000,
     commandTimeout: 5000,
+    retryDelayOnFailover: 100,
 })
 
 redis.on('connect', () => {

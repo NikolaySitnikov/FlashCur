@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../index'
 import { createLogger } from '../lib/logger'
 import { User } from '../types'
+import { getUser, requireUser } from '../lib/hono-extensions'
 import { getMarketData } from '../services/binance-client'
 import { getCachedMarketData } from '../services/redis-client'
 
@@ -13,7 +14,7 @@ const market = new Hono()
 // Get market data with tier-based throttling
 market.get('/data', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
         const tier = user?.tier || 'free'
 
         // Get cached market data
@@ -54,7 +55,7 @@ market.get('/data', async (c) => {
 market.get('/symbol/:symbol', async (c) => {
     try {
         const symbol = c.req.param('symbol')
-        const user = c.get('user') as User
+        const user = requireUser(c)
 
         // Get symbol data from cache or database
         const symbolData = await getCachedMarketData(symbol)
@@ -79,7 +80,7 @@ market.get('/history/:symbol', async (c) => {
         const timeframe = c.req.query('timeframe') || '1h'
         const limit = parseInt(c.req.query('limit') || '100')
 
-        const user = c.get('user') as User
+        const user = requireUser(c)
         const tier = user?.tier || 'free'
 
         // Tier-based access control
@@ -119,7 +120,7 @@ market.get('/history/:symbol', async (c) => {
 // Get volume spike alerts
 market.get('/spikes', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
         const tier = user?.tier || 'free'
 
         // Get recent alerts

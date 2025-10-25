@@ -5,6 +5,7 @@ export interface User {
     refreshInterval: number
     theme: string
     walletAddress?: string
+    stripeCustomerId?: string
 }
 
 export interface AuthenticatedSocket {
@@ -44,4 +45,12 @@ export interface UserPreferences {
     volumeThreshold: number
     minQuoteVolume: number
     refreshInterval: number
+}
+
+// Hono context with user
+export interface HonoContext {
+    get: (key: string) => any
+    set: (key: string, value: any) => void
+    req: any
+    json: (data: any, status?: number) => Response
 }

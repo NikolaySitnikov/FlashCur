@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../index'
 import { createLogger } from '../lib/logger'
 import { User } from '../types'
+import { getUser, requireUser } from '../lib/hono-extensions'
 
 const logger = createLogger()
 
@@ -28,7 +29,7 @@ const updatePreferencesSchema = z.object({
 // Get user's alerts
 alerts.get('/', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
         const limit = parseInt(c.req.query('limit') || '50')
         const offset = parseInt(c.req.query('offset') || '0')
 
@@ -65,7 +66,7 @@ alerts.get('/', async (c) => {
 // Create new alert
 alerts.post('/', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
         const body = await c.req.json()
         const { symbol, threshold, reason } = createAlertSchema.parse(body)
 
@@ -111,7 +112,7 @@ alerts.post('/', async (c) => {
 // Get user's alert preferences
 alerts.get('/preferences', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
 
         let preferences = await prisma.preference.findUnique({
             where: { userId: user.id },
@@ -138,7 +139,7 @@ alerts.get('/preferences', async (c) => {
 // Update alert preferences
 alerts.put('/preferences', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
         const body = await c.req.json()
         const data = updatePreferencesSchema.parse(body)
 
@@ -163,7 +164,7 @@ alerts.put('/preferences', async (c) => {
 // Delete alert
 alerts.delete('/:id', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
         const alertId = c.req.param('id')
 
         const deleted = await prisma.alert.deleteMany({
@@ -189,7 +190,7 @@ alerts.delete('/:id', async (c) => {
 // Mark alert as delivered
 alerts.put('/:id/delivered', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
         const alertId = c.req.param('id')
 
         const updated = await prisma.alert.updateMany({

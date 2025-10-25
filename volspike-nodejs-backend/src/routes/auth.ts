@@ -3,6 +3,7 @@ import { SignJWT, jwtVerify } from 'jose'
 import { z } from 'zod'
 import { prisma } from '../index'
 import { createLogger } from '../lib/logger'
+import { getUser, requireUser } from '../lib/hono-extensions'
 
 const logger = createLogger()
 
@@ -166,7 +167,7 @@ auth.post('/siwe', async (c) => {
 // Get current user
 auth.get('/me', async (c) => {
     try {
-        const user = c.get('user')
+        const user = getUser(c)
 
         if (!user) {
             return c.json({ error: 'Not authenticated' }, 401)

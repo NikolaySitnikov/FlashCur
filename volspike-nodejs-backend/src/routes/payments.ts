@@ -4,6 +4,7 @@ import Stripe from 'stripe'
 import { prisma } from '../index'
 import { createLogger } from '../lib/logger'
 import { User } from '../types'
+import { getUser, requireUser } from '../lib/hono-extensions'
 
 const logger = createLogger()
 
@@ -24,7 +25,7 @@ const createCheckoutSchema = z.object({
 // Create Stripe checkout session
 payments.post('/checkout', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
         const body = await c.req.json()
         const { priceId, successUrl, cancelUrl } = createCheckoutSchema.parse(body)
 
@@ -78,7 +79,7 @@ payments.post('/checkout', async (c) => {
 // Get user's subscription status
 payments.get('/subscription', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
 
         if (!user.stripeCustomerId) {
             return c.json({ subscription: null })
@@ -123,7 +124,7 @@ payments.get('/subscription', async (c) => {
 // Create billing portal session
 payments.post('/portal', async (c) => {
     try {
-        const user = c.get('user') as User
+        const user = requireUser(c)
 
         if (!user.stripeCustomerId) {
             return c.json({ error: 'No customer found' }, 404)

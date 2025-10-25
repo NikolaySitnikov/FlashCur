@@ -54,8 +54,15 @@ app.use('/api/protected/*', authMiddleware)
 app.use('/api/protected/*', rateLimitMiddleware)
 
 // Create HTTP server
-const server = createServer((req, res) => {
-    app.fetch(req, res)
+const server = createServer(async (req, res) => {
+    try {
+        const response = await app.fetch(req as any, res as any)
+        return response
+    } catch (error) {
+        logger.error('Server error:', error)
+        res.statusCode = 500
+        res.end('Internal Server Error')
+    }
 })
 
 // Initialize Socket.IO
