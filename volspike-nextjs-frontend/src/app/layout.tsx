@@ -12,6 +12,11 @@ export const metadata: Metadata = {
     description: 'Real-time volume spike alerts for Binance perpetual futures trading',
     keywords: ['crypto', 'trading', 'binance', 'perpetual futures', 'volume spikes', 'alerts'],
     authors: [{ name: 'VolSpike Team' }],
+    icons: {
+        icon: '/favicon.svg',
+        shortcut: '/favicon.svg',
+        apple: '/favicon.svg',
+    },
 }
 
 export const viewport: Viewport = {
