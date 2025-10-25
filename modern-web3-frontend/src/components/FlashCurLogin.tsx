@@ -150,6 +150,15 @@ export default function FlashCurLogin() {
                 /* Import the exact same CSS as Flask templates */
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
                 
+                /* Prevent overscroll bounce on macOS */
+                html, body {
+                    overscroll-behavior: none;
+                    overscroll-behavior-y: none;
+                    -webkit-overflow-scrolling: touch;
+                    height: 100%;
+                    overflow-x: hidden;
+                }
+                
                 /* Authentication Pages Styling - Dark Theme Only - Modernized 2025 */
                 .auth-container {
                     min-height: 100vh;
@@ -162,6 +171,9 @@ export default function FlashCurLogin() {
                     background: linear-gradient(135deg, #000000 0%, #0a0a0a 40%, #1a1a1a 100%);
                     background-attachment: fixed;
                     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                    overscroll-behavior: none;
+                    overscroll-behavior-y: none;
+                    -webkit-overflow-scrolling: touch;
                 }
 
                 /* Animated Background Pattern */
