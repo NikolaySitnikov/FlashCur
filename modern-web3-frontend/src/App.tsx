@@ -6,7 +6,7 @@ import { mainnet } from 'wagmi/chains';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { config, endpoint, wallets } from './wagmi';
-import SignIn from './components/SignIn';
+import FlashCurLogin from './components/FlashCurLogin';
 import ErrorBoundary from './components/ErrorBoundary';
 import MobileWalletDetection from './components/MobileWalletDetection';
 import PhantomRedirect from './components/PhantomRedirect';
@@ -107,7 +107,7 @@ function App() {
 
                     <ErrorBoundary>
                       <MobileWalletDetection>
-                        <SignIn />
+                        <FlashCurLogin />
                       </MobileWalletDetection>
                     </ErrorBoundary>
                   </div>
