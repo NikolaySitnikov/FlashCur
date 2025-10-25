@@ -3,25 +3,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { SessionProvider } from 'next-auth/react'
-import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit'
-import { WagmiProvider } from 'wagmi'
-import { mainnet, polygon, arbitrum, optimism } from 'wagmi/chains'
-import { http } from 'viem'
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { ThemeProvider } from '@/components/theme-provider'
 
-// RainbowKit configuration for Wagmi v2
-const config = getDefaultConfig({
-    appName: 'VolSpike',
-    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'your-walletconnect-project-id',
-    chains: [mainnet, polygon, arbitrum, optimism],
-    transports: {
-        [mainnet.id]: http(),
-        [polygon.id]: http(),
-        [arbitrum.id]: http(),
-        [optimism.id]: http(),
-    },
-})
+// Dynamic import for Web3 providers to prevent hydration mismatches
+const Web3Providers = dynamic(
+    () => import('./web3-providers'),
+    { 
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+        )
+    }
+)
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(() => new QueryClient({
@@ -38,22 +35,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }))
 
     return (
-        <WagmiProvider config={config}>
-            <QueryClientProvider client={queryClient}>
-                <SessionProvider>
-                    <RainbowKitProvider>
-                        <ThemeProvider
-                            attribute="class"
-                            defaultTheme="system"
-                            enableSystem
-                            disableTransitionOnChange
-                        >
-                            {children}
-                            <ReactQueryDevtools initialIsOpen={false} />
-                        </ThemeProvider>
-                    </RainbowKitProvider>
-                </SessionProvider>
-            </QueryClientProvider>
-        </WagmiProvider>
+        <QueryClientProvider client={queryClient}>
+            <SessionProvider>
+                <Web3Providers>
+                    <ThemeProvider
+                        attribute="class"
+                        defaultTheme="system"
+                        enableSystem
+                        disableTransitionOnChange
+                    >
+                        {children}
+                        <ReactQueryDevtools initialIsOpen={false} />
+                    </ThemeProvider>
+                </Web3Providers>
+            </SessionProvider>
+        </QueryClientProvider>
     )
 }
