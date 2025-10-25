@@ -1,4 +1,4 @@
-import { Server as SocketIOServer } from 'socket.io'
+import { Server as SocketIOServer, Socket } from 'socket.io'
 import { PrismaClient } from '@prisma/client'
 import { createLogger } from '../lib/logger'
 import { getCachedMarketData, publishMarketUpdate } from '../services/redis-client'

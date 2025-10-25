@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { prisma } from '../index'
 import { createLogger } from '../lib/logger'
+import { User } from '../types'
 
 const logger = createLogger()
 
@@ -19,7 +20,7 @@ const addToWatchlistSchema = z.object({
 // Get user's watchlists
 watchlist.get('/', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
 
         const watchlists = await prisma.watchlist.findMany({
             where: { userId: user.id },
@@ -47,7 +48,7 @@ watchlist.get('/', async (c) => {
 // Create new watchlist
 watchlist.post('/', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
         const body = await c.req.json()
         const { name } = createWatchlistSchema.parse(body)
 
@@ -79,7 +80,7 @@ watchlist.post('/', async (c) => {
 // Get specific watchlist
 watchlist.get('/:id', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
         const watchlistId = c.req.param('id')
 
         const watchlist = await prisma.watchlist.findFirst({
@@ -114,7 +115,7 @@ watchlist.get('/:id', async (c) => {
 // Add symbol to watchlist
 watchlist.post('/:id/symbols', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
         const watchlistId = c.req.param('id')
         const body = await c.req.json()
         const { symbol } = addToWatchlistSchema.parse(body)
@@ -170,7 +171,7 @@ watchlist.post('/:id/symbols', async (c) => {
 // Remove symbol from watchlist
 watchlist.delete('/:id/symbols/:symbol', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
         const watchlistId = c.req.param('id')
         const symbol = c.req.param('symbol')
 
@@ -210,7 +211,7 @@ watchlist.delete('/:id/symbols/:symbol', async (c) => {
 // Delete watchlist
 watchlist.delete('/:id', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
         const watchlistId = c.req.param('id')
 
         const deleted = await prisma.watchlist.deleteMany({

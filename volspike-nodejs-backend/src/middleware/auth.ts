@@ -1,6 +1,7 @@
 import { Context, Next } from 'hono'
-import { verify } from 'jose'
+import { jwtVerify } from 'jose'
 import { prisma } from '../index'
+import { User } from '../types'
 
 export async function authMiddleware(c: Context, next: Next) {
     try {
@@ -14,7 +15,7 @@ export async function authMiddleware(c: Context, next: Next) {
 
         // Verify JWT token
         const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key')
-        const { payload } = await verify(token, secret)
+        const { payload } = await jwtVerify(token, secret)
 
         if (!payload.sub) {
             return c.json({ error: 'Invalid token payload' }, 401)
@@ -36,8 +37,8 @@ export async function authMiddleware(c: Context, next: Next) {
             return c.json({ error: 'User not found' }, 401)
         }
 
-        // Add user to context
-        c.set('user', user)
+        // Add user to context with proper typing
+        c.set('user', user as User)
 
         await next()
     } catch (error) {

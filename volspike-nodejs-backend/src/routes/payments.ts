@@ -3,6 +3,7 @@ import { z } from 'zod'
 import Stripe from 'stripe'
 import { prisma } from '../index'
 import { createLogger } from '../lib/logger'
+import { User } from '../types'
 
 const logger = createLogger()
 
@@ -23,7 +24,7 @@ const createCheckoutSchema = z.object({
 // Create Stripe checkout session
 payments.post('/checkout', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
         const body = await c.req.json()
         const { priceId, successUrl, cancelUrl } = createCheckoutSchema.parse(body)
 
@@ -77,7 +78,7 @@ payments.post('/checkout', async (c) => {
 // Get user's subscription status
 payments.get('/subscription', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
 
         if (!user.stripeCustomerId) {
             return c.json({ subscription: null })
@@ -122,7 +123,7 @@ payments.get('/subscription', async (c) => {
 // Create billing portal session
 payments.post('/portal', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
 
         if (!user.stripeCustomerId) {
             return c.json({ error: 'No customer found' }, 404)

@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { sign, verify } from 'jose'
+import { SignJWT, jwtVerify } from 'jose'
 import { z } from 'zod'
 import { prisma } from '../index'
 import { createLogger } from '../lib/logger'
@@ -30,7 +30,7 @@ const siweSchema = z.object({
 async function generateToken(userId: string): Promise<string> {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key')
 
-    return await new sign.SignJWT({ sub: userId })
+    return await new SignJWT({ sub: userId })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('24h')

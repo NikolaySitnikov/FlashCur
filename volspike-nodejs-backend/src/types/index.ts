@@ -1,0 +1,47 @@
+export interface User {
+    id: string
+    email: string
+    tier: 'free' | 'pro' | 'elite'
+    refreshInterval: number
+    theme: string
+    walletAddress?: string
+}
+
+export interface AuthenticatedSocket {
+    userId?: string
+    userTier?: string
+}
+
+export interface MarketData {
+    symbol: string
+    price: number
+    volume: number
+    change24h: number
+    timestamp: number
+}
+
+export interface Alert {
+    id: string
+    symbol: string
+    threshold: number
+    reason: string
+    isActive: boolean
+    createdAt: Date
+    updatedAt: Date
+}
+
+export interface WatchlistItem {
+    id: string
+    symbol: string
+    addedAt: Date
+}
+
+export interface UserPreferences {
+    emailAlerts: boolean
+    smsAlerts: boolean
+    telegramAlerts: boolean
+    discordAlerts: boolean
+    volumeThreshold: number
+    minQuoteVolume: number
+    refreshInterval: number
+}

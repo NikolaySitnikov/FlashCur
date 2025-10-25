@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { prisma } from '../index'
 import { createLogger } from '../lib/logger'
+import { User } from '../types'
 import { getMarketData } from '../services/binance-client'
 import { getCachedMarketData } from '../services/redis-client'
 
@@ -12,7 +13,7 @@ const market = new Hono()
 // Get market data with tier-based throttling
 market.get('/data', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
         const tier = user?.tier || 'free'
 
         // Get cached market data
@@ -30,12 +31,12 @@ market.get('/data', async (c) => {
         if (tier === 'free') {
             // Free tier: limit to top 50 by volume
             filteredData = marketData
-                .sort((a, b) => b.volume24h - a.volume24h)
+                .sort((a: any, b: any) => b.volume24h - a.volume24h)
                 .slice(0, 50)
         } else if (tier === 'pro') {
             // Pro tier: top 100 by volume
             filteredData = marketData
-                .sort((a, b) => b.volume24h - a.volume24h)
+                .sort((a: any, b: any) => b.volume24h - a.volume24h)
                 .slice(0, 100)
         }
         // Elite tier: all data
@@ -53,7 +54,7 @@ market.get('/data', async (c) => {
 market.get('/symbol/:symbol', async (c) => {
     try {
         const symbol = c.req.param('symbol')
-        const user = c.get('user')
+        const user = c.get('user') as User
 
         // Get symbol data from cache or database
         const symbolData = await getCachedMarketData(symbol)
@@ -78,7 +79,7 @@ market.get('/history/:symbol', async (c) => {
         const timeframe = c.req.query('timeframe') || '1h'
         const limit = parseInt(c.req.query('limit') || '100')
 
-        const user = c.get('user')
+        const user = c.get('user') as User
         const tier = user?.tier || 'free'
 
         // Tier-based access control
@@ -118,7 +119,7 @@ market.get('/history/:symbol', async (c) => {
 // Get volume spike alerts
 market.get('/spikes', async (c) => {
     try {
-        const user = c.get('user')
+        const user = c.get('user') as User
         const tier = user?.tier || 'free'
 
         // Get recent alerts

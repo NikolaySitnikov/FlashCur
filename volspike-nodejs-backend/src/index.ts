@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { logger } from 'hono/logger'
+import { logger as honoLogger } from 'hono/logger'
 import { serve } from '@hono/node-server'
 import { createServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
@@ -27,7 +27,7 @@ const logger = createLogger()
 const app = new Hono()
 
 // Middleware
-app.use('*', logger())
+app.use('*', honoLogger())
 app.use('*', cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
