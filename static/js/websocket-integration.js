@@ -79,6 +79,9 @@
         }
 
         shouldEnableLiveUpdates(tier, features) {
+            // DEBUG: Force enable live updates for testing
+            return true;
+            
             if (features && typeof features.real_time_updates === 'boolean') {
                 return Boolean(features.real_time_updates);
             }

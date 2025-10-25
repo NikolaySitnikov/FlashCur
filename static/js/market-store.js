@@ -243,6 +243,24 @@ class MarketStore {
         this.state.lastUpdate = null;
         this.notify();
     }
+
+    // Seed store from REST snapshot data
+    setSnapshotFromRows(rows = []) {
+        this.state.bySymbol = {};
+        for (const r of rows) {
+            if (!r?.symbol) continue;
+            this.state.bySymbol[r.symbol] = {
+                symbol: r.symbol,
+                lastPrice: r.price,
+                vol24hQuote: r.volume,
+                changePct: r.price_change_pct,
+                openInterestUsd: r.open_interest_usd,
+                fundingRate: r.funding_rate
+            };
+        }
+        this.state.lastUpdate = new Date();
+        this.notify();
+    }
 }
 
 // Create global store instance

@@ -393,6 +393,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     await fetchUserTier();
     loadData();
     setupAutoRefresh();
+    setupWsAwareFallback();
 });
 
 function applyTierFeatures() {
@@ -544,6 +545,11 @@ async function loadData() {
         const normalizedRows = normalizeMarketRows(incomingRows);
 
         marketTable.setRows(normalizedRows, { hasProMetrics });
+
+        // Seed MarketStore from REST snapshot to prevent "bySymbol size=0" warnings
+        if (window.marketStore?.setSnapshotFromRows) {
+            window.marketStore.setSnapshotFromRows(normalizedRows);
+        }
     } catch (error) {
         console.error('Failed to load market data:', error);
         showError('Failed to load data: ' + error.message);
@@ -760,6 +766,18 @@ function setupAutoRefresh() {
 
     console.log(`Auto-refresh set to ${refreshInterval / 1000 / 60} minutes`);
     applyTierFeatures();
+}
+
+// WS-aware fallback to refresh REST data when WS is disabled
+function setupWsAwareFallback() {
+    setInterval(() => {
+        const state = window.marketStore?.getState?.();
+        const wsUp = state?.connectionState === 'connected';
+        if (!wsUp && !isDataLoading) {
+            console.log('WS not connected, refreshing REST data...');
+            loadData();
+        }
+    }, 60_000); // 1 min
 }
 
 // Load real alerts from API
