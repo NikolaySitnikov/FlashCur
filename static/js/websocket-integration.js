@@ -27,7 +27,6 @@
     class WebSocketIntegration {
         constructor() {
             this.store = global.marketStore;
-            this.table = null;
             this.unsubscribe = null;
             this.ws = null;
             this.wsUnsubscribe = null;
@@ -43,7 +42,6 @@
                 this.store = global.marketStore;
             }
 
-            this.table = global.marketTable || global.tableController || null;
             this.subscribeToStore();
             const tier = typeof global.userTier === 'number' ? global.userTier : 0;
             const features = global.userFeatures || {};
@@ -217,10 +215,6 @@
 
             this.updateConnectionIndicator(state.connectionState || 'connected');
 
-            if (!this.table && (global.marketTable || global.tableController)) {
-                this.table = global.marketTable || global.tableController;
-            }
-
             const rows = this.extractRows(state);
             if (!rows.length) {
                 return;
@@ -241,16 +235,22 @@
                 this.hasHydrated = true;
             }
 
-            if (this.table) {
-                this.table.ingest(rows, { replaceSource: true });
+            const sortedRows = this.applySorting(rows);
+            const displayRows = Array.isArray(sortedRows) ? sortedRows : rows;
+
+            if (Array.isArray(displayRows)) {
+                if (typeof global.renderSortedTables === 'function') {
+                    global.renderSortedTables(displayRows);
+                }
                 if (typeof syncTableCaches === 'function') {
-                    syncTableCaches();
+                    syncTableCaches(displayRows, rows);
+                } else {
+                    global.dataCache = Array.isArray(displayRows) ? [...displayRows] : [];
+                    global.originalDataCache = Array.isArray(rows) ? [...rows] : [];
                 }
-                if (typeof syncSortStateToWindow === 'function') {
-                    syncSortStateToWindow();
+                if (typeof updateSortIndicators === 'function') {
+                    updateSortIndicators();
                 }
-            } else if (typeof global.renderSortedTables === 'function') {
-                global.renderSortedTables(rows);
             }
 
             this.updateScrollIndicators();
@@ -316,20 +316,12 @@
 
         applySorting(data) {
             if (typeof global.applySorting === 'function') {
-                return global.applySorting(data);
+                return global.applySorting(Array.isArray(data) ? [...data] : []);
             }
-            if (Array.isArray(data)) {
-                return [...data];
-            }
-            return [];
+            return Array.isArray(data) ? [...data] : [];
         }
 
         updateScrollIndicators() {
-            if (this.table) {
-                this.table.updateOverflow();
-                return;
-            }
-
             const desktop = document.getElementById('tableContainer');
             const mobile = document.getElementById('mobileTableContainer');
             if (desktop) updateHorizontalOverflowState(desktop);

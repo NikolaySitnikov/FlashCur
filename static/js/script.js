@@ -2,7 +2,6 @@
 let currentTheme = 'dark';
 let dataCache = [];
 let originalDataCache = []; // Store original order from API
-let tableController = null;
 let isDataLoading = false;
 let isAnimating = false; // Track if table animation is in progress
 let currentTab = 'market-data';
@@ -17,45 +16,6 @@ let userFeatures = {};
 let refreshInterval = 15 * 60 * 1000; // Default to 15 min (Free tier)
 let refreshTimer = null;
 let hasProMetrics = false; // Track if Pro metrics are available
-
-function disableMarketTableController(reason = 'unknown', error = null) {
-    if (!tableController) {
-        return;
-    }
-
-    const previousController = tableController;
-    console.warn(`⚠️ Disabling MarketTableController due to: ${reason}`);
-    if (error) {
-        console.error('➡️ Controller error details:', error);
-    }
-
-    tableController = null;
-
-    if (typeof window !== 'undefined') {
-        window.marketTable = null;
-        window.tableController = null;
-        window.__useLegacyTable = true;
-    }
-
-    if (typeof window !== 'undefined' && window.wsIntegration && window.wsIntegration.table === previousController) {
-        window.wsIntegration.table = null;
-    }
-}
-
-function renderWithLegacyTable(rows) {
-    const safeRows = Array.isArray(rows) ? rows : [];
-
-    originalDataCache = [...safeRows];
-    window.originalDataCache = [...originalDataCache];
-
-    const sortedRows = applySorting([...safeRows]);
-    dataCache = [...sortedRows];
-    window.dataCache = [...dataCache];
-
-    renderSortedTables(sortedRows);
-    updateSortIndicators();
-    syncSortStateToWindow();
-}
 
 if (typeof window !== 'undefined') {
     window.userTier = typeof window.userTier === 'number' ? window.userTier : userTier;
@@ -100,29 +60,6 @@ syncSortStateToWindow();
 
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', async function () {
-    const useLegacy = typeof window !== 'undefined' && window.__useLegacyTable;
-    const ControllerCtor = typeof window !== 'undefined' ? window.MarketTableController : undefined;
-    if (!useLegacy && typeof ControllerCtor === 'function') {
-        try {
-            tableController = new ControllerCtor();
-            tableController.attach();
-            window.marketTable = tableController;
-            window.tableController = tableController;
-        } catch (error) {
-            console.error('⚠️ Failed to initialise MarketTableController, falling back to legacy renderer.', error);
-            disableMarketTableController('initialisation-error', error);
-        }
-    } else {
-        if (!useLegacy) {
-            console.warn('🟡 MarketTableController not available; using legacy table renderer.');
-        }
-        tableController = null;
-        if (typeof window !== 'undefined') {
-            window.marketTable = null;
-            window.tableController = null;
-        }
-    }
-
     initializeTheme();
     initializeTabs();
     loadSortState();
@@ -266,58 +203,40 @@ async function loadData() {
 
     try {
         const response = await fetch('/api/data');
-        const result = await response.json();
-
-        if (result.success) {
-            hasProMetrics = result.has_pro_metrics || false;
-            userFeatures = userFeatures || {};
-
-            const incomingRows = Array.isArray(result.data) ? result.data : [];
-            let usedController = false;
-
-            if (tableController) {
-                try {
-                    tableController.setHasProMetrics(hasProMetrics);
-                    tableController.ingest(incomingRows, { replaceSource: true });
-
-                    const renderedRows = typeof tableController.getDisplayRows === 'function'
-                        ? tableController.getDisplayRows()
-                        : [];
-
-                    if (Array.isArray(renderedRows) && renderedRows.length) {
-                        sortState = tableController.getSortState();
-                        syncSortStateToWindow();
-                        syncTableCaches();
-                        usedController = true;
-                    } else if (incomingRows.length) {
-                        console.warn('⚠️ MarketTableController returned no rows despite incoming data. Reverting to legacy renderer.');
-                        disableMarketTableController('empty-render');
-                    }
-                } catch (controllerError) {
-                    disableMarketTableController('ingest-error', controllerError);
-                }
-            }
-
-            if (!usedController) {
-                renderWithLegacyTable(incomingRows);
-            }
-
-            window.originalDataCache = [...originalDataCache];
-            window.dataCache = [...dataCache];
-
-            hideLoading();
-            updateLastUpdated();
-            showDownloadButton();
-        } else {
-            showError('Failed to load data: ' + result.error);
+        if (!response.ok) {
+            throw new Error(`Request failed (${response.status})`);
         }
+
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Unknown API error');
+        }
+
+        hasProMetrics = result.has_pro_metrics || false;
+        userFeatures = userFeatures || {};
+
+        const incomingRows = Array.isArray(result.data) ? result.data : [];
+
+        const sortedRows = applySorting([...incomingRows]);
+        syncTableCaches(sortedRows, incomingRows);
+
+        renderSortedTables(sortedRows);
+        updateSortIndicators();
+
+        hideLoading();
+        updateLastUpdated();
+        showDownloadButton();
     } catch (error) {
-        showError('Network error: ' + error.message);
+        console.error('Failed to load market data:', error);
+        showError('Failed to load data: ' + error.message);
     } finally {
         isDataLoading = false;
-        if (tableController) {
-            tableController.updateOverflow();
-        }
+        ['tableContainer', 'mobileTableContainer'].forEach(id => {
+            const container = document.getElementById(id);
+            if (container) {
+                updateHorizontalOverflowState(container, container.querySelector('table'));
+            }
+        });
     }
 }
 
@@ -619,7 +538,6 @@ function loadSortState() {
         }
     }
     syncSortStateToWindow();
-    syncSortStateToController();
 }
 
 // Save sorting state to localStorage
@@ -631,15 +549,6 @@ function saveSortState() {
 function handleSort(column) {
     // Prevent sorting while animation is in progress
     if (isAnimating) {
-        return;
-    }
-
-    if (tableController) {
-        tableController.toggleSort(column);
-        sortState = tableController.getSortState();
-        syncTableCaches();
-        syncSortStateToWindow();
-        saveSortState();
         return;
     }
 
@@ -712,18 +621,15 @@ function syncSortStateToWindow() {
     window.sortState = { ...sortState };
 }
 
-function syncSortStateToController() {
-    if (!tableController) return;
-    tableController.setSortState(sortState);
-    syncTableCaches();
-}
-
-function syncTableCaches() {
-    if (!tableController) return;
-    dataCache = tableController.getDisplayRows();
-    originalDataCache = tableController.getSourceRows();
-    window.dataCache = [...dataCache];
-    window.originalDataCache = [...originalDataCache];
+function syncTableCaches(displayRows, originalRows) {
+    if (Array.isArray(displayRows)) {
+        dataCache = [...displayRows];
+    }
+    if (Array.isArray(originalRows)) {
+        originalDataCache = [...originalRows];
+    }
+    window.dataCache = Array.isArray(dataCache) ? [...dataCache] : [];
+    window.originalDataCache = Array.isArray(originalDataCache) ? [...originalDataCache] : [];
 }
 
 window.handleSort = handleSort;
@@ -738,15 +644,8 @@ function renderSortedTables(sortedData) {
         return;
     }
 
-    if (tableController) {
-        tableController.ingest(sortedData, { replaceSource: true });
-        sortState = tableController.getSortState();
-        syncSortStateToWindow();
-        return;
-    }
-
     dataCache = [...sortedData];
-    window.dataCache = [...sortedData];
+    syncTableCaches(sortedData);
 
     const proEnabled = Boolean(
         hasProMetrics ||
@@ -1077,11 +976,6 @@ function applySorting(data) {
 
 // Update visual sort indicators
 function updateSortIndicators() {
-    if (tableController) {
-        tableController.updateIndicators();
-        return;
-    }
-
     // Update both desktop and mobile tables
     const tables = ['dataTable', 'mobileDataTable'];
 
@@ -1277,19 +1171,12 @@ function measureHorizontalOverflow(container, measurementTarget) {
 }
 
 function updateHorizontalOverflowState(container, measurementTarget) {
-    if (tableController) {
-        tableController.updateOverflow();
-        if (container) {
-            return container.classList.contains('is-scrollable');
-        }
-        return false;
-    }
-
     if (!container) return false;
 
     const { hasOverflow } = measureHorizontalOverflow(container, measurementTarget);
 
     container.classList.toggle('has-scroll', hasOverflow);
+    container.classList.toggle('is-scrollable', hasOverflow);
 
     if (hasOverflow) {
         container.style.setProperty('overflow-x', 'auto', 'important');
@@ -1316,12 +1203,6 @@ function hasHorizontalOverflow(container, measurementTarget) {
 
 function checkTableScroll(container) {
     if (!container) return;
-
-    if (tableController) {
-        tableController.updateOverflow();
-        return;
-    }
-
     const table = container.querySelector('table');
     if (!table) return;
 
@@ -1332,12 +1213,8 @@ function checkTableScroll(container) {
 window.addEventListener('resize', () => {
     const tableContainer = document.getElementById('tableContainer');
     const mobileTableContainer = document.getElementById('mobileTableContainer');
-    if (tableController) {
-        tableController.updateOverflow();
-    } else {
-        if (tableContainer) checkTableScroll(tableContainer);
-        if (mobileTableContainer) checkTableScroll(mobileTableContainer);
-    }
+    if (tableContainer) checkTableScroll(tableContainer);
+    if (mobileTableContainer) checkTableScroll(mobileTableContainer);
 });
 
 /**
@@ -1372,11 +1249,7 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
         if (!container) return;
 
         function updateScrollState() {
-            if (tableController) {
-                tableController.updateOverflow();
-            } else {
-                updateHorizontalOverflowState(container);
-            }
+            updateHorizontalOverflowState(container);
         }
 
         if (container.__overflowWired) {
