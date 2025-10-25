@@ -77,56 +77,65 @@ const io = new SocketIOServer(server, {
 // Setup Redis adapter for Socket.IO scaling (optional)
 if (process.env.REDIS_URL) {
     try {
-        const pubClient = createClient({ 
+        logger.info(`Setting up Redis adapter with URL: ${process.env.REDIS_URL.split('@')[1]}`)
+
+        // ✅ CORRECTED: Proper TLS configuration for rediss:// URLs
+        const redisConfig: any = {
             url: process.env.REDIS_URL,
-            socket: process.env.REDIS_URL?.startsWith('rediss://') ? {
+        }
+
+        // Only add socket config if using rediss://
+        if (process.env.REDIS_URL.startsWith('rediss://')) {
+            redisConfig.socket = {
                 tls: true,
-                rejectUnauthorized: false
-            } : undefined,
-            retry_strategy: (options) => {
-                if (options.error && options.error.code === 'ECONNREFUSED') {
-                    logger.error('Redis connection refused, retrying...')
-                    return new Error('Redis connection refused')
-                }
-                if (options.total_retry_time > 1000 * 60 * 60) {
-                    logger.error('Redis retry time exhausted')
-                    return new Error('Retry time exhausted')
-                }
-                if (options.attempt > 10) {
-                    logger.error('Redis max retry attempts reached')
-                    return undefined
-                }
-                return Math.min(options.attempt * 100, 3000)
+                rejectUnauthorized: process.env.NODE_ENV === 'production',
             }
-        })
+            logger.info('Enabling TLS for Redis connection')
+        }
+
+        const pubClient = createClient(redisConfig)
         const subClient = pubClient.duplicate()
 
-        // Add error handlers
+        // Add connection event handlers
         pubClient.on('error', (err) => {
-            logger.error('Redis pub client error:', err)
+            logger.error('Redis pub client error:', err.message || err)
         })
 
         subClient.on('error', (err) => {
-            logger.error('Redis sub client error:', err)
+            logger.error('Redis sub client error:', err.message || err)
         })
 
-        // Connect with timeout
+        pubClient.on('connect', () => {
+            logger.info('✅ Redis pub client connected')
+        })
+
+        subClient.on('connect', () => {
+            logger.info('✅ Redis sub client connected')
+        })
+
+        // ✅ CORRECTED: Proper error handling and connection verification
         Promise.all([
-            pubClient.connect().catch(err => logger.error('Redis pub connect error:', err)),
-            subClient.connect().catch(err => logger.error('Redis sub connect error:', err))
+            pubClient.connect().catch(err => {
+                logger.error('Redis pub client connection failed:', err.message || err)
+                throw err
+            }),
+            subClient.connect().catch(err => {
+                logger.error('Redis sub client connection failed:', err.message || err)
+                throw err
+            })
         ]).then(() => {
             io.adapter(createAdapter(pubClient, subClient))
-            logger.info('Socket.IO Redis adapter initialized')
+            logger.info('✅ Socket.IO Redis adapter initialized successfully')
         }).catch(err => {
-            logger.error('Redis adapter setup failed:', err)
-            logger.info('Continuing without Redis adapter')
+            logger.error('❌ Redis adapter setup failed, running without Redis:', err.message || err)
+            logger.warn('Socket.IO will use in-memory storage (single instance only)')
         })
     } catch (error) {
         logger.error('Redis setup error:', error)
-        logger.info('Continuing without Redis adapter')
+        logger.warn('Continuing without Redis adapter')
     }
 } else {
-    logger.info('No Redis URL provided, skipping Redis adapter')
+    logger.warn('⚠️  No REDIS_URL provided, Socket.IO using in-memory storage')
 }
 
 // Setup Socket.IO handlers
@@ -160,6 +169,11 @@ server.listen(port, () => {
     logger.info(`🚀 VolSpike Backend running on port ${port}`)
     logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
     logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
+    
+    if (process.env.REDIS_URL) {
+        const isTLS = process.env.REDIS_URL.startsWith('rediss://')
+        logger.info(`✅ Redis configured: TLS ${isTLS ? 'enabled' : 'disabled'}`)
+    }
 })
 
 export default app
