@@ -1,7 +1,8 @@
-import { NextAuthOptions } from 'next-auth'
+import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import type { NextAuthConfig } from 'next-auth'
 
-export const authOptions: NextAuthOptions = {
+export const authConfig: NextAuthConfig = {
     providers: [
         CredentialsProvider({
             name: 'credentials',
@@ -15,6 +16,17 @@ export const authOptions: NextAuthOptions = {
                 }
 
                 // TODO: Implement actual user authentication logic
+                // Connect to your backend API to validate credentials
+                // Example:
+                // const response = await fetch('http://localhost:3001/api/auth/login', {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({ email: credentials.email, password: credentials.password })
+                // })
+                // const user = await response.json()
+                // if (!user) return null
+                // return user
+
                 // For now, return a mock user for development
                 if (credentials.email === 'test@volspike.com' && credentials.password === 'password') {
                     return {
@@ -30,6 +42,7 @@ export const authOptions: NextAuthOptions = {
     ],
     session: {
         strategy: 'jwt',
+        maxAge: 30 * 24 * 60 * 60, // 30 days
     },
     pages: {
         signIn: '/auth/signin',
@@ -39,14 +52,18 @@ export const authOptions: NextAuthOptions = {
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id
+                token.email = user.email
             }
             return token
         },
         async session({ session, token }) {
-            if (token) {
+            if (session.user && token) {
                 session.user.id = token.id as string
+                session.user.email = token.email as string
             }
             return session
         },
     },
 }
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)

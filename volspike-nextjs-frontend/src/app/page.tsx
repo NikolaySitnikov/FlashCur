@@ -1,12 +1,11 @@
 import { Suspense } from 'react'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { auth } from '@/lib/auth'
 import { Dashboard } from '@/components/dashboard'
 import { LoginPage } from '@/components/login-page'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 export default async function HomePage() {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
 
     if (!session) {
         return <LoginPage />
