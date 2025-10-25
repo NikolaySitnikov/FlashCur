@@ -555,6 +555,10 @@ async function loadData() {
                 updateHorizontalOverflowState(container, container.querySelector('table'));
             }
         });
+
+        if (!Array.isArray(marketTable.displayRows) || marketTable.displayRows.length === 0) {
+            hideLoading();
+        }
     }
 }
 

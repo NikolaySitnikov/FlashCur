@@ -156,10 +156,21 @@
                 return;
             }
 
-            const streamName = String(message.stream || message.topic || '').toLowerCase();
+            const streamName = String(
+                message.stream ||
+                message.topic ||
+                message.channel ||
+                message.event ||
+                ''
+            ).toLowerCase();
+
             const payload = this.resolvePayloadArray(message);
 
             if (!payload.length) {
+                if (!global.__wsSeenEmpty) {
+                    global.__wsSeenEmpty = true;
+                    console.warn('WS message had no resolvable payload shape:', message);
+                }
                 return;
             }
 
@@ -174,6 +185,25 @@
                 if (this.store && typeof this.store.updateMarkPrices === 'function') {
                     this.store.updateMarkPrices(payload);
                 }
+                return;
+            }
+
+            const eventType = String(message.e || message.event || '').toLowerCase();
+            if (eventType === '24hrticker') {
+                if (this.store && typeof this.store.updateTickers === 'function') {
+                    this.store.updateTickers(payload);
+                }
+                return;
+            }
+
+            const looksLikeMark = (
+                eventType.includes('mark') ||
+                (payload[0] && typeof payload[0] === 'object' && 'p' in payload[0] && 's' in payload[0])
+            );
+            if (looksLikeMark) {
+                if (this.store && typeof this.store.updateMarkPrices === 'function') {
+                    this.store.updateMarkPrices(payload);
+                }
             }
         }
 
@@ -184,6 +214,7 @@
                 message.data,
                 message.data?.data,
                 message.payload,
+                message.payload?.data,
                 message.result,
                 message.params?.data,
                 message
@@ -192,6 +223,21 @@
             for (const candidate of candidates) {
                 if (Array.isArray(candidate)) {
                     return candidate;
+                }
+
+                if (candidate && typeof candidate === 'object') {
+                    const hasSymbol = ('s' in candidate) || ('symbol' in candidate);
+                    const hasAnyFields = (
+                        ('c' in candidate) ||
+                        ('p' in candidate) ||
+                        ('q' in candidate) ||
+                        ('v' in candidate) ||
+                        ('r' in candidate) ||
+                        ('fundingRate' in candidate)
+                    );
+                    if (hasSymbol && hasAnyFields) {
+                        return [candidate];
+                    }
                 }
             }
 
