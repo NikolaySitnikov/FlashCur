@@ -45,7 +45,7 @@ const CACHE_TTL = {
 
 export async function getCachedMarketData(symbol?: string): Promise<any> {
     try {
-        if (!redis.isOpen) {
+        if (redis.status !== 'ready') {
             logger.warn('Redis not connected, skipping cache read')
             return null
         }
@@ -65,7 +65,7 @@ export async function getCachedMarketData(symbol?: string): Promise<any> {
 
 export async function setCachedMarketData(data: any, symbol?: string): Promise<void> {
     try {
-        if (!redis.isOpen) {
+        if (redis.status !== 'ready') {
             logger.warn('Redis not connected, skipping cache write')
             return
         }
