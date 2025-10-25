@@ -18,7 +18,7 @@ export function LoginPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
-        
+
         try {
             await signIn('credentials', {
                 email,
