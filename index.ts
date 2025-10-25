@@ -77,12 +77,16 @@ const io = new SocketIOServer(server, {
 // Setup Redis adapter for Socket.IO scaling (optional)
 if (process.env.REDIS_URL) {
     try {
-        const pubClient = createClient({ 
+        // Create Redis clients with proper TLS configuration
+        const pubClient = createClient({
             url: process.env.REDIS_URL,
+            // Auto-enable TLS if using rediss:// URL
             socket: {
-                tls: process.env.REDIS_URL?.startsWith('rediss://') ? {} : undefined
-            }
+                tls: process.env.REDIS_URL.startsWith('rediss://'),
+                rejectUnauthorized: process.env.NODE_ENV === 'production',
+            },
         })
+        
         const subClient = pubClient.duplicate()
 
         // Add error handlers
@@ -94,23 +98,41 @@ if (process.env.REDIS_URL) {
             logger.error('Redis sub client error:', err)
         })
 
-        // Connect with timeout
+        pubClient.on('connect', () => {
+            logger.info('Redis pub client connected')
+        })
+
+        subClient.on('connect', () => {
+            logger.info('Redis sub client connected')
+        })
+
+        // Connect both clients
         Promise.all([
-            pubClient.connect().catch(err => logger.error('Redis pub connect error:', err)),
-            subClient.connect().catch(err => logger.error('Redis sub connect error:', err))
+            pubClient.connect().catch(err => {
+                logger.error('Redis pub client connection error:', err)
+                throw err
+            }),
+            subClient.connect().catch(err => {
+                logger.error('Redis sub client connection error:', err)
+                throw err
+            })
         ]).then(() => {
+            // Only setup adapter after both clients are connected
             io.adapter(createAdapter(pubClient, subClient))
-            logger.info('Socket.IO Redis adapter initialized')
+            logger.info('✅ Socket.IO Redis adapter initialized successfully')
+            logger.info(`📊 Redis URL: ${process.env.REDIS_URL?.split('@')[1]}`)
         }).catch(err => {
-            logger.error('Redis adapter setup failed:', err)
-            logger.info('Continuing without Redis adapter')
+            logger.error('❌ Redis adapter setup failed:', err)
+            logger.warn('⚠️  Continuing without Redis adapter - Socket.IO will use in-memory storage')
+            logger.warn('⚠️  This will not work properly with multiple server instances')
         })
     } catch (error) {
-        logger.error('Redis setup error:', error)
-        logger.info('Continuing without Redis adapter')
+        logger.error('Redis initialization error:', error)
+        logger.warn('Continuing without Redis adapter')
     }
 } else {
-    logger.info('No Redis URL provided, skipping Redis adapter')
+    logger.warn('⚠️  No REDIS_URL provided - Socket.IO using in-memory storage')
+    logger.warn('⚠️  This will only work with a single server instance')
 }
 
 // Setup Socket.IO handlers
@@ -144,6 +166,12 @@ server.listen(port, () => {
     logger.info(`🚀 VolSpike Backend running on port ${port}`)
     logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
     logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
+    
+    if (process.env.REDIS_URL) {
+        logger.info(`✅ Redis configured: ${process.env.REDIS_URL?.startsWith('rediss://') ? 'TLS enabled' : 'TLS disabled'}`)
+    } else {
+        logger.warn(`⚠️  Redis not configured - caching and distributed features disabled`)
+    }
 })
 
 export default app

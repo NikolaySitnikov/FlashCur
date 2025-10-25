@@ -3,13 +3,30 @@ import { createLogger } from '../lib/logger'
 
 const logger = createLogger()
 
-// Initialize Redis client
+// Initialize Redis client with TLS configuration for Upstash
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    // TLS configuration - required for Upstash (rediss://)
+    tls: process.env.REDIS_URL?.startsWith('rediss://') ? {} : undefined,
+    
+    // Connection settings
     maxRetriesPerRequest: 3,
     lazyConnect: true,
     connectTimeout: 10000,
     commandTimeout: 5000,
-    tls: process.env.REDIS_URL?.startsWith('rediss://') ? {} : undefined,
+    
+    // Stability settings for production
+    retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000)
+        logger.warn(`Redis retry attempt ${times}, delay: ${delay}ms`)
+        return delay
+    },
+    
+    // Enable offline queue while reconnecting
+    enableOfflineQueue: true,
+    
+    // Auto-reconnect on disconnect
+    autoResubscribe: true,
+    autoResendUnfulfilledCommands: true,
 })
 
 redis.on('connect', () => {
@@ -50,7 +67,7 @@ export async function getCachedMarketData(symbol?: string): Promise<any> {
             logger.warn('Redis not connected, skipping cache read')
             return null
         }
-
+        
         if (symbol) {
             const data = await redis.get(CACHE_KEYS.MARKET_SYMBOL(symbol))
             return data ? JSON.parse(data) : null
@@ -70,7 +87,7 @@ export async function setCachedMarketData(data: any, symbol?: string): Promise<v
             logger.warn('Redis not connected, skipping cache write')
             return
         }
-
+        
         if (symbol) {
             await redis.setex(
                 CACHE_KEYS.MARKET_SYMBOL(symbol),
