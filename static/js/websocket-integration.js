@@ -222,34 +222,38 @@
 
             this._lastRows = rows;
 
-            if (!this.hasHydrated) {
-                if (typeof hideLoading === 'function') {
-                    hideLoading();
-                }
-                if (typeof showDownloadButton === 'function') {
-                    showDownloadButton();
-                }
-                if (typeof updateLastUpdated === 'function') {
-                    updateLastUpdated();
-                }
+            const hasProMetrics = Boolean(
+                (global.userFeatures && global.userFeatures.additional_metrics) ||
+                (typeof global.userTier === 'number' && global.userTier >= 1)
+            );
+
+            if (global.marketTable && typeof global.marketTable.ingestRows === 'function') {
+                global.marketTable.ingestRows(rows, { hasProMetrics });
                 this.hasHydrated = true;
-            }
+            } else {
+                const sortedRows = this.applySorting(rows);
+                const displayRows = Array.isArray(sortedRows) ? sortedRows : rows;
 
-            const sortedRows = this.applySorting(rows);
-            const displayRows = Array.isArray(sortedRows) ? sortedRows : rows;
-
-            if (Array.isArray(displayRows)) {
-                if (typeof global.renderSortedTables === 'function') {
+                if (Array.isArray(displayRows) && typeof global.renderSortedTables === 'function') {
                     global.renderSortedTables(displayRows);
                 }
+
                 if (typeof syncTableCaches === 'function') {
                     syncTableCaches(displayRows, rows);
                 } else {
                     global.dataCache = Array.isArray(displayRows) ? [...displayRows] : [];
                     global.originalDataCache = Array.isArray(rows) ? [...rows] : [];
                 }
+
                 if (typeof updateSortIndicators === 'function') {
                     updateSortIndicators();
+                }
+
+                if (!this.hasHydrated) {
+                    if (typeof hideLoading === 'function') hideLoading();
+                    if (typeof showDownloadButton === 'function') showDownloadButton();
+                    if (typeof updateLastUpdated === 'function') updateLastUpdated();
+                    this.hasHydrated = true;
                 }
             }
 
@@ -291,8 +295,7 @@
 
             let fundingRate = null;
             if (typeof symbolState.fundingRate === 'number') {
-                // Store tracks mark funding as decimal; convert to percentage points
-                fundingRate = symbolState.fundingRate * 100;
+                fundingRate = symbolState.fundingRate;
             }
 
             return {

@@ -58,6 +58,331 @@ let sortState = {
 };
 syncSortStateToWindow();
 
+const MIN_VOLUME_USD = 100_000_000;
+
+function coerceNumber(value, { treatPercent = false, forcePercent = false } = {}) {
+    if (Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value !== 'string') {
+        return Number.NaN;
+    }
+
+    let cleaned = value.trim();
+    if (!cleaned) {
+        return Number.NaN;
+    }
+
+    let percentDetected = false;
+    if (cleaned.endsWith('%')) {
+        percentDetected = true;
+        cleaned = cleaned.slice(0, -1);
+    }
+
+    cleaned = cleaned
+        .replace(/[,$\s]/g, '')
+        .replace(/\((.*)\)/, '-$1')
+        .replace(/--/g, '-');
+
+    if (!cleaned) {
+        return Number.NaN;
+    }
+
+    let multiplier = 1;
+    const suffix = cleaned.slice(-1).toUpperCase();
+    if (['K', 'M', 'B', 'T'].includes(suffix)) {
+        switch (suffix) {
+            case 'K':
+                multiplier = 1e3;
+                break;
+            case 'M':
+                multiplier = 1e6;
+                break;
+            case 'B':
+                multiplier = 1e9;
+                break;
+            case 'T':
+                multiplier = 1e12;
+                break;
+            default:
+                multiplier = 1;
+        }
+        cleaned = cleaned.slice(0, -1);
+    }
+
+    if (!cleaned) {
+        return Number.NaN;
+    }
+
+    const numeric = Number.parseFloat(cleaned);
+    if (!Number.isFinite(numeric)) {
+        return Number.NaN;
+    }
+
+    let result = numeric * multiplier;
+    if (forcePercent) {
+        result /= 100;
+    } else if (percentDetected && treatPercent) {
+        result /= 100;
+    }
+
+    return result;
+}
+
+function normalizeFundingValue(value) {
+    const numeric = coerceNumber(value, { treatPercent: true });
+    if (!Number.isFinite(numeric)) {
+        return Number.NaN;
+    }
+    if (Math.abs(numeric) > 1) {
+        return numeric / 100;
+    }
+    return numeric;
+}
+
+function normalizeMarketRow(source) {
+    if (!source || typeof source !== 'object') {
+        return null;
+    }
+
+    const symbol = typeof source.symbol === 'string' ? source.symbol : '';
+    const asset = typeof source.asset === 'string' && source.asset.trim()
+        ? source.asset.trim()
+        : (symbol ? symbol.replace(/USDT$/i, '') : '').trim();
+    const normalizedAsset = asset ? asset.toUpperCase() : (symbol ? symbol.replace(/USDT$/i, '').toUpperCase() : '-');
+    const normalizedSymbol = symbol ? symbol.toUpperCase() : (normalizedAsset && normalizedAsset !== '-' ? `${normalizedAsset}USDT` : '');
+
+    const volumeCandidates = [
+        source.volume_usd,
+        source.volume,
+        source.vol24hQuote,
+        source.volumeQuote,
+        source.volume_formatted
+    ];
+
+    let volume = Number.NaN;
+    for (const candidate of volumeCandidates) {
+        volume = coerceNumber(candidate);
+        if (Number.isFinite(volume)) break;
+    }
+    if (!Number.isFinite(volume)) {
+        return null;
+    }
+
+    const priceCandidates = [
+        source.price,
+        source.lastPrice,
+        source.markPrice,
+        source.price_formatted
+    ];
+    let price = Number.NaN;
+    for (const candidate of priceCandidates) {
+        price = coerceNumber(candidate);
+        if (Number.isFinite(price)) break;
+    }
+    if (!Number.isFinite(price)) {
+        price = null;
+    }
+
+    const changeCandidates = [
+        source.price_change_pct,
+        source.change_pct,
+        source.changePct,
+        source.price_change_formatted
+    ];
+    let priceChange = Number.NaN;
+    for (const candidate of changeCandidates) {
+        priceChange = coerceNumber(candidate, { forcePercent: false });
+        if (Number.isFinite(priceChange)) break;
+    }
+    if (!Number.isFinite(priceChange)) {
+        priceChange = null;
+    }
+
+    const fundingCandidates = [
+        source.funding_rate,
+        source.fundingRate,
+        source.funding_formatted,
+        source.markFundingRate
+    ];
+    let fundingRate = Number.NaN;
+    for (const candidate of fundingCandidates) {
+        fundingRate = normalizeFundingValue(candidate);
+        if (Number.isFinite(fundingRate)) break;
+    }
+    if (!Number.isFinite(fundingRate)) {
+        fundingRate = null;
+    }
+
+    const oiCandidates = [
+        source.open_interest_usd,
+        source.openInterestUsd,
+        source.openInterestUSDT,
+        source.open_interest,
+        source.open_interest_formatted,
+        source.oiUsd
+    ];
+    let openInterest = Number.NaN;
+    for (const candidate of oiCandidates) {
+        openInterest = coerceNumber(candidate);
+        if (Number.isFinite(openInterest)) break;
+    }
+    if (!Number.isFinite(openInterest)) {
+        openInterest = null;
+    }
+
+    const normalized = {
+        asset: normalizedAsset || '-',
+        symbol: normalizedSymbol,
+        volume,
+        volume_formatted: source.volume_formatted,
+        price,
+        price_formatted: source.price_formatted,
+        price_change_pct: priceChange,
+        price_change_formatted: source.price_change_formatted,
+        funding_rate: fundingRate,
+        funding_formatted: source.funding_formatted,
+        open_interest_usd: openInterest,
+        open_interest_formatted: source.open_interest_formatted,
+        liquidation_risk: source.liquidation_risk ?? source.liquidationRisk ?? '-'
+    };
+
+    if (!normalized.volume_formatted) {
+        normalized.volume_formatted = formatCompactUsd(normalized.volume);
+    }
+
+    if (!normalized.price_formatted) {
+        normalized.price_formatted = Number.isFinite(price) ? formatPrice(price) : '-';
+    }
+
+    if (!normalized.price_change_formatted) {
+        if (Number.isFinite(priceChange)) {
+            const sign = priceChange > 0 ? '+' : '';
+            normalized.price_change_formatted = `${sign}${priceChange.toFixed(2)}%`;
+        } else {
+            normalized.price_change_formatted = '-';
+        }
+    }
+
+    if (!normalized.funding_formatted) {
+        normalized.funding_formatted = Number.isFinite(fundingRate)
+            ? formatFundingRate(fundingRate)
+            : 'N/A';
+    }
+
+    if (!normalized.open_interest_formatted) {
+        normalized.open_interest_formatted = Number.isFinite(openInterest)
+            ? formatCompactUsd(openInterest)
+            : '-';
+    }
+
+    return normalized;
+}
+
+function normalizeMarketRows(rows) {
+    if (!Array.isArray(rows)) {
+        return [];
+    }
+
+    const normalized = [];
+    for (const row of rows) {
+        const mapped = normalizeMarketRow(row);
+        if (!mapped) continue;
+        if (!Number.isFinite(mapped.volume)) continue;
+        if (mapped.volume < MIN_VOLUME_USD) continue;
+        normalized.push({ ...mapped });
+    }
+    return normalized;
+}
+
+const marketTable = {
+    rawRows: [],
+    displayRows: [],
+    hasProMetrics: false,
+    hydrated: false,
+
+    setRows(rows, { hasProMetrics: proMetrics } = {}) {
+        this.hasProMetrics = typeof proMetrics === 'boolean' ? proMetrics : this.hasProMetrics;
+        hasProMetrics = this.hasProMetrics;
+        this.rawRows = Array.isArray(rows) ? rows.map(row => ({ ...row })) : [];
+        this.applySortState(true);
+    },
+
+    ingestRows(rows, { hasProMetrics: proMetrics } = {}) {
+        const normalized = normalizeMarketRows(rows);
+        if (!normalized.length) {
+            return;
+        }
+        this.hasProMetrics = typeof proMetrics === 'boolean' ? proMetrics : this.hasProMetrics;
+        hasProMetrics = this.hasProMetrics;
+        this.rawRows = normalized.map(row => ({ ...row }));
+        this.applySortState(true);
+    },
+
+    applySortState(shouldRender = false) {
+        const sorted = applySorting([...this.rawRows]);
+        this.displayRows = Array.isArray(sorted) ? sorted : [...this.rawRows];
+        syncTableCaches(this.displayRows, this.rawRows);
+        if (shouldRender) {
+            this.render();
+            updateSortIndicators();
+        }
+    },
+
+    render() {
+        const rows = Array.isArray(this.displayRows) ? this.displayRows : [];
+        const proEnabled = Boolean(
+            this.hasProMetrics ||
+            document.querySelector('#dataTable thead .pro-column') ||
+            document.querySelector('#mobileDataTable thead .pro-column')
+        );
+
+        const desktopBody = document.getElementById('tableBody');
+        if (desktopBody) {
+            replaceTableBody(desktopBody, rows, proEnabled);
+        }
+
+        const mobileBody = document.getElementById('mobileTableBody');
+        if (mobileBody) {
+            replaceTableBody(mobileBody, rows, proEnabled);
+        }
+
+        const desktopContainer = document.getElementById('tableContainer');
+        if (desktopContainer) {
+            desktopContainer.style.display = 'block';
+            updateHorizontalOverflowState(desktopContainer, desktopContainer.querySelector('table'));
+        }
+
+        const mobileContainer = document.getElementById('mobileTableContainer');
+        if (mobileContainer) {
+            mobileContainer.style.display = 'block';
+            updateHorizontalOverflowState(mobileContainer, mobileContainer.querySelector('table'));
+        }
+
+        if (rows.length > 0) {
+            hideLoading();
+            showDownloadButton();
+            updateLastUpdated();
+            this.hydrated = true;
+        } else if (!isDataLoading) {
+            hideLoading();
+        }
+
+        if (window.wsIntegration) {
+            window.wsIntegration._lastNonEmptyRows = rows.map(row => ({ ...row }));
+            if (typeof window.wsIntegration.updateScrollIndicators === 'function') {
+                window.wsIntegration.updateScrollIndicators();
+            }
+        }
+    }
+};
+
+if (typeof window !== 'undefined') {
+    window.marketTable = marketTable;
+    window.normalizeMarketRows = normalizeMarketRows;
+}
+
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', async function () {
     initializeTheme();
@@ -216,16 +541,9 @@ async function loadData() {
         userFeatures = userFeatures || {};
 
         const incomingRows = Array.isArray(result.data) ? result.data : [];
+        const normalizedRows = normalizeMarketRows(incomingRows);
 
-        const sortedRows = applySorting([...incomingRows]);
-        syncTableCaches(sortedRows, incomingRows);
-
-        renderSortedTables(sortedRows);
-        updateSortIndicators();
-
-        hideLoading();
-        updateLastUpdated();
-        showDownloadButton();
+        marketTable.setRows(normalizedRows, { hasProMetrics });
     } catch (error) {
         console.error('Failed to load market data:', error);
         showError('Failed to load data: ' + error.message);
@@ -251,7 +569,7 @@ function setRowDataAttributes(row, item) {
         row.dataset[key] = String(value);
     };
 
-    row.dataset.symbol = item.asset || '';
+    row.dataset.symbol = item.symbol || item.asset || '';
     setValue('asset', item.asset || item.symbol || '');
     setValue('volume', Number.isFinite(item.volume) ? item.volume : Number.isFinite(item.volume_usd) ? item.volume_usd : null);
     setValue('price', Number.isFinite(item.price) ? item.price : null);
@@ -586,35 +904,12 @@ function handleSort(column) {
     syncSortStateToWindow();
     saveSortState();
 
-    const sourceData = getSourceDataForSorting();
-    if (!Array.isArray(sourceData)) {
-        console.warn('⚠️ No sortable data available.');
+    if (!Array.isArray(marketTable.rawRows) || marketTable.rawRows.length === 0) {
         updateSortIndicators();
         return;
     }
 
-    const sorter = (window.wsIntegration && typeof window.wsIntegration.applySorting === 'function')
-        ? window.wsIntegration.applySorting.bind(window.wsIntegration)
-        : applySorting;
-
-    let workingCopy;
-    try {
-        workingCopy = Array.isArray(sourceData) ? [...sourceData] : [];
-    } catch (error) {
-        console.error('❌ Failed to copy source data for sorting:', error);
-        workingCopy = [];
-    }
-
-    const sortedData = sorter ? sorter(workingCopy) : workingCopy;
-
-    if (!Array.isArray(sortedData)) {
-        console.warn('⚠️ Sorter returned a non-array result, skipping render.');
-        updateSortIndicators();
-        return;
-    }
-
-    renderSortedTables(sortedData);
-    updateSortIndicators();
+    marketTable.applySortState(true);
 }
 
 function syncSortStateToWindow() {
@@ -644,8 +939,14 @@ function renderSortedTables(sortedData) {
         return;
     }
 
+    if (window.marketTable && typeof window.marketTable.setRows === 'function') {
+        const normalized = normalizeMarketRows(sortedData);
+        window.marketTable.setRows(normalized, { hasProMetrics });
+        return;
+    }
+
     dataCache = [...sortedData];
-    syncTableCaches(sortedData);
+    syncTableCaches(sortedData, sortedData);
 
     const proEnabled = Boolean(
         hasProMetrics ||
@@ -867,31 +1168,6 @@ function parseNumber(value) {
     if (Number.isFinite(value)) return value;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : NaN;
-}
-
-function getSourceDataForSorting() {
-    const integration = window.wsIntegration || {};
-    const candidates = [
-        integration._lastNonEmptyRows,
-        window.dataCache,
-        dataCache,
-        window.originalDataCache,
-        originalDataCache
-    ];
-
-    for (const candidate of candidates) {
-        if (Array.isArray(candidate) && candidate.length) {
-            return candidate;
-        }
-    }
-
-    for (const candidate of candidates) {
-        if (Array.isArray(candidate)) {
-            return candidate;
-        }
-    }
-
-    return [];
 }
 
 // Apply sorting to data array
