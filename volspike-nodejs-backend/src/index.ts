@@ -74,15 +74,38 @@ const io = new SocketIOServer(server, {
     transports: ['websocket', 'polling'],
 })
 
-// Setup Redis adapter for Socket.IO scaling
+// Setup Redis adapter for Socket.IO scaling (optional)
 if (process.env.REDIS_URL) {
-    const pubClient = createClient({ url: process.env.REDIS_URL })
-    const subClient = pubClient.duplicate()
+    try {
+        const pubClient = createClient({ url: process.env.REDIS_URL })
+        const subClient = pubClient.duplicate()
 
-    Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
-        io.adapter(createAdapter(pubClient, subClient))
-        logger.info('Socket.IO Redis adapter initialized')
-    })
+        // Add error handlers
+        pubClient.on('error', (err) => {
+            logger.error('Redis pub client error:', err)
+        })
+
+        subClient.on('error', (err) => {
+            logger.error('Redis sub client error:', err)
+        })
+
+        // Connect with timeout
+        Promise.all([
+            pubClient.connect().catch(err => logger.error('Redis pub connect error:', err)),
+            subClient.connect().catch(err => logger.error('Redis sub connect error:', err))
+        ]).then(() => {
+            io.adapter(createAdapter(pubClient, subClient))
+            logger.info('Socket.IO Redis adapter initialized')
+        }).catch(err => {
+            logger.error('Redis adapter setup failed:', err)
+            logger.info('Continuing without Redis adapter')
+        })
+    } catch (error) {
+        logger.error('Redis setup error:', error)
+        logger.info('Continuing without Redis adapter')
+    }
+} else {
+    logger.info('No Redis URL provided, skipping Redis adapter')
 }
 
 // Setup Socket.IO handlers

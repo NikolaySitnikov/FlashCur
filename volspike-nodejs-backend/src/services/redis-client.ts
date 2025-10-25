@@ -17,6 +17,15 @@ redis.on('connect', () => {
 
 redis.on('error', (error) => {
     logger.error('Redis client error:', error)
+    // Don't crash the app on Redis errors
+})
+
+redis.on('close', () => {
+    logger.warn('Redis client connection closed')
+})
+
+redis.on('reconnecting', () => {
+    logger.info('Redis client reconnecting...')
 })
 
 // Cache keys
@@ -36,6 +45,11 @@ const CACHE_TTL = {
 
 export async function getCachedMarketData(symbol?: string): Promise<any> {
     try {
+        if (!redis.isOpen) {
+            logger.warn('Redis not connected, skipping cache read')
+            return null
+        }
+        
         if (symbol) {
             const data = await redis.get(CACHE_KEYS.MARKET_SYMBOL(symbol))
             return data ? JSON.parse(data) : null
@@ -51,6 +65,11 @@ export async function getCachedMarketData(symbol?: string): Promise<any> {
 
 export async function setCachedMarketData(data: any, symbol?: string): Promise<void> {
     try {
+        if (!redis.isOpen) {
+            logger.warn('Redis not connected, skipping cache write')
+            return
+        }
+        
         if (symbol) {
             await redis.setex(
                 CACHE_KEYS.MARKET_SYMBOL(symbol),
