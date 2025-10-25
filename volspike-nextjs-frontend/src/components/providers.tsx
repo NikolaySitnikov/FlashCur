@@ -6,15 +6,14 @@ import { SessionProvider } from 'next-auth/react'
 import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { WagmiProvider } from 'wagmi'
 import { mainnet, polygon, arbitrum, optimism } from 'wagmi/chains'
-import { QueryClient as WagmiQueryClient } from '@tanstack/react-query'
 import { http } from 'viem'
 import { useState } from 'react'
 import { ThemeProvider } from '@/components/theme-provider'
 
-// RainbowKit configuration
+// RainbowKit configuration for Wagmi v2
 const config = getDefaultConfig({
     appName: 'VolSpike',
-    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
+    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'your-walletconnect-project-id',
     chains: [mainnet, polygon, arbitrum, optimism],
     transports: {
         [mainnet.id]: http(),
@@ -38,10 +37,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
     }))
 
-    const [wagmiQueryClient] = useState(() => new WagmiQueryClient())
-
     return (
-        <WagmiProvider config={config} queryClient={wagmiQueryClient}>
+        <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
                 <SessionProvider>
                     <RainbowKitProvider>
