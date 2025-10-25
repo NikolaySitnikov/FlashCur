@@ -5,15 +5,22 @@ let originalDataCache = []; // Store original order from API
 let isDataLoading = false;
 let isAnimating = false; // Track if table animation is in progress
 let currentTab = 'market-data';
+let tabsInitialized = false;
 let unreadAlertsCount = 0;
 let lastViewedAlertsCount = 0;
 
 
 // User tier and refresh settings
 let userTier = 0;
+let userFeatures = {};
 let refreshInterval = 15 * 60 * 1000; // Default to 15 min (Free tier)
 let refreshTimer = null;
 let hasProMetrics = false; // Track if Pro metrics are available
+
+if (typeof window !== 'undefined') {
+    window.userTier = typeof window.userTier === 'number' ? window.userTier : userTier;
+    window.userFeatures = window.userFeatures || userFeatures;
+}
 
 // Simple navigation menu toggle
 function toggleNavMenu() {
@@ -49,6 +56,7 @@ let sortState = {
     column: null,      // 'asset', 'volume', 'funding_rate', 'price', or null
     direction: null    // 'asc', 'desc', or null (default)
 };
+syncSortStateToWindow();
 
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', async function () {
@@ -62,24 +70,68 @@ document.addEventListener('DOMContentLoaded', async function () {
     setupAutoRefresh();
 });
 
+function applyTierFeatures() {
+    if (typeof window !== 'undefined') {
+        window.userTier = userTier;
+        window.userFeatures = userFeatures;
+    }
+
+    const subtitle = document.getElementById('connection-subtitle');
+    const liveNotice = document.getElementById('liveNotice');
+    const hasLive = Boolean(userFeatures?.real_time_updates);
+
+    if (subtitle) {
+        if (hasLive) {
+            subtitle.textContent = 'Live from Binance WebSocket';
+        } else {
+            const minutes = Math.max(1, Math.round(refreshInterval / 60000));
+            subtitle.textContent = `Auto refresh every ${minutes} min`;
+        }
+    }
+
+    if (liveNotice) {
+        liveNotice.style.display = hasLive ? 'block' : 'none';
+    }
+
+    if (window.wsIntegration && typeof window.wsIntegration.updatePermissions === 'function') {
+        window.wsIntegration.updatePermissions(userTier, userFeatures);
+    }
+}
+
 // Tab Management
 function initializeTabs() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const mobileTabButtons = document.querySelectorAll('.mobile-tab-button');
+    if (tabsInitialized) return;
 
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.getAttribute('data-tab');
-            switchTab(targetTab);
-        });
+    const allTabButtons = document.querySelectorAll('.tab-button, .mobile-tab-button');
+    allTabButtons.forEach(button => {
+        if (button.tagName === 'BUTTON' && !button.getAttribute('type')) {
+            button.setAttribute('type', 'button');
+        }
+
+        if (!button.__volTabHandler) {
+            const handler = (event) => {
+                handleTabButtonClick(event);
+            };
+
+            button.addEventListener('click', handler);
+            button.__volTabHandler = handler;
+        }
     });
 
-    mobileTabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.getAttribute('data-tab');
-            switchTab(targetTab);
-        });
-    });
+    tabsInitialized = true;
+}
+
+function handleTabButtonClick(event) {
+    const targetButton = event.currentTarget instanceof HTMLElement
+        ? event.currentTarget
+        : event.target.closest('.tab-button, .mobile-tab-button');
+    if (!targetButton) return;
+
+    const targetTab = targetButton.getAttribute('data-tab');
+    if (!targetTab) return;
+
+    event.preventDefault();
+    switchTab(targetTab);
 }
 
 function switchTab(tabName) {
@@ -111,9 +163,7 @@ function switchTab(tabName) {
         ['tableContainer', 'mobileTableContainer'].forEach(id => {
             const c = document.getElementById(id);
             if (!c) return;
-            const has = c.scrollWidth > c.clientWidth + 1;
-            c.classList.toggle('has-scroll', has);
-            if (!has) c.classList.remove('scrolled');
+            updateHorizontalOverflowState(c);
         });
     }
 }
@@ -144,7 +194,7 @@ function initializeTheme() {
     document.body.classList.add('dark-theme');
 }
 
-// Data Loading with Progressive Animation
+// Data Loading
 async function loadData() {
     if (isDataLoading) return;
 
@@ -153,281 +203,64 @@ async function loadData() {
 
     try {
         const response = await fetch('/api/data');
-        const result = await response.json();
-
-        if (result.success) {
-            originalDataCache = result.data; // Store original order
-            dataCache = applySorting([...result.data]); // Apply current sorting
-            hasProMetrics = result.has_pro_metrics || false; // Track Pro metrics availability
-            hideLoading(); // Hide loading first
-            await displayDataProgressive(dataCache);
-            updateLastUpdated();
-            showDownloadButton();
-            updateSortIndicators();
-        } else {
-            showError('Failed to load data: ' + result.error);
+        if (!response.ok) {
+            throw new Error(`Request failed (${response.status})`);
         }
+
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Unknown API error');
+        }
+
+        hasProMetrics = result.has_pro_metrics || false;
+        userFeatures = userFeatures || {};
+
+        const incomingRows = Array.isArray(result.data) ? result.data : [];
+
+        const sortedRows = applySorting([...incomingRows]);
+        syncTableCaches(sortedRows, incomingRows);
+
+        renderSortedTables(sortedRows);
+        updateSortIndicators();
+
+        hideLoading();
+        updateLastUpdated();
+        showDownloadButton();
     } catch (error) {
-        showError('Network error: ' + error.message);
+        console.error('Failed to load market data:', error);
+        showError('Failed to load data: ' + error.message);
     } finally {
         isDataLoading = false;
-        // Update scroll indicators after data loads
-        setTimeout(() => {
-            ['tableContainer', 'mobileTableContainer'].forEach(id => {
-                const container = document.getElementById(id);
-                if (container) {
-                    const hasScroll = container.scrollWidth > container.clientWidth + 1;
-                    container.classList.toggle('has-scroll', hasScroll);
-                    if (!hasScroll) container.classList.remove('scrolled');
-                }
-            });
-        }, 100);
-    }
-}
-
-// Progressive Data Display
-async function displayDataProgressive(data) {
-    isAnimating = true; // Set animation flag
-    disableSortHeaders(); // Disable clicking during animation
-
-    // Desktop display
-    const tableBody = document.getElementById('tableBody');
-    const tableContainer = document.getElementById('tableContainer');
-
-    // Mobile display
-    const mobileTableBody = document.getElementById('mobileTableBody');
-    const mobileTableContainer = document.getElementById('mobileTableContainer');
-
-    // Clear existing data
-    if (tableBody) tableBody.innerHTML = '';
-    if (mobileTableBody) mobileTableBody.innerHTML = '';
-
-    // Show table containers
-    if (tableContainer) {
-        tableContainer.style.display = 'block';
-        // Add class to table if it has Pro columns
-        const table = tableContainer.querySelector('.data-table');
-        if (table && hasProMetrics) {
-            table.classList.add('has-pro-columns');
-        }
-        // Check if table is scrollable and add visual indicator
-        checkTableScroll(tableContainer);
-    }
-    if (mobileTableContainer) {
-        mobileTableContainer.style.display = 'block';
-        const mobileTable = mobileTableContainer.querySelector('.data-table');
-        if (mobileTable && hasProMetrics) {
-            mobileTable.classList.add('has-pro-columns');
-        }
-        checkTableScroll(mobileTableContainer);
-    }
-
-    // Add rows progressively with animation
-    for (let i = 0; i < data.length; i++) {
-        const row = createTableRow(data[i], i);
-        const mobileRow = createTableRow(data[i], i);
-
-        if (tableBody) tableBody.appendChild(row);
-        if (mobileTableBody) mobileTableBody.appendChild(mobileRow);
-
-        // Animate row appearance
-        setTimeout(() => {
-            if (row) row.classList.add('table-row');
-            if (mobileRow) mobileRow.classList.add('table-row');
-        }, i * 50); // 50ms delay between rows for faster loading
-
-        // Start rolling animation for this row only
-        setTimeout(() => {
-            if (row) startCharacterCyclingForRow(row);
-            if (mobileRow) startCharacterCyclingForRow(mobileRow);
-        }, i * 50 + 100); // Start rolling 100ms after row appears
-
-        // Small delay to show progressive loading
-        await new Promise(resolve => setTimeout(resolve, 25));
-    }
-
-    // Calculate total animation time and clear flag when done
-    const totalAnimationTime = data.length * 50 + 800; // rows * delay + rolling animation time (reduced)
-    setTimeout(() => {
-        isAnimating = false;
-        enableSortHeaders(); // Re-enable clicking after animation
-    }, totalAnimationTime);
-}
-
-// Create Table Row with Rolling Animations
-function createTableRow(item, index) {
-    const row = document.createElement('tr');
-    row.style.animationDelay = `${index * 0.1}s`;
-
-    // Asset column with rolling animation for letters only
-    const assetCell = document.createElement('td');
-    assetCell.innerHTML = createRollingText(item.asset, 0.1, true); // isTicker = true
-    row.appendChild(assetCell);
-
-    // Volume column with rolling animation for numbers only
-    const volumeCell = document.createElement('td');
-    volumeCell.innerHTML = createRollingText(item.volume_formatted, 0.1, false); // isTicker = false
-    row.appendChild(volumeCell);
-
-    // Pro Tier: Price Change % column
-    if (hasProMetrics && item.price_change_formatted) {
-        const priceChangeCell = document.createElement('td');
-        priceChangeCell.className = 'pro-column';
-        const priceChange = item.price_change_pct;
-        if (priceChange > 0) {
-            priceChangeCell.classList.add('price-change-positive');
-        } else if (priceChange < 0) {
-            priceChangeCell.classList.add('price-change-negative');
-        }
-        priceChangeCell.innerHTML = createRollingText(item.price_change_formatted, 0.1, false);
-        row.appendChild(priceChangeCell);
-    }
-
-    // Funding rate column with rolling animation and color coding
-    const fundingCell = document.createElement('td');
-    const fundingRate = item.funding_rate;
-    if (fundingRate !== null && fundingRate !== undefined) {
-        if (fundingRate > 0.03) {
-            fundingCell.className = 'funding-positive';
-        } else if (fundingRate < -0.03) {
-            fundingCell.className = 'funding-negative';
-        }
-    }
-    fundingCell.innerHTML = createRollingText(item.funding_formatted, 0.1, false); // isTicker = false
-    row.appendChild(fundingCell);
-
-    // Price column with rolling animation for numbers only
-    const priceCell = document.createElement('td');
-    priceCell.innerHTML = createRollingText(item.price_formatted, 0.1, false); // isTicker = false
-    row.appendChild(priceCell);
-
-    // Pro Tier: Open Interest column
-    if (hasProMetrics && item.open_interest_formatted) {
-        const openInterestCell = document.createElement('td');
-        openInterestCell.className = 'pro-column';
-        openInterestCell.innerHTML = createRollingText(item.open_interest_formatted, 0.1, false);
-        row.appendChild(openInterestCell);
-    }
-
-    // Pro Tier: Liquidation Risk column
-    if (hasProMetrics && item.liquidation_risk) {
-        const liqRiskCell = document.createElement('td');
-        liqRiskCell.className = 'pro-column';
-        const risk = item.liquidation_risk;
-        liqRiskCell.textContent = risk;
-
-        // Color coding for risk
-        if (risk === 'High') {
-            liqRiskCell.classList.add('liq-risk-high');
-        } else if (risk === 'Medium') {
-            liqRiskCell.classList.add('liq-risk-medium');
-        } else {
-            liqRiskCell.classList.add('liq-risk-low');
-        }
-
-        row.appendChild(liqRiskCell);
-    }
-
-    return row;
-}
-
-// Create Railway Station Style Rolling Text Animation
-function createRollingText(text, delay = 0.2, isTicker = false) {
-    const chars = text.split('');
-    let rollingHTML = '<span class="rolling-container">';
-
-    chars.forEach((char, index) => {
-        // For tickers: roll all letters including M and B
-        if (isTicker && char.match(/[A-Z]/)) {
-            const randomChars = generateRandomChars(char, 6, 'letters');
-            rollingHTML += `<span class="rolling-char railway-style" style="animation-delay: ${index * delay}s" data-final="${char}" data-chars="${randomChars.join('')}">${randomChars[0]}</span>`;
-        }
-        // For volumes/prices: don't roll $, %, ., M, B - keep them static
-        else if (!isTicker && (char === '$' || char === '%' || char === '.' || char === 'M' || char === 'B')) {
-            rollingHTML += char;
-        }
-        // For numbers/volumes/prices: only roll digits
-        else if (!isTicker && char.match(/[0-9]/)) {
-            const randomChars = generateRandomChars(char, 6, 'numbers');
-            rollingHTML += `<span class="rolling-char railway-style" style="animation-delay: ${index * delay}s" data-final="${char}" data-chars="${randomChars.join('')}">${randomChars[0]}</span>`;
-        }
-        // Keep other characters static
-        else {
-            rollingHTML += char;
-        }
-    });
-
-    rollingHTML += '</span>';
-
-    return rollingHTML;
-}
-
-// Start character cycling animation for a specific row
-function startCharacterCyclingForRow(row) {
-    const rollingChars = row.querySelectorAll('.rolling-char.railway-style');
-
-    rollingChars.forEach((charElement, index) => {
-        const finalChar = charElement.getAttribute('data-final');
-        const allChars = charElement.getAttribute('data-chars');
-        const charArray = allChars.split('');
-
-        // Cycle through characters with shorter duration
-        let currentIndex = 0;
-        const cycleInterval = setInterval(() => {
-            charElement.textContent = charArray[currentIndex];
-            currentIndex++;
-
-            if (currentIndex >= charArray.length) {
-                clearInterval(cycleInterval);
-                charElement.textContent = finalChar; // Final character
+        ['tableContainer', 'mobileTableContainer'].forEach(id => {
+            const container = document.getElementById(id);
+            if (container) {
+                updateHorizontalOverflowState(container, container.querySelector('table'));
             }
-        }, 200); // Change character every 200ms for 1.2s total (6 chars * 200ms)
-    });
-}
-
-// Start character cycling animation (legacy function for backward compatibility)
-function startCharacterCycling() {
-    const rollingChars = document.querySelectorAll('.rolling-char.railway-style');
-
-    rollingChars.forEach((charElement, index) => {
-        const finalChar = charElement.getAttribute('data-final');
-        const allChars = charElement.getAttribute('data-chars');
-        const charArray = allChars.split('');
-
-        // Cycle through characters with shorter duration
-        let currentIndex = 0;
-        const cycleInterval = setInterval(() => {
-            charElement.textContent = charArray[currentIndex];
-            currentIndex++;
-
-            if (currentIndex >= charArray.length) {
-                clearInterval(cycleInterval);
-                charElement.textContent = finalChar; // Final character
-            }
-        }, 200); // Change character every 200ms for 1.2s total (6 chars * 200ms)
-    });
-}
-
-// Generate random characters for railway station effect
-function generateRandomChars(finalChar, count, type = 'mixed') {
-    let chars;
-    if (type === 'letters') {
-        chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    } else if (type === 'numbers') {
-        chars = '0123456789';
-    } else {
-        chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        });
     }
-
-    const randomChars = [];
-
-    for (let i = 0; i < count - 1; i++) {
-        randomChars.push(chars[Math.floor(Math.random() * chars.length)]);
-    }
-    randomChars.push(finalChar); // Final character is the correct one
-
-    return randomChars;
 }
+
+function setRowDataAttributes(row, item) {
+    if (!row || !item) return;
+
+    const setValue = (key, value) => {
+        if (value === null || value === undefined || (typeof value === 'number' && !Number.isFinite(value))) {
+            delete row.dataset[key];
+            return;
+        }
+        row.dataset[key] = String(value);
+    };
+
+    row.dataset.symbol = item.asset || '';
+    setValue('asset', item.asset || item.symbol || '');
+    setValue('volume', Number.isFinite(item.volume) ? item.volume : Number.isFinite(item.volume_usd) ? item.volume_usd : null);
+    setValue('price', Number.isFinite(item.price) ? item.price : null);
+    setValue('fundingRate', Number.isFinite(item.funding_rate) ? item.funding_rate : null);
+    setValue('priceChangePct', Number.isFinite(item.price_change_pct) ? item.price_change_pct : null);
+    setValue('openInterest', Number.isFinite(item.open_interest_usd) ? item.open_interest_usd : null);
+    setValue('liquidationRisk', item.liquidation_risk ?? null);
+}
+
 
 // Loading States
 function showLoading() {
@@ -469,6 +302,12 @@ function showError(message) {
 
 // Update Last Updated Time
 function updateLastUpdated() {
+    const target = document.getElementById('lastUpdated');
+    if (!target) {
+        console.warn('⚠️ Unable to update timestamp: #lastUpdated element not found.');
+        return;
+    }
+
     const now = new Date();
     const timeString = now.toLocaleString('en-US', {
         timeZone: 'America/Cancun',
@@ -480,7 +319,7 @@ function updateLastUpdated() {
         second: '2-digit'
     });
 
-    document.getElementById('lastUpdated').textContent = `Last Updated: ${timeString} (Tulum)`;
+    target.textContent = `Last Updated: ${timeString}`;
 }
 
 // Download Functionality
@@ -561,6 +400,7 @@ async function fetchUserTier() {
         if (result.authenticated) {
             userTier = result.tier;
             refreshInterval = result.refresh_interval;
+            userFeatures = result.features || {};
 
             console.log(`User tier: ${result.tier_name} (${userTier})`);
             console.log(`Refresh interval: ${refreshInterval / 1000 / 60} minutes`);
@@ -568,6 +408,7 @@ async function fetchUserTier() {
             // Guest user - default to Free tier settings
             userTier = 0;
             refreshInterval = 15 * 60 * 1000; // 15 minutes
+            userFeatures = result.features || {};
             console.log('Guest user - using Free tier limits');
         }
     } catch (error) {
@@ -575,7 +416,10 @@ async function fetchUserTier() {
         // Default to Free tier on error
         userTier = 0;
         refreshInterval = 15 * 60 * 1000;
+        userFeatures = {};
     }
+
+    applyTierFeatures();
 }
 
 function setupAutoRefresh() {
@@ -593,6 +437,7 @@ function setupAutoRefresh() {
     }, refreshInterval);
 
     console.log(`Auto-refresh set to ${refreshInterval / 1000 / 60} minutes`);
+    applyTierFeatures();
 }
 
 // Load real alerts from API
@@ -692,6 +537,7 @@ function loadSortState() {
             sortState = { column: null, direction: null };
         }
     }
+    syncSortStateToWindow();
 }
 
 // Save sorting state to localStorage
@@ -737,83 +583,399 @@ function handleSort(column) {
         }
     }
 
+    syncSortStateToWindow();
     saveSortState();
 
-    // Apply sorting and redisplay - use fresh copy of original data
-    if (window.originalDataCache && window.originalDataCache.length > 0) {
-        // WebSocket data available - use WebSocket sorting
-        window.dataCache = window.wsIntegration ? window.wsIntegration.applySorting([...window.originalDataCache]) : [...window.originalDataCache];
-        if (window.wsIntegration && window.wsIntegration.updateTable) {
-            window.wsIntegration.updateTable('tableBody', window.dataCache);
-            window.wsIntegration.updateTable('mobileTableBody', window.dataCache);
-        }
-    } else {
-        // Fallback to original system
-        dataCache = applySorting([...originalDataCache]);
-        displayDataProgressive(dataCache);
+    const sourceData = getSourceDataForSorting();
+    if (!Array.isArray(sourceData)) {
+        console.warn('⚠️ No sortable data available.');
+        updateSortIndicators();
+        return;
     }
+
+    const sorter = (window.wsIntegration && typeof window.wsIntegration.applySorting === 'function')
+        ? window.wsIntegration.applySorting.bind(window.wsIntegration)
+        : applySorting;
+
+    let workingCopy;
+    try {
+        workingCopy = Array.isArray(sourceData) ? [...sourceData] : [];
+    } catch (error) {
+        console.error('❌ Failed to copy source data for sorting:', error);
+        workingCopy = [];
+    }
+
+    const sortedData = sorter ? sorter(workingCopy) : workingCopy;
+
+    if (!Array.isArray(sortedData)) {
+        console.warn('⚠️ Sorter returned a non-array result, skipping render.');
+        updateSortIndicators();
+        return;
+    }
+
+    renderSortedTables(sortedData);
     updateSortIndicators();
+}
+
+function syncSortStateToWindow() {
+    window.sortState = { ...sortState };
+}
+
+function syncTableCaches(displayRows, originalRows) {
+    if (Array.isArray(displayRows)) {
+        dataCache = [...displayRows];
+    }
+    if (Array.isArray(originalRows)) {
+        originalDataCache = [...originalRows];
+    }
+    window.dataCache = Array.isArray(dataCache) ? [...dataCache] : [];
+    window.originalDataCache = Array.isArray(originalDataCache) ? [...originalDataCache] : [];
+}
+
+window.handleSort = handleSort;
+window.applySorting = applySorting;
+window.updateSortIndicators = updateSortIndicators;
+window.setRowDataAttributes = setRowDataAttributes;
+window.syncTableCaches = syncTableCaches;
+
+function renderSortedTables(sortedData) {
+    if (!Array.isArray(sortedData)) {
+        console.warn('⚠️ renderSortedTables called without an array.');
+        return;
+    }
+
+    dataCache = [...sortedData];
+    syncTableCaches(sortedData);
+
+    const proEnabled = Boolean(
+        hasProMetrics ||
+        document.querySelector('#dataTable thead .pro-column') ||
+        document.querySelector('#mobileDataTable thead .pro-column')
+    );
+
+    const desktopBody = document.getElementById('tableBody');
+    const mobileBody = document.getElementById('mobileTableBody');
+
+    if (desktopBody) {
+        replaceTableBody(desktopBody, sortedData, proEnabled);
+    }
+
+    if (mobileBody) {
+        replaceTableBody(mobileBody, sortedData, proEnabled);
+    }
+
+    const desktopContainer = document.getElementById('tableContainer');
+    const mobileContainer = document.getElementById('mobileTableContainer');
+
+    if (desktopContainer) {
+        desktopContainer.style.display = 'block';
+        updateHorizontalOverflowState(desktopContainer, desktopContainer.querySelector('table'));
+    }
+
+    if (mobileContainer) {
+        mobileContainer.style.display = 'block';
+        updateHorizontalOverflowState(mobileContainer, mobileContainer.querySelector('table'));
+    }
+
+    if (window.wsIntegration) {
+        window.wsIntegration._lastNonEmptyRows = [...sortedData];
+        if (typeof window.wsIntegration.updateScrollIndicators === 'function') {
+            window.wsIntegration.updateScrollIndicators();
+        }
+    }
+}
+
+window.renderSortedTables = renderSortedTables;
+
+function replaceTableBody(tbodyElement, rows, proEnabled) {
+    if (!tbodyElement) return;
+
+    const fragment = document.createDocumentFragment();
+    rows.forEach(item => {
+        fragment.appendChild(buildStaticRow(item, proEnabled));
+    });
+
+    while (tbodyElement.firstChild) {
+        tbodyElement.removeChild(tbodyElement.firstChild);
+    }
+
+    tbodyElement.appendChild(fragment);
+}
+
+function buildStaticRow(item, proEnabled) {
+    const tr = document.createElement('tr');
+
+    const assetCell = document.createElement('td');
+    assetCell.className = 'px-4 py-2 font-medium';
+    assetCell.textContent = item.asset || '-';
+    tr.appendChild(assetCell);
+
+    const volumeCell = document.createElement('td');
+    volumeCell.className = 'px-4 py-2';
+    volumeCell.textContent = resolveVolumeDisplay(item);
+    tr.appendChild(volumeCell);
+
+    if (proEnabled) {
+        const priceChangeCell = document.createElement('td');
+        priceChangeCell.className = 'px-4 py-2 pro-column';
+        const priceChangeValue = parseNumber(item.price_change_pct);
+        const priceChangeDisplay = resolvePriceChangeDisplay(item, priceChangeValue);
+
+        if (Number.isFinite(priceChangeValue)) {
+            if (priceChangeValue > 0) {
+                priceChangeCell.classList.add('price-change-positive', 'text-green-600');
+            } else if (priceChangeValue < 0) {
+                priceChangeCell.classList.add('price-change-negative', 'text-red-600');
+            }
+        }
+
+        priceChangeCell.textContent = priceChangeDisplay;
+        tr.appendChild(priceChangeCell);
+    }
+
+    const fundingCell = document.createElement('td');
+    fundingCell.className = 'px-4 py-2';
+    fundingCell.innerHTML = resolveFundingDisplay(item);
+    applyFundingRateClasses(fundingCell, item.funding_rate);
+    tr.appendChild(fundingCell);
+
+    const priceCell = document.createElement('td');
+    priceCell.className = 'px-4 py-2';
+    priceCell.textContent = resolvePriceDisplay(item);
+    tr.appendChild(priceCell);
+
+    if (proEnabled) {
+        const oiCell = document.createElement('td');
+        oiCell.className = 'px-4 py-2 pro-column';
+        oiCell.textContent = resolveOpenInterestDisplay(item);
+        tr.appendChild(oiCell);
+
+        const liqCell = document.createElement('td');
+        liqCell.className = 'px-4 py-2 pro-column';
+        applyLiquidationStyling(liqCell, item.liquidation_risk);
+        tr.appendChild(liqCell);
+    }
+
+    setRowDataAttributes(tr, item);
+
+    return tr;
+}
+
+function resolveVolumeDisplay(item) {
+    if (item.volume_formatted) return item.volume_formatted;
+    if (Number.isFinite(item.volume)) return formatCompactUsd(item.volume);
+    return '-';
+}
+
+function resolvePriceDisplay(item) {
+    if (item.price_formatted) return item.price_formatted;
+    if (Number.isFinite(item.price)) return formatPrice(item.price);
+    return '-';
+}
+
+function resolveFundingDisplay(item) {
+    if (item.funding_formatted) return item.funding_formatted;
+    if (Number.isFinite(item.funding_rate)) {
+        return formatFundingRate(item.funding_rate);
+    }
+    return 'N/A';
+}
+
+function applyFundingRateClasses(cell, rawValue) {
+    if (!cell) return;
+
+    const numeric = Number.isFinite(rawValue) ? rawValue : parseNumber(rawValue);
+    if (!Number.isFinite(numeric)) {
+        return;
+    }
+
+    if (numeric > 0.03) {
+        cell.classList.add('funding-positive');
+    } else if (numeric < -0.03) {
+        cell.classList.add('funding-negative');
+    }
+}
+
+function resolveOpenInterestDisplay(item) {
+    if (item.open_interest_formatted) return item.open_interest_formatted;
+    if (Number.isFinite(item.open_interest_usd)) return formatCompactUsd(item.open_interest_usd);
+    if (Number.isFinite(item.open_interest)) return formatCompactUsd(item.open_interest * (item.price || 1));
+    return '-';
+}
+
+function resolvePriceChangeDisplay(item, rawValue) {
+    if (item.price_change_formatted) return item.price_change_formatted;
+    if (Number.isFinite(rawValue)) {
+        const sign = rawValue > 0 ? '+' : '';
+        return `${sign}${rawValue.toFixed(2)}%`;
+    }
+    return '-';
+}
+
+function applyLiquidationStyling(cell, value) {
+    if (value === null || value === undefined || value === '') {
+        cell.textContent = '-';
+        return;
+    }
+
+    if (typeof value === 'string') {
+        const normalized = value.toLowerCase();
+        cell.textContent = value;
+        if (normalized === 'high') {
+            cell.classList.add('liq-risk-high');
+        } else if (normalized === 'medium') {
+            cell.classList.add('liq-risk-medium');
+        } else if (normalized === 'low') {
+            cell.classList.add('liq-risk-low');
+        }
+        return;
+    }
+
+    const numericValue = parseNumber(value);
+    if (Number.isFinite(numericValue)) {
+        cell.textContent = numericValue.toFixed(2);
+        return;
+    }
+
+    cell.textContent = '-';
+}
+
+function formatCompactUsd(value) {
+    if (!Number.isFinite(value)) return '-';
+    const absValue = Math.abs(value);
+    if (absValue >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+    if (absValue >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+    if (absValue >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+    return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function formatPrice(value) {
+    if (!Number.isFinite(value)) return '-';
+    if (value < 0.01) return `$${value.toFixed(6)}`;
+    if (value < 1) return `$${value.toFixed(4)}`;
+    if (value < 100) return `$${value.toFixed(3)}`;
+    return `$${value.toFixed(2)}`;
+}
+
+function formatFundingRate(value) {
+    if (!Number.isFinite(value)) return 'N/A';
+    const numeric = Math.abs(value) > 1 ? value : value * 100;
+    return `${numeric.toFixed(4)}%`;
+}
+
+function parseNumber(value) {
+    if (Number.isFinite(value)) return value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function getSourceDataForSorting() {
+    const integration = window.wsIntegration || {};
+    const candidates = [
+        integration._lastNonEmptyRows,
+        window.dataCache,
+        dataCache,
+        window.originalDataCache,
+        originalDataCache
+    ];
+
+    for (const candidate of candidates) {
+        if (Array.isArray(candidate) && candidate.length) {
+            return candidate;
+        }
+    }
+
+    for (const candidate of candidates) {
+        if (Array.isArray(candidate)) {
+            return candidate;
+        }
+    }
+
+    return [];
 }
 
 // Apply sorting to data array
 function applySorting(data) {
-    if (!sortState.column || !sortState.direction) {
-        // No sorting - return original order
-        return data;
+    const helpers = window.sortingHelpers;
+    if (helpers && typeof helpers.applySort === 'function') {
+        const sorted = helpers.applySort(Array.isArray(data) ? data : [], sortState);
+        if (Array.isArray(sorted)) {
+            return sorted;
+        }
+        if (Array.isArray(data)) {
+            return [...data];
+        }
+        return [];
     }
 
-    const sorted = [...data];
+    if (!Array.isArray(data) || !sortState.column || !sortState.direction) {
+        return Array.isArray(data) ? [...data] : [];
+    }
 
-    sorted.sort((a, b) => {
-        let aVal, bVal;
+    const column = sortState.column;
+    const direction = sortState.direction === 'asc' ? 1 : -1;
+    const fallback = [...data].map((item, index) => ({ item, index }));
 
-        switch (sortState.column) {
+    const getNumeric = (value) => (Number.isFinite(value) ? value : Number.NaN);
+
+    fallback.sort((a, b) => {
+        let aVal;
+        let bVal;
+
+        switch (column) {
             case 'asset':
-                aVal = a.asset;
-                bVal = b.asset;
-                break;
+                aVal = typeof a.item.asset === 'string' ? a.item.asset : '';
+                bVal = typeof b.item.asset === 'string' ? b.item.asset : '';
+                if (aVal === bVal) {
+                    return a.index - b.index;
+                }
+                return direction * aVal.localeCompare(bVal);
             case 'volume':
-                aVal = a.volume;
-                bVal = b.volume;
+                aVal = getNumeric(a.item.volume);
+                bVal = getNumeric(b.item.volume);
                 break;
             case 'price_change_pct':
-                aVal = a.price_change_pct !== undefined ? a.price_change_pct : -Infinity;
-                bVal = b.price_change_pct !== undefined ? b.price_change_pct : -Infinity;
+                aVal = getNumeric(a.item.price_change_pct);
+                bVal = getNumeric(b.item.price_change_pct);
                 break;
             case 'funding_rate':
-                aVal = a.funding_rate !== null ? a.funding_rate : -Infinity;
-                bVal = b.funding_rate !== null ? b.funding_rate : -Infinity;
+                aVal = getNumeric(a.item.funding_rate);
+                bVal = getNumeric(b.item.funding_rate);
                 break;
             case 'price':
-                aVal = a.price;
-                bVal = b.price;
+                aVal = getNumeric(a.item.price);
+                bVal = getNumeric(b.item.price);
                 break;
             case 'open_interest':
-                aVal = a.open_interest_usd !== null && a.open_interest_usd !== undefined ? a.open_interest_usd : -Infinity;
-                bVal = b.open_interest_usd !== null && b.open_interest_usd !== undefined ? b.open_interest_usd : -Infinity;
+                aVal = getNumeric(a.item.open_interest_usd);
+                bVal = getNumeric(b.item.open_interest_usd);
                 break;
             default:
-                return 0;
+                return a.index - b.index;
         }
 
-        // Compare values
-        let comparison = 0;
-        if (typeof aVal === 'string') {
-            comparison = aVal.localeCompare(bVal);
-        } else {
-            comparison = aVal - bVal;
+        if (!Number.isFinite(aVal) && !Number.isFinite(bVal)) {
+            return a.index - b.index;
+        }
+        if (!Number.isFinite(aVal)) {
+            return 1;
+        }
+        if (!Number.isFinite(bVal)) {
+            return -1;
         }
 
-        // Apply direction
-        return sortState.direction === 'asc' ? comparison : -comparison;
+        const diff = aVal - bVal;
+        if (diff === 0) {
+            return a.index - b.index;
+        }
+        return direction * diff;
     });
 
-    return sorted;
+    return fallback.map(entry => entry.item);
 }
 
 // Update visual sort indicators
 function updateSortIndicators() {
-
     // Update both desktop and mobile tables
     const tables = ['dataTable', 'mobileDataTable'];
 
@@ -851,24 +1013,6 @@ function updateSortIndicators() {
                 }
             }
         }
-    });
-}
-
-// Disable sort headers during animation
-function disableSortHeaders() {
-    const headers = document.querySelectorAll('th.sortable');
-    headers.forEach(th => {
-        th.classList.add('disabled');
-        th.style.pointerEvents = 'none';
-    });
-}
-
-// Enable sort headers after animation
-function enableSortHeaders() {
-    const headers = document.querySelectorAll('th.sortable');
-    headers.forEach(th => {
-        th.classList.remove('disabled');
-        th.style.pointerEvents = 'auto';
     });
 }
 
@@ -986,18 +1130,83 @@ function showNotification(message, type = 'info') {
 /**
  * Check if table container is scrollable and add visual indicator
  */
+// Allow a little wiggle room so rounding errors or borders don't trigger overflow states
+const WIDE_VIEWPORT_BREAKPOINT = 1280;
+const HORIZONTAL_SCROLL_TOLERANCE_WIDE = 96;
+const HORIZONTAL_SCROLL_TOLERANCE_DEFAULT = 24;
+
+function resolveMeasurementTarget(container, measurementTarget) {
+    if (measurementTarget) return measurementTarget;
+    const table = container.querySelector('table');
+    return table || container;
+}
+
+function measureHorizontalOverflow(container, measurementTarget) {
+    if (!container) {
+        return { overflowAmount: 0, hasOverflow: false };
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    if (!containerRect || containerRect.width <= 0) {
+        return { overflowAmount: 0, hasOverflow: false };
+    }
+
+    const target = resolveMeasurementTarget(container, measurementTarget);
+    const viewportWidth = Math.floor(container.clientWidth || containerRect.width || 0);
+    const targetScrollWidth = target?.scrollWidth || 0;
+    const targetBoundsWidth = target?.getBoundingClientRect ? target.getBoundingClientRect().width : 0;
+    const containerScrollWidth = container.scrollWidth || 0;
+
+    const contentWidth = Math.ceil(Math.max(targetScrollWidth, targetBoundsWidth, containerScrollWidth));
+    const overflowAmount = Math.max(contentWidth - viewportWidth, 0);
+
+    const tolerance = viewportWidth >= WIDE_VIEWPORT_BREAKPOINT
+        ? HORIZONTAL_SCROLL_TOLERANCE_WIDE
+        : HORIZONTAL_SCROLL_TOLERANCE_DEFAULT;
+
+    return {
+        overflowAmount,
+        hasOverflow: overflowAmount > tolerance
+    };
+}
+
+function updateHorizontalOverflowState(container, measurementTarget) {
+    if (!container) return false;
+
+    const { hasOverflow } = measureHorizontalOverflow(container, measurementTarget);
+
+    container.classList.toggle('has-scroll', hasOverflow);
+    container.classList.toggle('is-scrollable', hasOverflow);
+
+    if (hasOverflow) {
+        container.style.setProperty('overflow-x', 'auto', 'important');
+    } else {
+        const prefersClip = typeof CSS !== 'undefined'
+            && typeof CSS.supports === 'function'
+            && CSS.supports('overflow-x', 'clip');
+        container.style.setProperty('overflow-x', prefersClip ? 'clip' : 'hidden', 'important');
+    }
+
+    if (!hasOverflow) {
+        container.classList.remove('scrolled');
+        if (container.scrollLeft !== 0) {
+            container.scrollLeft = 0;
+        }
+    }
+
+    return hasOverflow;
+}
+
+function hasHorizontalOverflow(container, measurementTarget) {
+    return measureHorizontalOverflow(container, measurementTarget).hasOverflow;
+}
+
 function checkTableScroll(container) {
     if (!container) return;
-
     const table = container.querySelector('table');
     if (!table) return;
 
-    // Check if content is wider than container
-    if (table.scrollWidth > container.clientWidth) {
-        container.classList.add('has-scroll');
-    } else {
-        container.classList.remove('has-scroll');
-    }
+    updateHorizontalOverflowState(container, table);
 }
 
 // Check scroll on window resize
@@ -1040,13 +1249,25 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
         if (!container) return;
 
         function updateScrollState() {
-            const hasScroll = container.scrollWidth > container.clientWidth + 1;
-            container.classList.toggle('has-scroll', hasScroll);
+            updateHorizontalOverflowState(container);
+        }
 
-            // Remove scrolled class if no scroll needed
-            if (!hasScroll) {
-                container.classList.remove('scrolled');
+        if (container.__overflowWired) {
+            updateScrollState();
+            return;
+        }
+        container.__overflowWired = true;
+
+        if (typeof ResizeObserver !== 'undefined' && !container.__overflowObserver) {
+            const observer = new ResizeObserver(() => updateScrollState());
+            observer.observe(container);
+
+            const table = container.querySelector('table');
+            if (table) {
+                observer.observe(table);
             }
+
+            container.__overflowObserver = observer;
         }
 
         // Initial check
@@ -1061,8 +1282,13 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
         // Update on resize
         window.addEventListener('resize', updateScrollState);
 
-        // Update when data loads
-        container.addEventListener('DOMSubtreeModified', updateScrollState);
+        if (typeof MutationObserver !== 'undefined' && !container.__overflowMutationObserver) {
+            const mutationObserver = new MutationObserver(() => updateScrollState());
+            mutationObserver.observe(container, { childList: true, subtree: true });
+            container.__overflowMutationObserver = mutationObserver;
+        } else {
+            container.addEventListener('DOMSubtreeModified', updateScrollState);
+        }
     }
 
     // Initialize for both desktop and mobile containers
@@ -1085,7 +1311,8 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
     function armHint(container) {
         if (!container) return;
         const show = () => {
-            if (container.scrollWidth > container.clientWidth + 1 && !localStorage.getItem(HINT_KEY)) {
+            const hasScroll = updateHorizontalOverflowState(container);
+            if (hasScroll && !localStorage.getItem(HINT_KEY)) {
                 container.classList.add('show-hint');
                 // auto-hide after 2.5s and never show again
                 setTimeout(() => {
