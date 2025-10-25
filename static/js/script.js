@@ -457,7 +457,7 @@ function handleTabButtonClick(event) {
     if (!targetTab) return;
 
     event.preventDefault();
-    switchTab(targetTab);
+            switchTab(targetTab);
 }
 
 function switchTab(tabName) {
@@ -555,9 +555,9 @@ async function loadData() {
         showError('Failed to load data: ' + error.message);
     } finally {
         isDataLoading = false;
-        ['tableContainer', 'mobileTableContainer'].forEach(id => {
-            const container = document.getElementById(id);
-            if (container) {
+            ['tableContainer', 'mobileTableContainer'].forEach(id => {
+                const container = document.getElementById(id);
+                if (container) {
                 updateHorizontalOverflowState(container, container.querySelector('table'));
             }
         });
@@ -1585,7 +1585,7 @@ document.addEventListener('DOMContentLoaded', setupScrollHintDismissal);
             mutationObserver.observe(container, { childList: true, subtree: true });
             container.__overflowMutationObserver = mutationObserver;
         } else {
-            container.addEventListener('DOMSubtreeModified', updateScrollState);
+        container.addEventListener('DOMSubtreeModified', updateScrollState);
         }
     }
 

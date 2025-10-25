@@ -218,22 +218,20 @@ export default function FlashCurLogin() {
                     box-shadow: 0 8px 25px rgba(0, 255, 136, 0.3);
                 }
 
-                .lightning-bolt {
-                    font-size: 2.5rem;
-                    color: #1a1a1a;
-                    font-weight: bold;
-                    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+                .lightning-bolt-svg {
+                    width: 40px;
+                    height: 40px;
                     animation: lightningPulse 2s ease-in-out infinite alternate;
                 }
 
                 @keyframes lightningPulse {
                     from {
                         transform: scale(1);
-                        text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+                        filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.6));
                     }
                     to {
                         transform: scale(1.1);
-                        text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+                        filter: drop-shadow(0 0 16px rgba(0, 255, 136, 0.9));
                     }
                 }
 
@@ -541,7 +539,9 @@ export default function FlashCurLogin() {
                     {/* Logo/Icon */}
                     <div className="auth-header">
                         <div className="auth-logo-container">
-                            <div className="lightning-bolt">⚡</div>
+                            <svg className="lightning-bolt-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#00ff88" stroke="#00ff88" strokeWidth="1.5" strokeLinejoin="round"/>
+                            </svg>
                         </div>
                         <h1 className="auth-title">VolSpike</h1>
                         <p className="auth-subtitle">Professional cryptocurrency market analysis and volume alerts</p>
