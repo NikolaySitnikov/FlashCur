@@ -194,7 +194,7 @@ def login():
     """
     User login page and handler.
 
-    GET: Display login form
+    GET: Display React login page
     POST: Authenticate user and create session
     """
     # If already logged in, redirect to dashboard
@@ -202,31 +202,46 @@ def login():
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '')
-        remember = request.form.get('remember', False) == 'on'
+        # Handle both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+            email = data.get('email', '').strip().lower()
+            password = data.get('password', '')
+            remember = data.get('remember', False)
+        else:
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('password', '')
+            remember = request.form.get('remember', False) == 'on'
 
         # Validation
         if not email or not password:
+            if request.is_json:
+                return jsonify({'success': False, 'message': 'Please enter both email and password.'}), 400
             flash('❌ Please enter both email and password.', 'error')
-            return render_template('login.html', email=email)
+            return render_template('react_index.html', email=email)
 
         # Find user
         user = get_user_by_email(email)
 
         if not user:
+            if request.is_json:
+                return jsonify({'success': False, 'message': 'Invalid email or password.'}), 401
             flash('❌ Invalid email or password.', 'error')
-            return render_template('login.html', email=email)
+            return render_template('react_index.html', email=email)
 
         # Check if account is active
         if not user.is_active:
+            if request.is_json:
+                return jsonify({'success': False, 'message': 'Your account has been deactivated. Please contact support.'}), 403
             flash('❌ Your account has been deactivated. Please contact support.', 'error')
-            return render_template('login.html', email=email)
+            return render_template('react_index.html', email=email)
 
         # Verify password
         if not user.check_password(password):
+            if request.is_json:
+                return jsonify({'success': False, 'message': 'Invalid email or password.'}), 401
             flash('❌ Invalid email or password.', 'error')
-            return render_template('login.html', email=email)
+            return render_template('react_index.html', email=email)
 
         # Login successful
         login_user(user, remember=remember)
@@ -240,12 +255,19 @@ def login():
         if not next_page or not next_page.startswith('/'):
             next_page = url_for('dashboard')
 
+        if request.is_json:
+            return jsonify({
+                'success': True,
+                'message': f'Welcome back, {user.email}! You are on the {user.tier_name} tier.',
+                'redirect': next_page
+            })
+
         flash(
             f'✅ Welcome back, {user.email}! You are on the {user.tier_name} tier.', 'success')
         return redirect(next_page)
 
-    # GET request - show login form
-    return render_template('login.html')
+    # GET request - show React login page
+    return render_template('react_index.html')
 
 
 # ══════════════════════════════════════════════════════════════════════════════

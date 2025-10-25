@@ -1,8 +1,8 @@
-# FlashCur - Binance Perpetual Futures Trading Dashboard
+# VolSpike - Binance Perpetual Futures Trading Dashboard
 
 ## Executive Summary
 
-FlashCur (accessible at VolSpike.com) is a comprehensive SaaS platform designed for cryptocurrency futures traders, with a primary focus on monitoring Binance USDT-perpetual pairs. It provides real-time insights into 24-hour trading volumes, funding rates, asset prices, and volume spike alerts. The tool auto-refreshes data, generates TradingView-compatible watchlists, and ignores delisted or inactive contracts for accuracy.
+VolSpike (accessible at VolSpike.com) is a comprehensive SaaS platform designed for cryptocurrency futures traders, with a primary focus on monitoring Binance USDT-perpetual pairs. It provides real-time insights into 24-hour trading volumes, funding rates, asset prices, and volume spike alerts. The tool auto-refreshes data, generates TradingView-compatible watchlists, and ignores delisted or inactive contracts for accuracy.
 
 **Launched:** October 2025  
 **Business Model:** Freemium with three tiers: Free, Pro ($9.99/month), and Elite ($29.99/month)  
@@ -23,7 +23,7 @@ As of 2025, Binance's futures volume exceeds $70 billion daily, but the ecosyste
 
 ## Solution Overview
 
-FlashCur is a web-accessible dashboard that provides data from Binance, ensuring focused and reliable insights for USDT-perpetual pairs.
+VolSpike is a web-accessible dashboard that provides data from Binance, ensuring focused and reliable insights for USDT-perpetual pairs.
 
 ### Core Features (Available Across All Tiers)
 
@@ -297,11 +297,11 @@ FlashCur is a web-accessible dashboard that provides data from Binance, ensuring
 
 ## Conclusion
 
-FlashCur represents a comprehensive solution to the challenges faced by cryptocurrency futures traders. With its tiered pricing model, real-time data processing, Web3 integration, and advanced alert system, it provides significant value to both casual and professional traders.
+VolSpike represents a comprehensive solution to the challenges faced by cryptocurrency futures traders. With its tiered pricing model, real-time data processing, Web3 integration, and advanced alert system, it provides significant value to both casual and professional traders.
 
 The platform's technical architecture ensures scalability, security, and performance while maintaining ease of use. The freemium model drives user acquisition while the paid tiers provide clear value propositions for advanced features.
 
-With projected annual revenue of $432,000 in a realistic scenario and a clear path to scaling, FlashCur is positioned to become the leading platform for Binance perpetual futures trading insights.
+With projected annual revenue of $432,000 in a realistic scenario and a clear path to scaling, VolSpike is positioned to become the leading platform for Binance perpetual futures trading insights.
 
 ---
 

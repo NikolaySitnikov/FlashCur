@@ -1,0 +1,188 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-dark-900 text-white;
+        font-feature-settings: "rlig" 1, "calt" 1;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+}
+
+@layer components {
+    .btn {
+        @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background;
+    }
+
+    .btn-primary {
+        @apply btn bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500;
+    }
+
+    .btn-secondary {
+        @apply btn bg-dark-700 text-white hover:bg-dark-600 focus:ring-dark-500;
+    }
+
+    .btn-outline {
+        @apply btn border border-dark-600 bg-transparent hover:bg-dark-800 focus:ring-dark-500;
+    }
+
+    .card {
+        @apply rounded-lg border border-dark-700 bg-dark-800 p-6 shadow-lg;
+    }
+
+    .input {
+        @apply flex h-10 w-full rounded-md border border-dark-600 bg-dark-800 px-3 py-2 text-sm placeholder:text-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .table {
+        @apply w-full border-collapse;
+    }
+
+    .table th {
+        @apply bg-dark-800 text-dark-300 text-left font-medium px-4 py-3 text-xs uppercase tracking-wider;
+    }
+
+    .table td {
+        @apply px-4 py-3 text-sm text-white border-t border-dark-700;
+    }
+
+    .table tbody tr:hover {
+        @apply bg-dark-750;
+    }
+
+    .badge {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    }
+
+    .badge-success {
+        @apply badge bg-green-900 text-green-300;
+    }
+
+    .badge-warning {
+        @apply badge bg-yellow-900 text-yellow-300;
+    }
+
+    .badge-danger {
+        @apply badge bg-red-900 text-red-300;
+    }
+
+    .badge-info {
+        @apply badge bg-blue-900 text-blue-300;
+    }
+}
+
+@layer utilities {
+    .text-gradient {
+        @apply bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent;
+    }
+
+    .bg-gradient-primary {
+        @apply bg-gradient-to-r from-primary-500 to-primary-600;
+    }
+
+    .bg-gradient-dark {
+        @apply bg-gradient-to-r from-dark-800 to-dark-900;
+    }
+
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+
+    .animate-pulse-green {
+        animation: pulseGreen 2s infinite;
+    }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-dark-800;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-dark-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-dark-500;
+}
+
+/* Loading animations */
+@keyframes shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.shimmer {
+    background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+/* WebSocket connection indicator */
+.connection-indicator {
+    @apply fixed top-4 right-4 z-50;
+}
+
+.connection-indicator.connected {
+    @apply text-primary-500;
+}
+
+.connection-indicator.disconnected {
+    @apply text-red-500;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .table {
+        @apply text-xs;
+    }
+
+    .table th,
+    .table td {
+        @apply px-2 py-2;
+    }
+
+    .btn {
+        @apply text-sm px-3 py-2;
+    }
+}
+
+/* Dark mode optimizations */
+.dark {
+    color-scheme: dark;
+}
+
+/* Focus styles for accessibility */
+.focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-dark-900;
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+}

@@ -42,36 +42,9 @@ export default function FlashCurLogin() {
     }, [isConnected, address, connected, publicKey]);
 
     // Handle email/password login
-    const handleEmailLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleEmailLogin = (e: React.FormEvent) => {
+        // Don't prevent default - let the form submit naturally
         setIsLoading(true);
-
-        try {
-            const backendUrl = isMobile ? 'http://192.168.22.131:8081' : 'http://localhost:8081';
-            const response = await fetch(`${backendUrl}/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    email,
-                    password,
-                    remember
-                }),
-            });
-
-            if (response.ok) {
-                window.location.href = '/dashboard';
-            } else {
-                const errorData = await response.json();
-                setFlashMessages([{ category: 'error', message: errorData.message || 'Login failed' }]);
-            }
-        } catch (error) {
-            setFlashMessages([{ category: 'error', message: 'Network error. Please try again.' }]);
-        } finally {
-            setIsLoading(false);
-        }
     };
 
     // Handle wallet sign-in for EVM wallets
@@ -561,7 +534,7 @@ export default function FlashCurLogin() {
                     )}
 
                     {/* Login Form */}
-                    <form onSubmit={handleEmailLogin} className="auth-form">
+                    <form action="/login" method="POST" className="auth-form">
                         <div className="form-group">
                             <label htmlFor="email" className="form-label">
                                 <span className="label-icon">📧</span>
@@ -570,6 +543,7 @@ export default function FlashCurLogin() {
                             <input
                                 type="email"
                                 id="email"
+                                name="email"
                                 className="form-input"
                                 placeholder="you@example.com"
                                 value={email}
@@ -588,6 +562,7 @@ export default function FlashCurLogin() {
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     id="password"
+                                    name="password"
                                     className="form-input"
                                     placeholder="••••••••"
                                     value={password}

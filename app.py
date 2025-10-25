@@ -827,14 +827,15 @@ def after_request(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
 
-    # Add CSP for WebSocket connections to Binance
+    # Add CSP for WebSocket connections to Binance and Web3 services
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "connect-src 'self' wss://fstream.binance.com https://fstream.binance.com; "
-        "img-src 'self' data:; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com chrome-extension:; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com chrome-extension:; "
+        "font-src 'self' https://fonts.gstatic.com chrome-extension:; "
+        "connect-src 'self' wss://fstream.binance.com https://fstream.binance.com https://pulse.walletconnect.org https://api.web3modal.org https://*.walletconnect.org https://*.walletconnect.com chrome-extension:; "
+        "img-src 'self' data: https: chrome-extension:; "
+        "frame-src 'self' https://*.walletconnect.org chrome-extension:; "
         "frame-ancestors 'none';"
     )
 
@@ -993,18 +994,38 @@ def dashboard():
     Serves the React frontend build instead of traditional templates.
     Tier-specific features are enforced via API routes and frontend.
     """
-    return send_from_directory('modern-web3-frontend/build', 'index.html')
+    return render_template('react_index.html')
 
 
-@app.route('/react-static/<path:filename>')
+@app.route('/react-assets/<path:filename>')
 def react_static(filename):
     """
     Serve static files from React build.
 
     This handles CSS, JS, and other assets from the React build.
-    Using /react-static/ to avoid conflicts with Flask's default static/ folder.
+    Using /react-assets/ to avoid conflicts with Flask's default static/ folder.
     """
     return send_from_directory('modern-web3-frontend/build/static', filename)
+
+
+@app.route('/static/js/<path:filename>')
+def react_js_chunks(filename):
+    """
+    Serve React JS chunks from /static/js/ path.
+
+    This handles dynamic chunk loading that React expects.
+    """
+    return send_from_directory('modern-web3-frontend/build/static/js', filename)
+
+
+@app.route('/static/css/<path:filename>')
+def react_css_chunks(filename):
+    """
+    Serve React CSS chunks from /static/css/ path.
+
+    This handles dynamic CSS loading that React expects.
+    """
+    return send_from_directory('modern-web3-frontend/build/static/css', filename)
 
 
 @app.route('/favicon.ico')
