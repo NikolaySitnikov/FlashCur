@@ -11,7 +11,7 @@ Animated Binance Dashboard - Flask Version
 """
 
 from flask_cors import CORS
-from flask import Flask, render_template, jsonify, request, make_response, flash, redirect, url_for
+from flask import Flask, render_template, jsonify, request, make_response, flash, redirect, url_for, send_from_directory
 import requests
 import pandas as pd
 from requests.adapters import HTTPAdapter
@@ -989,11 +989,46 @@ def home():
 def dashboard():
     """
     Main dashboard page (requires authentication).
-
-    Users must be logged in to access the dashboard.
+    
+    Serves the React frontend build instead of traditional templates.
     Tier-specific features are enforced via API routes and frontend.
     """
-    return render_template('dashboard.html', user=current_user, config=config)
+    return send_from_directory('modern-web3-frontend/build', 'index.html')
+
+
+@app.route('/react-static/<path:filename>')
+def react_static(filename):
+    """
+    Serve static files from React build.
+    
+    This handles CSS, JS, and other assets from the React build.
+    Using /react-static/ to avoid conflicts with Flask's default static/ folder.
+    """
+    return send_from_directory('modern-web3-frontend/build/static', filename)
+
+
+@app.route('/favicon.ico')
+def favicon():
+    """Serve React build favicon."""
+    return send_from_directory('modern-web3-frontend/build', 'favicon.ico')
+
+
+@app.route('/manifest.json')
+def manifest():
+    """Serve React build manifest."""
+    return send_from_directory('modern-web3-frontend/build', 'manifest.json')
+
+
+@app.route('/logo192.png')
+def logo192():
+    """Serve React build logo."""
+    return send_from_directory('modern-web3-frontend/build', 'logo192.png')
+
+
+@app.route('/logo512.png')
+def logo512():
+    """Serve React build logo."""
+    return send_from_directory('modern-web3-frontend/build', 'logo512.png')
 
 
 @app.route('/pricing')
