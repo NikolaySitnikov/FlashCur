@@ -18,6 +18,45 @@ let refreshInterval = 15 * 60 * 1000; // Default to 15 min (Free tier)
 let refreshTimer = null;
 let hasProMetrics = false; // Track if Pro metrics are available
 
+function disableMarketTableController(reason = 'unknown', error = null) {
+    if (!tableController) {
+        return;
+    }
+
+    const previousController = tableController;
+    console.warn(`⚠️ Disabling MarketTableController due to: ${reason}`);
+    if (error) {
+        console.error('➡️ Controller error details:', error);
+    }
+
+    tableController = null;
+
+    if (typeof window !== 'undefined') {
+        window.marketTable = null;
+        window.tableController = null;
+        window.__useLegacyTable = true;
+    }
+
+    if (typeof window !== 'undefined' && window.wsIntegration && window.wsIntegration.table === previousController) {
+        window.wsIntegration.table = null;
+    }
+}
+
+function renderWithLegacyTable(rows) {
+    const safeRows = Array.isArray(rows) ? rows : [];
+
+    originalDataCache = [...safeRows];
+    window.originalDataCache = [...originalDataCache];
+
+    const sortedRows = applySorting([...safeRows]);
+    dataCache = [...sortedRows];
+    window.dataCache = [...dataCache];
+
+    renderSortedTables(sortedRows);
+    updateSortIndicators();
+    syncSortStateToWindow();
+}
+
 if (typeof window !== 'undefined') {
     window.userTier = typeof window.userTier === 'number' ? window.userTier : userTier;
     window.userFeatures = window.userFeatures || userFeatures;
@@ -61,8 +100,9 @@ syncSortStateToWindow();
 
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', async function () {
+    const useLegacy = typeof window !== 'undefined' && window.__useLegacyTable;
     const ControllerCtor = typeof window !== 'undefined' ? window.MarketTableController : undefined;
-    if (typeof ControllerCtor === 'function') {
+    if (!useLegacy && typeof ControllerCtor === 'function') {
         try {
             tableController = new ControllerCtor();
             tableController.attach();
@@ -70,15 +110,17 @@ document.addEventListener('DOMContentLoaded', async function () {
             window.tableController = tableController;
         } catch (error) {
             console.error('⚠️ Failed to initialise MarketTableController, falling back to legacy renderer.', error);
-            tableController = null;
+            disableMarketTableController('initialisation-error', error);
+        }
+    } else {
+        if (!useLegacy) {
+            console.warn('🟡 MarketTableController not available; using legacy table renderer.');
+        }
+        tableController = null;
+        if (typeof window !== 'undefined') {
             window.marketTable = null;
             window.tableController = null;
         }
-    } else {
-        console.warn('🟡 MarketTableController not available; using legacy table renderer.');
-        tableController = null;
-        window.marketTable = null;
-        window.tableController = null;
     }
 
     initializeTheme();
@@ -230,15 +272,34 @@ async function loadData() {
             hasProMetrics = result.has_pro_metrics || false;
             userFeatures = userFeatures || {};
 
+            const incomingRows = Array.isArray(result.data) ? result.data : [];
+            let usedController = false;
+
             if (tableController) {
-                tableController.setHasProMetrics(hasProMetrics);
-                tableController.ingest(result.data, { replaceSource: true });
-                syncSortStateToController();
-                syncSortStateToWindow();
-            } else {
-                originalDataCache = [...result.data];
-                dataCache = applySorting([...result.data]);
-                syncSortStateToWindow();
+                try {
+                    tableController.setHasProMetrics(hasProMetrics);
+                    tableController.ingest(incomingRows, { replaceSource: true });
+
+                    const renderedRows = typeof tableController.getDisplayRows === 'function'
+                        ? tableController.getDisplayRows()
+                        : [];
+
+                    if (Array.isArray(renderedRows) && renderedRows.length) {
+                        sortState = tableController.getSortState();
+                        syncSortStateToWindow();
+                        syncTableCaches();
+                        usedController = true;
+                    } else if (incomingRows.length) {
+                        console.warn('⚠️ MarketTableController returned no rows despite incoming data. Reverting to legacy renderer.');
+                        disableMarketTableController('empty-render');
+                    }
+                } catch (controllerError) {
+                    disableMarketTableController('ingest-error', controllerError);
+                }
+            }
+
+            if (!usedController) {
+                renderWithLegacyTable(incomingRows);
             }
 
             window.originalDataCache = [...originalDataCache];
