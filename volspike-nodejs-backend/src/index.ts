@@ -79,9 +79,9 @@ if (process.env.REDIS_URL) {
     try {
         const pubClient = createClient({ 
             url: process.env.REDIS_URL,
-            socket: {
-                tls: process.env.REDIS_URL?.startsWith('rediss://') ? {} : undefined
-            }
+            socket: process.env.REDIS_URL?.startsWith('rediss://') ? {
+                tls: true
+            } : undefined
         })
         const subClient = pubClient.duplicate()
 
