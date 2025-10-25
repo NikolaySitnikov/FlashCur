@@ -26,10 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             queries: {
                 staleTime: 60 * 1000, // 1 minute
                 gcTime: 5 * 60 * 1000, // 5 minutes
-                retry: (failureCount, error) => {
-                    if (failureCount < 3) return true
-                    return false
-                },
+                retry: (failureCount) => failureCount < 3, // Simplified retry logic
             },
         },
     }))
