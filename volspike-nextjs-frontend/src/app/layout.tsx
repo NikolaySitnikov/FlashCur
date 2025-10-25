@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import '@rainbow-me/rainbowkit/styles.css'
@@ -12,7 +12,11 @@ export const metadata: Metadata = {
     description: 'Real-time volume spike alerts for Binance perpetual futures trading',
     keywords: ['crypto', 'trading', 'binance', 'perpetual futures', 'volume spikes', 'alerts'],
     authors: [{ name: 'VolSpike Team' }],
-    viewport: 'width=device-width, initial-scale=1',
+}
+
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
     themeColor: [
         { media: '(prefers-color-scheme: light)', color: 'white' },
         { media: '(prefers-color-scheme: dark)', color: 'black' },
