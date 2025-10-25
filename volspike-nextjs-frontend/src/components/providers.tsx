@@ -10,7 +10,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 // Dynamic import for Web3 providers to prevent hydration mismatches
 const Web3Providers = dynamic(
     () => import('./web3-providers'),
-    { 
+    {
         ssr: false,
         loading: () => (
             <div className="flex items-center justify-center min-h-screen">
