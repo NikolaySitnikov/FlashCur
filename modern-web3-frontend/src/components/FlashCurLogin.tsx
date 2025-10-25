@@ -206,21 +206,11 @@ export default function FlashCurLogin() {
                     margin-bottom: 2.5rem;
                 }
 
-                .auth-logo-container {
-                    width: 80px;
-                    height: 80px;
-                    margin: 0 auto 1.5rem;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: linear-gradient(135deg, #00ff88, #00cc6a);
-                    border-radius: 20px;
-                    box-shadow: 0 8px 25px rgba(0, 255, 136, 0.3);
-                }
-
                 .logo-icon {
-                    width: 40px;
-                    height: 40px;
+                    width: 64px;
+                    height: 64px;
+                    margin: 0 auto 1.5rem;
+                    display: block;
                     color: #00ff88;
                     animation: lightningPulse 2s ease-in-out infinite alternate;
                     filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.6));
@@ -540,11 +530,9 @@ export default function FlashCurLogin() {
                 <div className="auth-card">
                     {/* Logo/Icon */}
                     <div className="auth-header">
-                        <div className="auth-logo-container">
-                            <svg className="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-                            </svg>
-                        </div>
+                        <svg className="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                        </svg>
                         <h1 className="auth-title">VolSpike</h1>
                         <p className="auth-subtitle">Professional cryptocurrency market analysis and volume alerts</p>
                     </div>
