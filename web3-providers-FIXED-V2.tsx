@@ -33,13 +33,16 @@ export default function Web3Providers({ children }: { children: React.ReactNode 
         setMounted(true)
     }, [])
 
-    // Always render providers, use suppressHydrationWarning for hydration phase
+    // IMPORTANT: Always render the providers, but return a placeholder during hydration
+    // This ensures the context is available even if the UI isn't visible
     return (
         <WagmiProvider config={config}>
             <RainbowKitProvider>
                 {mounted ? (
                     children
                 ) : (
+                    // During hydration, render children without Web3 UI
+                    // but keep the context available
                     <div suppressHydrationWarning>
                         {children}
                     </div>

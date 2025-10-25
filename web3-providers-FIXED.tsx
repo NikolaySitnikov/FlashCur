@@ -33,17 +33,14 @@ export default function Web3Providers({ children }: { children: React.ReactNode 
         setMounted(true)
     }, [])
 
-    // Always render providers, use suppressHydrationWarning for hydration phase
+    if (!mounted) {
+        return <>{children}</>
+    }
+
     return (
         <WagmiProvider config={config}>
             <RainbowKitProvider>
-                {mounted ? (
-                    children
-                ) : (
-                    <div suppressHydrationWarning>
-                        {children}
-                    </div>
-                )}
+                {children}
             </RainbowKitProvider>
         </WagmiProvider>
     )

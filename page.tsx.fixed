@@ -1,0 +1,31 @@
+// src/app/page.tsx
+import { auth } from '@/lib/auth'
+import { Suspense } from 'react'
+import { Dashboard } from '@/components/dashboard'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { LoginPage } from '@/components/auth/login-page'
+
+/**
+ * Home Page with Authentication Check
+ * 
+ * If user is not authenticated: show LoginPage
+ * If user is authenticated: show Dashboard
+ */
+export default async function HomePage() {
+    // Get session on server side (runs at request time)
+    const session = await auth()
+
+    // No session or no user? Show login page
+    if (!session?.user) {
+        return <LoginPage />
+    }
+
+    // User is authenticated - show dashboard
+    return (
+        <main className="min-h-screen bg-background">
+            <Suspense fallback={<LoadingSpinner />}>
+                <Dashboard />
+            </Suspense>
+        </main>
+    )
+}
