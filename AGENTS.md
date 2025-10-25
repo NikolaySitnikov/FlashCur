@@ -31,9 +31,9 @@ cp env.example .env
 # Edit .env with your configuration (see Environment Variables section)
 ```
 
-### Frontend Setup (React)
+### Frontend Setup (React Web3)
 ```bash
-# Navigate to React frontend
+# Navigate to React Web3 frontend
 cd modern-web3-frontend
 
 # Install Node.js dependencies
@@ -41,6 +41,33 @@ npm install
 
 # Build for production
 npm run build
+```
+
+### Frontend Setup (Next.js)
+```bash
+# Navigate to Next.js frontend
+cd modern-frontend
+
+# Install Node.js dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+### Backend Setup (Next.js)
+```bash
+# Navigate to Next.js backend
+cd modern-backend
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Run the backend
+python -m app.main
 ```
 
 ### Database Setup
@@ -97,9 +124,17 @@ python production_config.py
 # Start Flask backend
 python app.py
 
-# In another terminal, start React frontend
+# In another terminal, start React Web3 frontend
 cd modern-web3-frontend
 npm start
+
+# Or start Next.js frontend
+cd modern-frontend
+npm run dev
+
+# Or start Next.js backend
+cd modern-backend
+python -m app.main
 ```
 
 ### Production Mode
@@ -140,11 +175,20 @@ FlashCur/
 ├── settings.py                  # User settings management
 ├── alerts.py                    # Volume alert system
 │
-├── modern-web3-frontend/       # React frontend
+├── modern-web3-frontend/       # React Web3 frontend
 │   ├── package.json            # Node.js dependencies
 │   ├── src/                    # React source code
 │   ├── build/                  # Built React app
 │   └── craco.config.js         # CRACO configuration
+├── modern-frontend/            # Next.js frontend
+│   ├── package.json            # Next.js dependencies
+│   ├── src/                    # Next.js source code
+│   ├── .next/                  # Built Next.js app
+│   └── tailwind.config.js      # Tailwind configuration
+├── modern-backend/             # Next.js backend
+│   ├── app/                    # Next.js app directory
+│   ├── requirements.txt        # Python dependencies
+│   └── Dockerfile              # Docker configuration
 │
 ├── static/                     # Static assets
 │   ├── css/                    # Stylesheets
@@ -236,6 +280,9 @@ FlashCur/
 - `logs/` - Application logs
 - `modern-web3-frontend/node_modules/` - Node.js dependencies
 - `modern-web3-frontend/build/` - Built React app
+- `modern-frontend/.next/` - Built Next.js app
+- `modern-frontend/node_modules/` - Node.js dependencies
+- `modern-backend/__pycache__/` - Python cache files
 
 ### Secrets Handling
 - Never commit `.env` files
