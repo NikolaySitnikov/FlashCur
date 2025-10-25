@@ -16,7 +16,7 @@ export default function FlashCurLogin() {
     const [password, setPassword] = useState('');
     const [remember, setRemember] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [flashMessages, setFlashMessages] = useState<Array<{category: string, message: string}>>([]);
+    const [flashMessages, setFlashMessages] = useState<Array<{ category: string, message: string }>>([]);
 
     // Use the expert's fixed Phantom mobile hook
     const phantom = usePhantomMobile('mainnet-beta');
@@ -45,7 +45,7 @@ export default function FlashCurLogin() {
     const handleEmailLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        
+
         try {
             const backendUrl = isMobile ? 'http://192.168.22.131:8081' : 'http://localhost:8081';
             const response = await fetch(`${backendUrl}/auth/login`, {
@@ -65,10 +65,10 @@ export default function FlashCurLogin() {
                 window.location.href = '/dashboard';
             } else {
                 const errorData = await response.json();
-                setFlashMessages([{category: 'error', message: errorData.message || 'Login failed'}]);
+                setFlashMessages([{ category: 'error', message: errorData.message || 'Login failed' }]);
             }
         } catch (error) {
-            setFlashMessages([{category: 'error', message: 'Network error. Please try again.'}]);
+            setFlashMessages([{ category: 'error', message: 'Network error. Please try again.' }]);
         } finally {
             setIsLoading(false);
         }
@@ -134,7 +134,7 @@ export default function FlashCurLogin() {
             }
         } catch (error: any) {
             console.error('Sign-in error:', error);
-            setFlashMessages([{category: 'error', message: `Sign-in failed: ${error.message}`}]);
+            setFlashMessages([{ category: 'error', message: `Sign-in failed: ${error.message}` }]);
         } finally {
             setIsLoading(false);
         }
@@ -206,11 +206,35 @@ export default function FlashCurLogin() {
                     margin-bottom: 2.5rem;
                 }
 
-                .auth-logo {
-                    width: 64px;
-                    height: 64px;
+                .auth-logo-container {
+                    width: 80px;
+                    height: 80px;
                     margin: 0 auto 1.5rem;
-                    display: block;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: linear-gradient(135deg, #00ff88, #00cc6a);
+                    border-radius: 20px;
+                    box-shadow: 0 8px 25px rgba(0, 255, 136, 0.3);
+                }
+
+                .lightning-bolt {
+                    font-size: 2.5rem;
+                    color: #1a1a1a;
+                    font-weight: bold;
+                    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+                    animation: lightningPulse 2s ease-in-out infinite alternate;
+                }
+
+                @keyframes lightningPulse {
+                    from {
+                        transform: scale(1);
+                        text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+                    }
+                    to {
+                        transform: scale(1.1);
+                        text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+                    }
                 }
 
                 .auth-title {
@@ -511,17 +535,16 @@ export default function FlashCurLogin() {
                     }
                 }
             `}</style>
-            
+
             <div className="auth-container">
                 <div className="auth-card">
                     {/* Logo/Icon */}
                     <div className="auth-header">
-                        <svg className="auth-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M3 20H21" stroke="#00ff88" strokeWidth="2" strokeLinecap="round" />
-                            <path d="M6 16L9 12L13 17L17 8L20 12" stroke="#00ff88" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <div className="auth-logo-container">
+                            <div className="lightning-bolt">⚡</div>
+                        </div>
                         <h1 className="auth-title">VolSpike</h1>
-                        <p className="auth-subtitle">Sign in to access your dashboard</p>
+                        <p className="auth-subtitle">Professional cryptocurrency market analysis and volume alerts</p>
                     </div>
 
                     {/* Flash Messages */}
@@ -542,14 +565,14 @@ export default function FlashCurLogin() {
                                 <span className="label-icon">📧</span>
                                 Email Address
                             </label>
-                            <input 
-                                type="email" 
-                                id="email" 
-                                className="form-input" 
+                            <input
+                                type="email"
+                                id="email"
+                                className="form-input"
                                 placeholder="you@example.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                required 
+                                required
                                 autoFocus
                             />
                         </div>
@@ -560,18 +583,18 @@ export default function FlashCurLogin() {
                                 Password
                             </label>
                             <div className="password-input-container">
-                                <input 
-                                    type={showPassword ? "text" : "password"} 
-                                    id="password" 
-                                    className="form-input" 
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    id="password"
+                                    className="form-input"
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                 />
-                                <button 
-                                    type="button" 
-                                    className="password-toggle" 
+                                <button
+                                    type="button"
+                                    className="password-toggle"
                                     onClick={togglePassword}
                                 >
                                     <svg className="password-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -593,8 +616,8 @@ export default function FlashCurLogin() {
 
                         <div className="form-group form-checkbox">
                             <label className="checkbox-label">
-                                <input 
-                                    type="checkbox" 
+                                <input
+                                    type="checkbox"
                                     checked={remember}
                                     onChange={(e) => setRemember(e.target.checked)}
                                 />
@@ -617,9 +640,9 @@ export default function FlashCurLogin() {
                     <div style={{ marginBottom: '1.5rem' }}>
                         <ConnectButton />
                         {isConnected && (
-                            <button 
-                                type="button" 
-                                className="btn-wallet" 
+                            <button
+                                type="button"
+                                className="btn-wallet"
                                 onClick={handleWalletSignIn}
                                 disabled={isLoading}
                             >

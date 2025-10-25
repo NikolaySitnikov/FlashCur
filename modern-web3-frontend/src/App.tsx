@@ -58,52 +58,17 @@ function App() {
               >
                 <div style={{
                   minHeight: '100vh',
-                  background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)',
+                  background: 'linear-gradient(135deg, #000000 0%, #0a0a0a 40%, #1a1a1a 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
                 }}>
                   <div style={{
-                    maxWidth: '400px',
+                    maxWidth: '420px',
                     width: '100%',
-                    padding: '1rem'
+                    padding: '2rem 1rem'
                   }}>
-                    <div style={{
-                      textAlign: 'center',
-                      marginBottom: '2rem'
-                    }}>
-                      <div style={{
-                        width: '80px',
-                        height: '80px',
-                        background: 'linear-gradient(135deg, #00ff88, #00cc6a)',
-                        borderRadius: '20px',
-                        margin: '0 auto 1rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '2rem',
-                        fontWeight: 'bold',
-                        color: '#1a1a1a'
-                      }}>
-                        N
-                      </div>
-                      <h1 style={{
-                        color: '#00ff88',
-                        fontSize: '2rem',
-                        fontWeight: '700',
-                        margin: '0 0 0.5rem 0'
-                      }}>
-                        Binance Dashboard
-                      </h1>
-                      <p style={{
-                        color: '#b0b0b0',
-                        fontSize: '1.1rem',
-                        margin: '0'
-                      }}>
-                        Sign in to access your dashboard
-                      </p>
-                    </div>
 
                     <ErrorBoundary>
                       <MobileWalletDetection>

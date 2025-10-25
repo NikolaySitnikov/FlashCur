@@ -989,7 +989,7 @@ def home():
 def dashboard():
     """
     Main dashboard page (requires authentication).
-    
+
     Serves the React frontend build instead of traditional templates.
     Tier-specific features are enforced via API routes and frontend.
     """
@@ -1000,7 +1000,7 @@ def dashboard():
 def react_static(filename):
     """
     Serve static files from React build.
-    
+
     This handles CSS, JS, and other assets from the React build.
     Using /react-static/ to avoid conflicts with Flask's default static/ folder.
     """
