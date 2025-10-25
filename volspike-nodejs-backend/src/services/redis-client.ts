@@ -17,10 +17,12 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
     },
     enableOfflineQueue: true,
     autoResubscribe: true,
-    maxRetriesPerRequest: 3,
-    retryDelayOnFailover: 100,
     enableReadyCheck: true,
-    maxLoadingTimeout: 10000,
+})
+
+// Connect manually to ensure connection
+redis.connect().catch(err => {
+    logger.error('Redis manual connect failed:', err)
 })
 
 redis.on('connect', () => {

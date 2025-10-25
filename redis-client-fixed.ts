@@ -3,34 +3,38 @@ import { createLogger } from '../lib/logger'
 
 const logger = createLogger()
 
-// Initialize Redis client with TLS configuration for Upstash
+// Initialize Redis client with retry strategy and resilience
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-    // TLS configuration - required for Upstash (rediss://)
+    // TLS configuration
     tls: process.env.REDIS_URL?.startsWith('rediss://') ? {} : undefined,
-    
+
     // Connection settings
     maxRetriesPerRequest: 3,
     lazyConnect: true,
     connectTimeout: 10000,
     commandTimeout: 5000,
-    
-    // Stability settings for production
+
+    // Retry strategy with exponential backoff
     retryStrategy: (times) => {
         const delay = Math.min(times * 50, 2000)
-        logger.warn(`Redis retry attempt ${times}, delay: ${delay}ms`)
+        logger.info(`Redis retry attempt ${times}, delay: ${delay}ms`)
         return delay
     },
-    
-    // Enable offline queue while reconnecting
+
+    // Connection resilience
     enableOfflineQueue: true,
-    
-    // Auto-reconnect on disconnect
     autoResubscribe: true,
-    autoResendUnfulfilledCommands: true,
+    enableReadyCheck: true,
+    maxLoadingTimeout: 10000,
+})
+
+// Manually connect (lazyConnect is true)
+redis.connect().catch((err) => {
+    logger.warn('Initial Redis connection failed:', err.message)
 })
 
 redis.on('connect', () => {
-    logger.info('Redis client connected')
+    logger.info('✅ Redis client connected')
 })
 
 redis.on('error', (error) => {
@@ -64,10 +68,9 @@ const CACHE_TTL = {
 export async function getCachedMarketData(symbol?: string): Promise<any> {
     try {
         if (redis.status !== 'ready') {
-            logger.warn('Redis not connected, skipping cache read')
             return null
         }
-        
+
         if (symbol) {
             const data = await redis.get(CACHE_KEYS.MARKET_SYMBOL(symbol))
             return data ? JSON.parse(data) : null
@@ -84,10 +87,9 @@ export async function getCachedMarketData(symbol?: string): Promise<any> {
 export async function setCachedMarketData(data: any, symbol?: string): Promise<void> {
     try {
         if (redis.status !== 'ready') {
-            logger.warn('Redis not connected, skipping cache write')
             return
         }
-        
+
         if (symbol) {
             await redis.setex(
                 CACHE_KEYS.MARKET_SYMBOL(symbol),
@@ -108,6 +110,10 @@ export async function setCachedMarketData(data: any, symbol?: string): Promise<v
 
 export async function getCachedUserPreferences(userId: string): Promise<any> {
     try {
+        if (redis.status !== 'ready') {
+            return null
+        }
+
         const data = await redis.get(CACHE_KEYS.USER_PREFS(userId))
         return data ? JSON.parse(data) : null
     } catch (error) {
@@ -118,6 +124,10 @@ export async function getCachedUserPreferences(userId: string): Promise<any> {
 
 export async function setCachedUserPreferences(userId: string, prefs: any): Promise<void> {
     try {
+        if (redis.status !== 'ready') {
+            return
+        }
+
         await redis.setex(
             CACHE_KEYS.USER_PREFS(userId),
             CACHE_TTL.USER_PREFS,
@@ -130,6 +140,10 @@ export async function setCachedUserPreferences(userId: string, prefs: any): Prom
 
 export async function publishMarketUpdate(data: any): Promise<void> {
     try {
+        if (redis.status !== 'ready') {
+            return
+        }
+
         await redis.publish('market:updates', JSON.stringify(data))
     } catch (error) {
         logger.error('Error publishing market update:', error)
@@ -138,6 +152,10 @@ export async function publishMarketUpdate(data: any): Promise<void> {
 
 export async function publishAlert(alert: any): Promise<void> {
     try {
+        if (redis.status !== 'ready') {
+            return
+        }
+
         await redis.publish('alerts:new', JSON.stringify(alert))
     } catch (error) {
         logger.error('Error publishing alert:', error)
@@ -146,6 +164,11 @@ export async function publishAlert(alert: any): Promise<void> {
 
 export async function subscribeToMarketUpdates(callback: (data: any) => void): Promise<void> {
     try {
+        if (redis.status !== 'ready') {
+            logger.warn('Cannot subscribe - Redis not connected')
+            return
+        }
+
         const subscriber = redis.duplicate()
         await subscriber.subscribe('market:updates')
 
@@ -166,6 +189,11 @@ export async function subscribeToMarketUpdates(callback: (data: any) => void): P
 
 export async function subscribeToAlerts(callback: (alert: any) => void): Promise<void> {
     try {
+        if (redis.status !== 'ready') {
+            logger.warn('Cannot subscribe - Redis not connected')
+            return
+        }
+
         const subscriber = redis.duplicate()
         await subscriber.subscribe('alerts:new')
 
@@ -186,6 +214,10 @@ export async function subscribeToAlerts(callback: (alert: any) => void): Promise
 
 export async function incrementRateLimit(userId: string, window: number): Promise<number> {
     try {
+        if (redis.status !== 'ready') {
+            return 0
+        }
+
         const key = CACHE_KEYS.RATE_LIMIT(userId, window)
         const current = await redis.incr(key)
 
@@ -202,6 +234,10 @@ export async function incrementRateLimit(userId: string, window: number): Promis
 
 export async function getRateLimit(userId: string, window: number): Promise<number> {
     try {
+        if (redis.status !== 'ready') {
+            return 0
+        }
+
         const key = CACHE_KEYS.RATE_LIMIT(userId, window)
         const current = await redis.get(key)
         return current ? parseInt(current) : 0

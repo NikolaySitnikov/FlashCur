@@ -77,41 +77,68 @@ const io = new SocketIOServer(server, {
 // Setup Redis adapter for Socket.IO scaling (optional)
 if (process.env.REDIS_URL) {
     try {
-        const pubClient = createClient({ 
+        logger.info(`Setting up Redis adapter with URL: ${process.env.REDIS_URL.split('@')[1]}`)
+
+        // Build Redis client config
+        const redisConfig: any = {
             url: process.env.REDIS_URL,
-            socket: process.env.REDIS_URL?.startsWith('rediss://') ? {
-                tls: true,
-                rejectUnauthorized: process.env.NODE_ENV === 'production' ? false : true
-            } : undefined
-        })
+            // Socket configuration for TLS
+            ...(process.env.REDIS_URL.startsWith('rediss://') && {
+                socket: {
+                    tls: true,
+                    rejectUnauthorized: process.env.NODE_ENV === 'production',
+                },
+            }),
+        }
+
+        const pubClient = createClient(redisConfig)
         const subClient = pubClient.duplicate()
 
         // Add error handlers
         pubClient.on('error', (err) => {
-            logger.error('Redis pub client error:', err)
+            logger.error('Redis pub client error:', err.message || err)
         })
 
         subClient.on('error', (err) => {
-            logger.error('Redis sub client error:', err)
+            logger.error('Redis sub client error:', err.message || err)
         })
 
-        // Connect with timeout
-        Promise.all([
-            pubClient.connect().catch(err => logger.error('Redis pub connect error:', err)),
-            subClient.connect().catch(err => logger.error('Redis sub connect error:', err))
-        ]).then(() => {
-            io.adapter(createAdapter(pubClient, subClient))
-            logger.info('Socket.IO Redis adapter initialized')
-        }).catch(err => {
-            logger.error('Redis adapter setup failed:', err)
-            logger.info('Continuing without Redis adapter')
+        pubClient.on('connect', () => {
+            logger.info('✅ Redis pub client connected')
         })
+
+        subClient.on('connect', () => {
+            logger.info('✅ Redis sub client connected')
+        })
+
+        // Connect clients
+        Promise.all([
+            pubClient.connect().catch((err) => {
+                logger.error('Redis pub client connection failed:', err.message || err)
+                throw err
+            }),
+            subClient.connect().catch((err) => {
+                logger.error('Redis sub client connection failed:', err.message || err)
+                throw err
+            }),
+        ])
+            .then(() => {
+                io.adapter(createAdapter(pubClient, subClient))
+                logger.info('✅ Socket.IO Redis adapter initialized successfully')
+            })
+            .catch((err) => {
+                logger.error(
+                    '❌ Redis adapter setup failed, running without Redis:',
+                    err.message || err
+                )
+                logger.warn('Socket.IO will use in-memory storage (single instance only)')
+            })
     } catch (error) {
         logger.error('Redis setup error:', error)
-        logger.info('Continuing without Redis adapter')
+        logger.warn('Continuing without Redis adapter')
     }
 } else {
-    logger.info('No Redis URL provided, skipping Redis adapter')
+    logger.warn('⚠️  No REDIS_URL provided, Socket.IO using in-memory storage')
 }
 
 // Setup Socket.IO handlers
@@ -122,7 +149,7 @@ app.onError((err, c) => {
     logger.error('Unhandled error:', err)
     return c.json({
         error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
     }, 500)
 })
 
@@ -145,6 +172,11 @@ server.listen(port, () => {
     logger.info(`🚀 VolSpike Backend running on port ${port}`)
     logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
     logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
+    
+    if (process.env.REDIS_URL) {
+        const isTLS = process.env.REDIS_URL.startsWith('rediss://')
+        logger.info(`✅ Redis configured: TLS ${isTLS ? 'enabled' : 'disabled'}`)
+    }
 })
 
 export default app
