@@ -53,16 +53,14 @@ app.route('/api/payments', paymentRoutes)
 app.use('/api/protected/*', authMiddleware)
 app.use('/api/protected/*', rateLimitMiddleware)
 
-// Create HTTP server
-const server = createServer(async (req, res) => {
-    try {
-        const response = await app.fetch(req as any, res as any)
-        return response
-    } catch (error) {
-        logger.error('Server error:', error)
-        res.statusCode = 500
-        res.end('Internal Server Error')
-    }
+// Create HTTP server using @hono/node-server
+const server = createServer()
+
+// Setup Hono with the server
+serve({
+    fetch: app.fetch,
+    port: Number(process.env.PORT) || 3001,
+    createServer: () => server
 })
 
 // Initialize Socket.IO
@@ -77,7 +75,7 @@ const io = new SocketIOServer(server, {
 // Setup Redis adapter for Socket.IO scaling (optional)
 if (process.env.REDIS_URL) {
     try {
-        const pubClient = createClient({ 
+        const pubClient = createClient({
             url: process.env.REDIS_URL,
             socket: process.env.REDIS_URL?.startsWith('rediss://') ? {
                 tls: true,
@@ -139,12 +137,9 @@ process.on('SIGINT', async () => {
     process.exit(0)
 })
 
-// Start server
-const port = process.env.PORT || 3001
-server.listen(port, () => {
-    logger.info(`🚀 VolSpike Backend running on port ${port}`)
-    logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
-    logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
-})
+// Server startup logging
+logger.info(`🚀 VolSpike Backend running on port ${process.env.PORT || 3001}`)
+logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
+logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
 
 export default app

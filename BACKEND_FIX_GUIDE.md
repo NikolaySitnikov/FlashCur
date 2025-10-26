@@ -1,3 +1,32 @@
+# VolSpike Backend Fix Guide
+
+## 🔴 Root Cause Identified
+
+Your backend **IS receiving requests** (as shown in logs: `<-- GET h`), but it's **crashing with unhandled errors**. The issue is in `src/index.ts`:
+
+```typescript
+const server = createServer(async (req, res) => {
+    try {
+        const response = await app.fetch(req as any, res as any)  // ❌ PROBLEM HERE
+        return response
+    }
+    // ...
+})
+```
+
+### Why This Fails:
+1. `app.fetch()` expects a Web API `Request` object, NOT Node.js `req`/`res`
+2. You're passing Node.js request/response to a method that doesn't understand them
+3. This causes the fetch to fail, triggering your error handler but losing the response properly
+4. Each request crashes with "Unhandled error" and returns 500
+
+---
+
+## ✅ The Fix
+
+Replace your entire `src/index.ts` with this corrected version:
+
+```typescript
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger as honoLogger } from 'hono/logger'
@@ -196,3 +225,117 @@ server.listen(port, () => {
 })
 
 export default app
+```
+
+---
+
+## 🔑 Key Changes Explained
+
+### 1. **Request/Response Conversion**
+```typescript
+// Convert Node.js request to Web API Request
+const url = new URL(req.url || '/', `http://${req.headers.host}`)
+const request = new Request(url, {
+    method: req.method,
+    headers: req.headers as any,
+    body: req.method !== 'GET' && req.method !== 'HEAD' ? req : undefined,
+})
+
+// Get Hono response (now works correctly!)
+const response = await app.fetch(request)
+```
+
+### 2. **Proper Response Handling**
+```typescript
+// Write headers
+res.writeHead(response.status, Object.fromEntries(response.headers))
+
+// Stream body if exists
+if (response.body) {
+    const reader = response.body.getReader()
+    // ... pump data
+} else {
+    res.end()
+}
+```
+
+### 3. **Better Error Handling**
+- Catches errors at the server level
+- Returns proper JSON error responses
+- Doesn't lose the response
+
+---
+
+## 📋 Deployment Steps
+
+1. **Update your `src/index.ts`** with the corrected code above
+2. **Rebuild the application**:
+   ```bash
+   npm run build
+   ```
+3. **Test locally first**:
+   ```bash
+   npm run start
+   # Then in another terminal:
+   curl http://localhost:3001/health
+   ```
+4. **Redeploy to Railway**:
+   - Push changes to git
+   - Railway will automatically redeploy
+
+---
+
+## ✅ What You Should See After Fix
+
+**Before (failing logs):**
+```
+<-- GET h
+Unhandled error:
+--> GET h 500 3ms
+```
+
+**After (working logs):**
+```
+🚀 VolSpike Backend running on port 3001
+📊 Environment: production
+🔗 Frontend URL: https://volspike.com
+```
+
+And the health check will work:
+```bash
+$ curl https://volspike-production.up.railway.app/health
+{"status":"ok","timestamp":"2025-10-25T...","version":"1.0.0"}
+```
+
+---
+
+## 🧪 Testing After Deployment
+
+```bash
+# Test health endpoint
+curl https://volspike-production.up.railway.app/health
+
+# Test with your frontend
+curl -X GET https://volspike-production.up.railway.app/api/auth/me \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Check Railway logs
+railway logs -s volspike-production
+```
+
+---
+
+## 📚 Why This Happened
+
+Hono's `app.fetch()` is designed for deployment on edge runtimes (Cloudflare Workers, Deno, etc.) that use Web APIs. When using Node.js with `createServer()`, you need to manually convert between Node.js and Web API standards. Your original code was trying to pass Node.js objects to a Web API method, which caused the crashes.
+
+---
+
+## 🆘 If Issues Persist
+
+1. Check Railway logs: `railway logs -s volspike-production`
+2. Verify environment variables are set in Railway
+3. Ensure port 3001 is exposed (it should be automatically)
+4. Check that Prisma client can connect to your database
+
+Let me know if this fixes your issue!

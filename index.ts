@@ -33,7 +33,7 @@ app.use('*', cors({
     credentials: true,
 }))
 
-// Health check
+// Health check - MUST be before other routes
 app.get('/health', (c) => {
     return c.json({
         status: 'ok',
@@ -53,17 +53,17 @@ app.route('/api/payments', paymentRoutes)
 app.use('/api/protected/*', authMiddleware)
 app.use('/api/protected/*', rateLimitMiddleware)
 
-// Create HTTP server
-const server = createServer(async (req, res) => {
-    try {
-        const response = await app.fetch(req as any, res as any)
-        return response
-    } catch (error) {
-        logger.error('Server error:', error)
-        res.statusCode = 500
-        res.end('Internal Server Error')
-    }
+// Error handling middleware
+app.onError((err, c) => {
+    logger.error('Unhandled error:', err)
+    return c.json({
+        error: 'Internal Server Error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    }, 500)
 })
+
+// Create HTTP server for Socket.IO
+const server = createServer()
 
 // Initialize Socket.IO
 const io = new SocketIOServer(server, {
@@ -77,16 +77,13 @@ const io = new SocketIOServer(server, {
 // Setup Redis adapter for Socket.IO scaling (optional)
 if (process.env.REDIS_URL) {
     try {
-        // Create Redis clients with proper TLS configuration
-        const pubClient = createClient({
+        const pubClient = createClient({ 
             url: process.env.REDIS_URL,
-            // Auto-enable TLS if using rediss:// URL
-            socket: {
-                tls: process.env.REDIS_URL.startsWith('rediss://'),
-                rejectUnauthorized: process.env.NODE_ENV === 'production',
-            },
+            socket: process.env.REDIS_URL?.startsWith('rediss://') ? {
+                tls: true,
+                rejectUnauthorized: process.env.NODE_ENV === 'production' ? false : true
+            } : undefined
         })
-        
         const subClient = pubClient.duplicate()
 
         // Add error handlers
@@ -98,54 +95,27 @@ if (process.env.REDIS_URL) {
             logger.error('Redis sub client error:', err)
         })
 
-        pubClient.on('connect', () => {
-            logger.info('Redis pub client connected')
-        })
-
-        subClient.on('connect', () => {
-            logger.info('Redis sub client connected')
-        })
-
-        // Connect both clients
+        // Connect with timeout
         Promise.all([
-            pubClient.connect().catch(err => {
-                logger.error('Redis pub client connection error:', err)
-                throw err
-            }),
-            subClient.connect().catch(err => {
-                logger.error('Redis sub client connection error:', err)
-                throw err
-            })
+            pubClient.connect().catch(err => logger.error('Redis pub connect error:', err)),
+            subClient.connect().catch(err => logger.error('Redis sub connect error:', err))
         ]).then(() => {
-            // Only setup adapter after both clients are connected
             io.adapter(createAdapter(pubClient, subClient))
-            logger.info('✅ Socket.IO Redis adapter initialized successfully')
-            logger.info(`📊 Redis URL: ${process.env.REDIS_URL?.split('@')[1]}`)
+            logger.info('Socket.IO Redis adapter initialized')
         }).catch(err => {
-            logger.error('❌ Redis adapter setup failed:', err)
-            logger.warn('⚠️  Continuing without Redis adapter - Socket.IO will use in-memory storage')
-            logger.warn('⚠️  This will not work properly with multiple server instances')
+            logger.error('Redis adapter setup failed:', err)
+            logger.info('Continuing without Redis adapter')
         })
     } catch (error) {
-        logger.error('Redis initialization error:', error)
-        logger.warn('Continuing without Redis adapter')
+        logger.error('Redis setup error:', error)
+        logger.info('Continuing without Redis adapter')
     }
 } else {
-    logger.warn('⚠️  No REDIS_URL provided - Socket.IO using in-memory storage')
-    logger.warn('⚠️  This will only work with a single server instance')
+    logger.info('No Redis URL provided, skipping Redis adapter')
 }
 
 // Setup Socket.IO handlers
 setupSocketHandlers(io, prisma, logger)
-
-// Error handling
-app.onError((err, c) => {
-    logger.error('Unhandled error:', err)
-    return c.json({
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-    }, 500)
-})
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
@@ -160,18 +130,27 @@ process.on('SIGINT', async () => {
     process.exit(0)
 })
 
-// Start server
+// Start server using @hono/node-server adapter with Socket.IO support
 const port = process.env.PORT || 3001
-server.listen(port, () => {
-    logger.info(`🚀 VolSpike Backend running on port ${port}`)
-    logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
-    logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
-    
-    if (process.env.REDIS_URL) {
-        logger.info(`✅ Redis configured: ${process.env.REDIS_URL?.startsWith('rediss://') ? 'TLS enabled' : 'TLS disabled'}`)
-    } else {
-        logger.warn(`⚠️  Redis not configured - caching and distributed features disabled`)
-    }
+
+// Create a wrapper to attach Socket.IO to the Hono app
+const handler = serve({
+    fetch: app.fetch,
+    port: port as number,
+    createServer: () => server,
 })
+
+// Socket.IO handles its own requests
+io.on('connection', (socket) => {
+    logger.info(`Socket.IO client connected: ${socket.id}`)
+})
+
+server.on('upgrade', (req, socket, head) => {
+    io.handleUpgrade(req, socket, head)
+})
+
+logger.info(`🚀 VolSpike Backend running on port ${port}`)
+logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
+logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
 
 export default app
