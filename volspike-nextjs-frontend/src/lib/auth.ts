@@ -1,6 +1,19 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import type { NextAuthConfig } from 'next-auth'
+import type { NextAuthConfig, Session } from 'next-auth'
+import type { JWT } from 'next-auth/jwt'
+
+declare module 'next-auth' {
+    interface Session {
+        accessToken?: string
+    }
+}
+
+declare module 'next-auth/jwt' {
+    interface JWT {
+        accessToken?: string
+    }
+}
 
 export const authConfig: NextAuthConfig = {
     providers: [
@@ -44,20 +57,19 @@ export const authConfig: NextAuthConfig = {
     callbacks: {
         async jwt({ token, user }) {
             if (user) {
-                token.id = user.id
-                token.email = user.email
+                token.id = user.id as string
+                token.email = user.email as string
                 token.tier = user.tier
                 console.log(`[Auth] JWT callback for user ${user.email}`)
             }
             return token
         },
-        async session({ session, token }) {
+        async session({ session, token }: { session: Session; token: JWT }) {
             if (session.user && token) {
                 session.user.id = token.id as string
                 session.user.email = token.email as string
                 session.user.tier = token.tier as 'free' | 'pro' | 'elite' | undefined
-                // ✅ Use the NextAuth JWT token directly - it's already signed with NEXTAUTH_SECRET
-                session.accessToken = token.accessToken || `${Date.now()}`
+                session.accessToken = token.id as string // Use token ID as the access token
             }
             return session
         },
