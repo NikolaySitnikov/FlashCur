@@ -32,10 +32,10 @@ export function setupSocketHandlers(
                 return next()
             }
 
-            // Production: Verify JWT token
-            // For now, we'll assume the token contains user info
+            // Production: Handle userId tokens (from NextAuth session)
+            // The frontend sends the session user ID as the token
             const user = await prisma.user.findUnique({
-                where: { id: token }, // This is simplified - in production, decode JWT
+                where: { id: token },
                 select: {
                     id: true,
                     email: true,
@@ -45,9 +45,11 @@ export function setupSocketHandlers(
             })
 
             if (!user) {
+                logger.error('User not found for token:', token)
                 return next(new Error('Invalid token'))
             }
 
+            logger.info(`User ${user.id} (${user.tier} tier) authenticated for WebSocket`)
             socket.userId = user.id
             socket.userTier = user.tier
             next()
