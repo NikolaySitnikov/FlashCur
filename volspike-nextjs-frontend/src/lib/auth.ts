@@ -1,28 +1,6 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import type { NextAuthConfig, Session } from 'next-auth'
-import type { JWT } from 'next-auth/jwt'
-
-declare module 'next-auth' {
-    interface Session {
-        user: {
-            id?: string
-            email?: string
-            name?: string
-            tier?: 'free' | 'pro' | 'elite'
-        }
-        accessToken?: string
-    }
-}
-
-declare module 'next-auth/jwt' {
-    interface JWT {
-        id?: string
-        email?: string
-        tier?: 'free' | 'pro' | 'elite'
-        accessToken?: string
-    }
-}
+import type { NextAuthConfig } from 'next-auth'
 
 export const authConfig: NextAuthConfig = {
     providers: [
@@ -63,22 +41,23 @@ export const authConfig: NextAuthConfig = {
     },
     secret: process.env.NEXTAUTH_SECRET,
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user }: any) {
             // When user first logs in, add their data to the token
             if (user) {
-                token.id = user.id as string
-                token.email = user.email as string
-                token.tier = user.tier as 'free' | 'pro' | 'elite'
-                token.accessToken = user.id as string
+                token.id = user.id
+                token.email = user.email
+                token.tier = user.tier
+                token.accessToken = user.id
                 console.log(`[Auth] JWT callback - User logged in: ${user.email}`)
             }
             return token
         },
-        async session({ session, token }) {
+        async session({ session, token }: any) {
             // Copy token data to session
             if (token && session.user) {
                 session.user.id = token.id
                 session.user.email = token.email
+                session.user.name = 'Test User'
                 session.user.tier = token.tier
                 session.accessToken = token.accessToken
                 console.log(`[Auth] Session callback - User: ${token.email}, AccessToken: ${token.accessToken}`)
