@@ -25,17 +25,48 @@ const logger = createLogger()
 // Create Hono app
 const app = new Hono()
 
-// Middleware
-app.use('*', honoLogger())
-app.use('*', cors({
-    origin: [
+// ============================================
+// CORS CONFIGURATION
+// ============================================
+
+// Determine allowed origins based on environment
+const getAllowedOrigins = (): string[] => {
+    const origins = [
         process.env.FRONTEND_URL || 'http://localhost:3000',
         'https://volspike.com',
         'https://www.volspike.com',
         'https://vol-spike.vercel.app',
         'https://vol-spike-nikolaysitnikovs-projects.vercel.app'
-    ],
+    ]
+
+    // In development, also allow localhost variants
+    if (process.env.NODE_ENV === 'development') {
+        origins.push(
+            'http://localhost:3000',
+            'http://localhost:3001',
+            'http://127.0.0.1:3000',
+            'http://127.0.0.1:3001'
+        )
+    }
+
+    return [...new Set(origins)] // Remove duplicates
+}
+
+// ============================================
+// MIDDLEWARE - Order matters!
+// ============================================
+
+// 1. Logging (first, to log all requests)
+app.use('*', honoLogger())
+
+// 2. CORS (before routes, so preflight is handled)
+app.use('*', cors({
+    origin: getAllowedOrigins(),
     credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+    exposeHeaders: ['Content-Length', 'X-Total-Count', 'X-Page-Count'],
+    maxAge: 86400, // 24 hours
 }))
 
 // ============================================
@@ -47,7 +78,8 @@ app.get('/health', (c) => {
     return c.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
-        version: process.env.npm_package_version || '1.0.0'
+        version: process.env.npm_package_version || '1.0.0',
+        environment: process.env.NODE_ENV || 'development',
     })
 })
 
@@ -69,10 +101,17 @@ app.notFound((c) => {
 
 // Global error handler
 app.onError((err, c) => {
-    logger.error('Unhandled error:', err)
+    logger.error('Unhandled error:', {
+        message: err.message,
+        stack: err.stack,
+        path: c.req.path,
+        method: c.req.method,
+    })
+    
     return c.json({
         error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+        requestId: c.req.header('x-request-id') || 'unknown',
     }, 500)
 })
 
@@ -143,8 +182,9 @@ const httpServer = createServer(async (req, res) => {
 
 const io = new SocketIOServer(httpServer, {
     cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: getAllowedOrigins(),
         credentials: true,
+        methods: ['GET', 'POST'],
     },
     transports: ['websocket', 'polling'],
 })
@@ -246,6 +286,7 @@ httpServer.listen(port, host, () => {
     logger.info(`🚀 VolSpike Backend running on ${host}:${port}`)
     logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
     logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
+    logger.info(`🌐 Allowed CORS origins: ${getAllowedOrigins().join(', ')}`)
     logger.info(`✅ Server ready to accept requests`)
 })
 

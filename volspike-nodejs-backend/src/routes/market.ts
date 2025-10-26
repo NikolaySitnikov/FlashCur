@@ -11,7 +11,34 @@ const logger = createLogger()
 
 const market = new Hono()
 
-// Get market data with tier-based throttling
+// ============================================
+// OPTIONS HANDLERS - Handle CORS preflight
+// ============================================
+
+market.options('/data', (c) => {
+    logger.debug('OPTIONS /api/market/data - preflight request')
+    return c.text('', 200)
+})
+
+market.options('/symbol/:symbol', (c) => {
+    logger.debug('OPTIONS /api/market/symbol/:symbol - preflight request')
+    return c.text('', 200)
+})
+
+market.options('/history/:symbol', (c) => {
+    logger.debug('OPTIONS /api/market/history/:symbol - preflight request')
+    return c.text('', 200)
+})
+
+market.options('/spikes', (c) => {
+    logger.debug('OPTIONS /api/market/spikes - preflight request')
+    return c.text('', 200)
+})
+
+// ============================================
+// GET /data - Market data with tier-based throttling
+// ============================================
+
 market.get('/data', async (c) => {
     try {
         // For development: allow unauthenticated access
@@ -64,11 +91,25 @@ market.get('/data', async (c) => {
     }
 })
 
-// Get specific symbol data
+// ============================================
+// GET /symbol/:symbol - Specific symbol data
+// ============================================
+
 market.get('/symbol/:symbol', async (c) => {
     try {
         const symbol = c.req.param('symbol')
-        const user = requireUser(c)
+        
+        let user
+        try {
+            user = requireUser(c)
+        } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+                logger.info(`Symbol data for ${symbol} (unauthenticated, development mode)`)
+                user = { id: 'dev-user', email: 'dev@volspike.com', tier: 'free' } as any
+            } else {
+                return c.json({ error: 'Unauthorized' }, 401)
+            }
+        }
 
         // Get symbol data from cache or database
         const symbolData = await getCachedMarketData(symbol)
@@ -86,15 +127,30 @@ market.get('/symbol/:symbol', async (c) => {
     }
 })
 
-// Get historical data for a symbol
+// ============================================
+// GET /history/:symbol - Historical data
+// ============================================
+
 market.get('/history/:symbol', async (c) => {
     try {
         const symbol = c.req.param('symbol')
         const timeframe = c.req.query('timeframe') || '1h'
         const limit = parseInt(c.req.query('limit') || '100')
 
-        const user = requireUser(c)
-        const tier = user?.tier || 'free'
+        let user, tier = 'free'
+        
+        try {
+            user = requireUser(c)
+            tier = user?.tier || 'free'
+        } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+                logger.info(`History for ${symbol} (unauthenticated, development mode)`)
+                user = { id: 'dev-user', email: 'dev@volspike.com', tier: 'free' } as any
+                tier = 'free'
+            } else {
+                return c.json({ error: 'Unauthorized' }, 401)
+            }
+        }
 
         // Tier-based access control
         if (tier === 'free' && limit > 50) {
@@ -130,11 +186,26 @@ market.get('/history/:symbol', async (c) => {
     }
 })
 
-// Get volume spike alerts
+// ============================================
+// GET /spikes - Volume spike alerts
+// ============================================
+
 market.get('/spikes', async (c) => {
     try {
-        const user = requireUser(c)
-        const tier = user?.tier || 'free'
+        let user, tier = 'free'
+        
+        try {
+            user = requireUser(c)
+            tier = user?.tier || 'free'
+        } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+                logger.info('Volume spikes requested (unauthenticated, development mode)')
+                user = { id: 'dev-user', email: 'dev@volspike.com', tier: 'free' } as any
+                tier = 'free'
+            } else {
+                return c.json({ error: 'Unauthorized' }, 401)
+            }
+        }
 
         // Get recent alerts
         const alerts = await prisma.alert.findMany({
