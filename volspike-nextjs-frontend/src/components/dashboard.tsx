@@ -82,7 +82,7 @@ export function Dashboard() {
                                 ) : error ? (
                                     <div className="text-red-500">Error loading market data</div>
                                 ) : (
-                                    <MarketTable data={marketData} />
+                                    <MarketTable data={marketData || []} />
                                 )}
                             </CardContent>
                         </Card>
