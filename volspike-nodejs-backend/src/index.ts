@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger as honoLogger } from 'hono/logger'
-import { createServer } from 'http'
+import { serve } from '@hono/node-server'
 import { Server as SocketIOServer } from 'socket.io'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { createClient } from 'redis'
@@ -107,7 +107,7 @@ app.onError((err, c) => {
         path: c.req.path,
         method: c.req.method,
     })
-    
+
     return c.json({
         error: 'Internal Server Error',
         message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
@@ -116,64 +116,22 @@ app.onError((err, c) => {
 })
 
 // ============================================
-// HTTP SERVER - NO serve() FROM @hono/node-server
+// HTTP SERVER USING HONO'S serve()
 // ============================================
 
-// Create a single HTTP server manually
-const httpServer = createServer(async (req, res) => {
-    try {
-        // Parse URL
-        const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
+const port = Number(process.env.PORT) || 3001
+const host = '0.0.0.0'
 
-        // Create Web API Request
-        const request = new Request(url, {
-            method: req.method,
-            headers: req.headers as Record<string, string>,
-            // Only pass body for non-GET/HEAD requests
-            body: ['GET', 'HEAD', 'DELETE'].includes(req.method || '') ? undefined : req,
-        })
-
-        // Call Hono's fetch
-        const response = await app.fetch(request)
-
-        // Write status and headers
-        res.writeHead(response.status, Object.fromEntries(response.headers))
-
-        // Stream body
-        if (response.body) {
-            const reader = response.body.getReader()
-
-            const pump = async () => {
-                try {
-                    const { done, value } = await reader.read()
-                    if (done) {
-                        res.end()
-                        return
-                    }
-                    res.write(value)
-                    await pump()
-                } catch (streamErr) {
-                    logger.error('Stream error:', streamErr)
-                    if (!res.writableEnded) {
-                        res.end()
-                    }
-                }
-            }
-
-            await pump()
-        } else {
-            res.end()
-        }
-    } catch (error) {
-        logger.error('Request error:', error)
-        if (!res.writableEnded) {
-            res.writeHead(500, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({
-                error: 'Internal Server Error',
-                message: process.env.NODE_ENV === 'development' ? String(error) : undefined
-            }))
-        }
-    }
+const httpServer = serve({
+    fetch: app.fetch,
+    port,
+    hostname: host,
+}, (info) => {
+    logger.info(`🚀 VolSpike Backend running on ${host}:${port}`)
+    logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
+    logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
+    logger.info(`🌐 Allowed CORS origins: ${getAllowedOrigins().join(', ')}`)
+    logger.info(`✅ Server ready to accept requests`)
 })
 
 // ============================================
@@ -274,20 +232,5 @@ const shutdown = async (signal: string) => {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
-
-// ============================================
-// START SERVER
-// ============================================
-
-const port = Number(process.env.PORT) || 3001
-const host = '0.0.0.0'
-
-httpServer.listen(port, host, () => {
-    logger.info(`🚀 VolSpike Backend running on ${host}:${port}`)
-    logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
-    logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
-    logger.info(`🌐 Allowed CORS origins: ${getAllowedOrigins().join(', ')}`)
-    logger.info(`✅ Server ready to accept requests`)
-})
 
 export default app
