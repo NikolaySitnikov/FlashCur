@@ -5,12 +5,21 @@ import type { JWT } from 'next-auth/jwt'
 
 declare module 'next-auth' {
     interface Session {
+        user: {
+            id?: string
+            email?: string
+            name?: string
+            tier?: 'free' | 'pro' | 'elite'
+        }
         accessToken?: string
     }
 }
 
 declare module 'next-auth/jwt' {
     interface JWT {
+        id?: string
+        email?: string
+        tier?: 'free' | 'pro' | 'elite'
         accessToken?: string
     }
 }
@@ -28,7 +37,6 @@ export const authConfig: NextAuthConfig = {
                     return null
                 }
 
-                // For now, return a mock user for development
                 // Support multiple test accounts
                 if (
                     (credentials.email === 'test@volspike.com' && credentials.password === 'password') ||
@@ -38,7 +46,7 @@ export const authConfig: NextAuthConfig = {
                         id: '1',
                         email: credentials.email,
                         name: 'Test User',
-                        tier: 'free' as const,
+                        tier: 'free',
                     }
                 }
 
@@ -56,20 +64,24 @@ export const authConfig: NextAuthConfig = {
     secret: process.env.NEXTAUTH_SECRET,
     callbacks: {
         async jwt({ token, user }) {
+            // When user first logs in, add their data to the token
             if (user) {
                 token.id = user.id as string
                 token.email = user.email as string
-                token.tier = user.tier
-                console.log(`[Auth] JWT callback for user ${user.email}`)
+                token.tier = user.tier as 'free' | 'pro' | 'elite'
+                token.accessToken = user.id as string
+                console.log(`[Auth] JWT callback - User logged in: ${user.email}`)
             }
             return token
         },
-        async session({ session, token }: { session: Session; token: JWT }) {
-            if (session.user && token) {
-                session.user.id = token.id as string
-                session.user.email = token.email as string
-                session.user.tier = token.tier as 'free' | 'pro' | 'elite' | undefined
-                session.accessToken = token.id as string // Use token ID as the access token
+        async session({ session, token }) {
+            // Copy token data to session
+            if (token && session.user) {
+                session.user.id = token.id
+                session.user.email = token.email
+                session.user.tier = token.tier
+                session.accessToken = token.accessToken
+                console.log(`[Auth] Session callback - User: ${token.email}, AccessToken: ${token.accessToken}`)
             }
             return session
         },
