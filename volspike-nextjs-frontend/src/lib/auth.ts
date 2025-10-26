@@ -55,6 +55,8 @@ export const authConfig: NextAuthConfig = {
                 token.id = user.id
                 token.email = user.email
                 token.tier = user.tier
+                // Generate a mock access token for development
+                token.accessToken = `mock-token-${user.id}-${Date.now()}`
             }
             return token
         },
@@ -63,6 +65,7 @@ export const authConfig: NextAuthConfig = {
                 session.user.id = token.id as string
                 session.user.email = token.email as string
                 session.user.tier = token.tier
+                session.accessToken = token.accessToken
             }
             return session
         },

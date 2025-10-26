@@ -15,6 +15,7 @@ declare module 'next-auth' {
       name?: string
       tier?: 'free' | 'pro' | 'elite'
     }
+    accessToken?: string
   }
 }
 
@@ -23,5 +24,6 @@ declare module 'next-auth/jwt' {
     id: string
     email: string
     tier?: 'free' | 'pro' | 'elite'
+    accessToken?: string
   }
 }
