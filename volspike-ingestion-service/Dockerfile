@@ -5,11 +5,19 @@ WORKDIR /app
 # Copy package files (relative path - we're in volspike-ingestion-service)
 COPY package*.json ./
 
-# Install production dependencies ONLY
-RUN npm ci --omit=dev
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci
 
-# Copy pre-compiled dist folder (relative path)
-COPY dist ./dist
+# Copy source code and build script
+COPY src ./src
+COPY tsconfig.json ./
+COPY build.sh ./
+
+# Run build script (compiles if dist doesn't exist)
+RUN chmod +x build.sh && ./build.sh
+
+# Install only production dependencies for runtime
+RUN npm ci --omit=dev
 
 EXPOSE 3002
 
