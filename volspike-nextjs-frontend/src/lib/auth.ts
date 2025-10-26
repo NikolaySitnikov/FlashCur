@@ -1,6 +1,22 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import type { NextAuthConfig } from 'next-auth'
+import { SignJWT } from 'jose'
+
+// Helper function to generate a real JWT
+async function generateJWT(userId: string, email: string) {
+    const secret = new TextEncoder().encode(
+        process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+    )
+
+    const token = await new SignJWT({ sub: userId, email })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('30d')
+        .sign(secret)
+
+    return token
+}
 
 export const authConfig: NextAuthConfig = {
     providers: [
@@ -58,8 +74,15 @@ export const authConfig: NextAuthConfig = {
                 token.id = user.id
                 token.email = user.email
                 token.tier = user.tier
-                // Generate a mock access token for development
-                token.accessToken = `mock-token-${user.id}-${Date.now()}`
+                // ✅ Generate a real JWT instead of mock token
+                try {
+                    token.accessToken = await generateJWT(user.id, user.email)
+                    console.log(`[Auth] Generated JWT for user ${user.email}`)
+                } catch (error) {
+                    console.error('[Auth] Failed to generate JWT:', error)
+                    // Fallback to mock token if JWT generation fails
+                    token.accessToken = `mock-token-${user.id}-${Date.now()}`
+                }
             }
             return token
         },
