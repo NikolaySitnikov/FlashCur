@@ -79,7 +79,7 @@ const httpServer = createServer(async (req, res) => {
     try {
         // Parse URL
         const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
-
+        
         // Create Web API Request
         const request = new Request(url, {
             method: req.method,
@@ -93,11 +93,11 @@ const httpServer = createServer(async (req, res) => {
 
         // Write status and headers
         res.writeHead(response.status, Object.fromEntries(response.headers))
-
+        
         // Stream body
         if (response.body) {
             const reader = response.body.getReader()
-
+            
             const pump = async () => {
                 try {
                     const { done, value } = await reader.read()
@@ -114,7 +114,7 @@ const httpServer = createServer(async (req, res) => {
                     }
                 }
             }
-
+            
             await pump()
         } else {
             res.end()
@@ -210,16 +210,16 @@ httpServer.on('error', (err) => {
 
 const shutdown = async (signal: string) => {
     logger.info(`\n${signal} received, shutting down...`)
-
+    
     io.close()
-
+    
     await new Promise<void>((resolve) => {
         httpServer.close(() => {
             logger.info('HTTP server closed')
             resolve()
         })
     })
-
+    
     await prisma.$disconnect()
     logger.info('Prisma disconnected')
     logger.info('Shutdown complete')
