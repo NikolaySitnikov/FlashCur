@@ -1,6 +1,6 @@
 {
     "name": "volspike-ingestion",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "VolSpike Binance Data Ingestion Service",
     "main": "dist/index.js",
     "scripts": {
