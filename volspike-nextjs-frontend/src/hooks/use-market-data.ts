@@ -19,13 +19,26 @@ export function useMarketData() {
     return useQuery({
         queryKey: ['market-data'],
         queryFn: async (): Promise<MarketData[]> => {
+            // Debug: log what we're sending
+            console.log('[useMarketData] Session:', session)
+            console.log('[useMarketData] AccessToken:', session?.accessToken)
+            console.log('[useMarketData] User ID:', session?.user?.id)
+            
+            // Use accessToken if available, fallback to user ID
+            const token = session?.accessToken || session?.user?.id || 'unknown'
+            console.log('[useMarketData] Sending token:', token)
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/market/data`, {
                 headers: {
-                    'Authorization': `Bearer ${session?.accessToken}`,
+                    'Authorization': `Bearer ${token}`,
                 },
             })
 
+            console.log('[useMarketData] Response status:', response.status)
+
             if (!response.ok) {
+                const errorText = await response.text()
+                console.error('[useMarketData] Error response:', errorText)
                 throw new Error('Failed to fetch market data')
             }
 
