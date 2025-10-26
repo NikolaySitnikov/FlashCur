@@ -53,23 +53,23 @@ app.route('/api/payments', paymentRoutes)
 app.use('/api/protected/*', authMiddleware)
 app.use('/api/protected/*', rateLimitMiddleware)
 
-// Create HTTP server using @hono/node-server
+// Create single HTTP server for both Hono and Socket.IO
 const server = createServer()
 
-// Setup Hono with the server
-serve({
-    fetch: app.fetch,
-    port: Number(process.env.PORT) || 3001,
-    createServer: () => server
-})
-
-// Initialize Socket.IO
+// Initialize Socket.IO FIRST (before serve())
 const io = new SocketIOServer(server, {
     cors: {
         origin: process.env.FRONTEND_URL || 'http://localhost:3000',
         credentials: true,
     },
     transports: ['websocket', 'polling'],
+})
+
+// Setup Hono with the SAME server
+serve({
+    fetch: app.fetch,
+    port: Number(process.env.PORT) || 3001,
+    createServer: () => server
 })
 
 // Setup Redis adapter for Socket.IO scaling (optional)
