@@ -47,7 +47,6 @@ export const authConfig: NextAuthConfig = {
                 token.id = user.id
                 token.email = user.email
                 token.tier = user.tier
-                token.accessToken = user.id
                 console.log(`[Auth] JWT callback - User logged in: ${user.email}`)
             }
             return token
@@ -59,8 +58,9 @@ export const authConfig: NextAuthConfig = {
                 session.user.email = token.email
                 session.user.name = 'Test User'
                 session.user.tier = token.tier
-                session.accessToken = token.accessToken
-                console.log(`[Auth] Session callback - User: ${token.email}, AccessToken: ${token.accessToken}`)
+                // ✅ Use token.id as the access token (this is what the backend expects)
+                session.accessToken = token.id
+                console.log(`[Auth] Session callback - User: ${token.email}, AccessToken set to: ${token.id}`)
             }
             return session
         },
