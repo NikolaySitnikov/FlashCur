@@ -15,9 +15,16 @@ export async function authMiddleware(c: Context, next: Next) {
 
         let userId: string | null = null
 
+        console.log(`[Auth] Received token: ${token.substring(0, 50)}...`)
+
+        // ✅ Check if it's a simple user ID (from NextAuth session)
+        if (!token.includes('.') && !token.startsWith('mock-token-')) {
+            // Simple user ID token (e.g., "1")
+            userId = token
+            console.log(`[Auth] Using simple user ID token: ${userId}`)
+        }
         // ✅ Handle mock tokens (development or test accounts)
-        if (token.startsWith('mock-token-')) {
-            // Extract user ID from mock token: mock-token-1-1234567890
+        else if (token.startsWith('mock-token-')) {
             const match = token.match(/^mock-token-(.+?)-\d+$/)
             if (match) {
                 userId = match[1]
@@ -25,12 +32,11 @@ export async function authMiddleware(c: Context, next: Next) {
             } else {
                 return c.json({ error: 'Invalid mock token format' }, 401)
             }
-        } else {
-            // ✅ Verify real JWT tokens
-            // Use NEXTAUTH_SECRET - same as frontend
-            const secret = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'your-secret-key'
-            
+        }
+        // ✅ Verify real JWT tokens
+        else {
             try {
+                const secret = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'your-secret-key'
                 const secretBytes = new TextEncoder().encode(secret)
                 const { payload } = await jwtVerify(token, secretBytes)
 
@@ -45,6 +51,11 @@ export async function authMiddleware(c: Context, next: Next) {
                 console.error('[Auth] JWT verification failed:', jwtError instanceof Error ? jwtError.message : jwtError)
                 return c.json({ error: 'Invalid token' }, 401)
             }
+        }
+
+        if (!userId) {
+            console.error('[Auth] No user ID extracted from token')
+            return c.json({ error: 'Invalid token' }, 401)
         }
 
         // Get user from database
@@ -64,7 +75,7 @@ export async function authMiddleware(c: Context, next: Next) {
             return c.json({ error: 'User not found' }, 401)
         }
 
-        console.log(`[Auth] Authenticated user: ${user.email} (${user.tier} tier)`)
+        console.log(`[Auth] ✅ Authenticated user: ${user.email} (${user.tier} tier)`)
 
         // Add user to context with proper typing
         c.set('user', user as User)
