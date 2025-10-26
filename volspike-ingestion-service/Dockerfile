@@ -2,12 +2,14 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy from the specific service directory path
+# Copy package files from service directory
 COPY volspike-ingestion-service/package*.json ./
-COPY volspike-ingestion-service/dist ./dist
-COPY volspike-ingestion-service/node_modules ./node_modules
 
+# Install production dependencies ONLY
 RUN npm ci --omit=dev
+
+# Copy pre-compiled dist folder from service directory
+COPY volspike-ingestion-service/dist ./dist
 
 EXPOSE 3002
 
