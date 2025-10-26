@@ -12,12 +12,12 @@ export function useSocket() {
     useEffect(() => {
         if (!session) return
 
-        // Use session user ID for Socket.io authentication
-        // For development, we use a mock token pattern
-        const userId = session.user?.id || '1'
+        // Use session user email for Socket.io authentication
+        // Email is consistent across environments, unlike IDs
+        const userEmail = session.user?.email || 'test-free@example.com'
         const token = process.env.NODE_ENV === 'development'
-            ? `mock-token-${userId}-${Date.now()}`
-            : userId
+            ? `mock-token-${userEmail}-${Date.now()}`
+            : userEmail
 
         const socketInstance = io(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001', {
             auth: {

@@ -32,10 +32,10 @@ export function setupSocketHandlers(
                 return next()
             }
 
-            // Production: Handle userId tokens (from NextAuth session)
-            // The frontend sends the session user ID as the token
+            // Production: Look up user by email (consistent across environments)
+            // The frontend sends the session user email as the token
             const user = await prisma.user.findUnique({
-                where: { id: token },
+                where: { email: token },
                 select: {
                     id: true,
                     email: true,
