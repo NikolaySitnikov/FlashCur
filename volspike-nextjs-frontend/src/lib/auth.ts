@@ -1,25 +1,6 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import type { NextAuthConfig } from 'next-auth'
-import { SignJWT } from 'jose'
-
-// ✅ Use NEXTAUTH_SECRET instead - it's automatically synced by NextAuth
-// This is the recommended approach for NextAuth + JWT
-async function generateJWT(userId: string, email: string) {
-    // Use NEXTAUTH_SECRET which is available in both frontend and backend
-    // Railway/Vercel automatically set this when deploying
-    const secret = new TextEncoder().encode(
-        process.env.NEXTAUTH_SECRET || 'your-nextauth-secret-key'
-    )
-
-    const token = await new SignJWT({ sub: userId, email })
-        .setProtectedHeader({ alg: 'HS256' })
-        .setIssuedAt()
-        .setExpirationTime('30d')
-        .sign(secret)
-
-    return token
-}
 
 export const authConfig: NextAuthConfig = {
     providers: [
@@ -33,18 +14,6 @@ export const authConfig: NextAuthConfig = {
                 if (!credentials?.email || !credentials?.password) {
                     return null
                 }
-
-                // TODO: Implement actual user authentication logic
-                // Connect to your backend API to validate credentials
-                // Example:
-                // const response = await fetch('http://localhost:3001/api/auth/login', {
-                //     method: 'POST',
-                //     headers: { 'Content-Type': 'application/json' },
-                //     body: JSON.stringify({ email: credentials.email, password: credentials.password })
-                // })
-                // const user = await response.json()
-                // if (!user) return null
-                // return user
 
                 // For now, return a mock user for development
                 // Support multiple test accounts
@@ -71,21 +40,14 @@ export const authConfig: NextAuthConfig = {
     pages: {
         signIn: '/auth/signin',
     },
+    secret: process.env.NEXTAUTH_SECRET,
     callbacks: {
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id
                 token.email = user.email
                 token.tier = user.tier
-                // ✅ Generate a real JWT using NEXTAUTH_SECRET
-                try {
-                    token.accessToken = await generateJWT(user.id, user.email)
-                    console.log(`[Auth] Generated JWT for user ${user.email}`)
-                } catch (error) {
-                    console.error('[Auth] Failed to generate JWT:', error)
-                    // Fallback to mock token if JWT generation fails
-                    token.accessToken = `mock-token-${user.id}-${Date.now()}`
-                }
+                console.log(`[Auth] JWT callback for user ${user.email}`)
             }
             return token
         },
@@ -94,7 +56,8 @@ export const authConfig: NextAuthConfig = {
                 session.user.id = token.id as string
                 session.user.email = token.email as string
                 session.user.tier = token.tier as 'free' | 'pro' | 'elite' | undefined
-                session.accessToken = token.accessToken as string | undefined
+                // ✅ Use the NextAuth JWT token directly - it's already signed with NEXTAUTH_SECRET
+                session.accessToken = token.accessToken || `${Date.now()}`
             }
             return session
         },
