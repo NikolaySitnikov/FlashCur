@@ -63,8 +63,8 @@ export const authConfig: NextAuthConfig = {
             if (session.user && token) {
                 session.user.id = token.id as string
                 session.user.email = token.email as string
-                session.user.tier = token.tier
-                session.accessToken = token.accessToken
+                session.user.tier = token.tier as 'free' | 'pro' | 'elite' | undefined
+                session.accessToken = token.accessToken as string | undefined
             }
             return session
         },
