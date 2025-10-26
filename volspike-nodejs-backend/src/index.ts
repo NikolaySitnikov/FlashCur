@@ -85,7 +85,11 @@ app.get('/health', (c) => {
 
 // API routes
 app.route('/api/auth', authRoutes)
+
+// Apply auth middleware to market routes
+app.use('/api/market/*', authMiddleware)
 app.route('/api/market', marketRoutes)
+
 app.route('/api/watchlist', watchlistRoutes)
 app.route('/api/alerts', alertRoutes)
 app.route('/api/payments', paymentRoutes)
