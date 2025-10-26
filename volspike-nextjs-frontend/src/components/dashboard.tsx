@@ -15,7 +15,7 @@ export function Dashboard() {
     const { data: session, status } = useSession()
     const { socket, isConnected } = useSocket()
     const { data: marketData, isLoading, error } = useMarketData()
-    const [alerts, setAlerts] = useState([])
+    const [alerts, setAlerts] = useState<any[]>([])
 
     useEffect(() => {
         if (socket && isConnected) {
