@@ -33,6 +33,7 @@ export const authConfig: NextAuthConfig = {
                         id: '1',
                         email: 'test@volspike.com',
                         name: 'Test User',
+                        tier: 'free' as const,
                     }
                 }
 
@@ -53,6 +54,7 @@ export const authConfig: NextAuthConfig = {
             if (user) {
                 token.id = user.id
                 token.email = user.email
+                token.tier = user.tier
             }
             return token
         },
@@ -60,6 +62,7 @@ export const authConfig: NextAuthConfig = {
             if (session.user && token) {
                 session.user.id = token.id as string
                 session.user.email = token.email as string
+                session.user.tier = token.tier
             }
             return session
         },
