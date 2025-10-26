@@ -28,7 +28,13 @@ const app = new Hono()
 // Middleware
 app.use('*', honoLogger())
 app.use('*', cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [
+        process.env.FRONTEND_URL || 'http://localhost:3000',
+        'https://volspike.com',
+        'https://www.volspike.com',
+        'https://vol-spike.vercel.app',
+        'https://vol-spike-nikolaysitnikovs-projects.vercel.app'
+    ],
     credentials: true,
 }))
 
