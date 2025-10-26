@@ -27,18 +27,22 @@ export async function authMiddleware(c: Context, next: Next) {
             }
         } else {
             // ✅ Verify real JWT tokens
+            // Use NEXTAUTH_SECRET - same as frontend
+            const secret = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'your-secret-key'
+            
             try {
-                const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key')
-                const { payload } = await jwtVerify(token, secret)
+                const secretBytes = new TextEncoder().encode(secret)
+                const { payload } = await jwtVerify(token, secretBytes)
 
                 if (!payload.sub) {
+                    console.error('[Auth] JWT has no sub claim')
                     return c.json({ error: 'Invalid token payload' }, 401)
                 }
 
                 userId = payload.sub as string
                 console.log(`[Auth] JWT verified for user ID: ${userId}`)
             } catch (jwtError) {
-                console.error('[Auth] JWT verification failed:', jwtError)
+                console.error('[Auth] JWT verification failed:', jwtError instanceof Error ? jwtError.message : jwtError)
                 return c.json({ error: 'Invalid token' }, 401)
             }
         }
@@ -67,7 +71,7 @@ export async function authMiddleware(c: Context, next: Next) {
 
         await next()
     } catch (error) {
-        console.error('[Auth] Unexpected error:', error)
+        console.error('[Auth] Unexpected error:', error instanceof Error ? error.message : error)
         return c.json({ error: 'Authentication error' }, 401)
     }
 }

@@ -3,10 +3,13 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import type { NextAuthConfig } from 'next-auth'
 import { SignJWT } from 'jose'
 
-// Helper function to generate a real JWT
+// ✅ Use NEXTAUTH_SECRET instead - it's automatically synced by NextAuth
+// This is the recommended approach for NextAuth + JWT
 async function generateJWT(userId: string, email: string) {
+    // Use NEXTAUTH_SECRET which is available in both frontend and backend
+    // Railway/Vercel automatically set this when deploying
     const secret = new TextEncoder().encode(
-        process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+        process.env.NEXTAUTH_SECRET || 'your-nextauth-secret-key'
     )
 
     const token = await new SignJWT({ sub: userId, email })
@@ -74,7 +77,7 @@ export const authConfig: NextAuthConfig = {
                 token.id = user.id
                 token.email = user.email
                 token.tier = user.tier
-                // ✅ Generate a real JWT instead of mock token
+                // ✅ Generate a real JWT using NEXTAUTH_SECRET
                 try {
                     token.accessToken = await generateJWT(user.id, user.email)
                     console.log(`[Auth] Generated JWT for user ${user.email}`)
