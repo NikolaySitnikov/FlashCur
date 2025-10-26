@@ -12,9 +12,16 @@ export function useSocket() {
     useEffect(() => {
         if (!session) return
 
+        // Use session user ID for Socket.io authentication
+        // For development, we use a mock token pattern
+        const userId = session.user?.id || '1'
+        const token = process.env.NODE_ENV === 'development'
+            ? `mock-token-${userId}-${Date.now()}`
+            : userId
+
         const socketInstance = io(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001', {
             auth: {
-                token: session.accessToken, // Assuming you have this in your session
+                token: token,
             },
             transports: ['websocket', 'polling'],
         })

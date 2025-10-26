@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -14,19 +15,30 @@ export function LoginPage() {
     const [password, setPassword] = useState('')
     const [rememberMe, setRememberMe] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState('')
+    const router = useRouter()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
+        setError('')
 
         try {
-            await signIn('credentials', {
+            const result = await signIn('credentials', {
                 email,
                 password,
                 redirect: false,
             })
+
+            if (result?.error) {
+                setError('Invalid email or password. Please try again.')
+            } else if (result?.ok) {
+                // Success - redirect to dashboard
+                router.push('/')
+            }
         } catch (error) {
             console.error('Login error:', error)
+            setError('An error occurred during login. Please try again.')
         } finally {
             setIsLoading(false)
         }
@@ -91,6 +103,14 @@ export function LoginPage() {
                                     Remember me for 30 days
                                 </Label>
                             </div>
+
+                            {/* Error Message */}
+                            {error && (
+                                <div className="p-3 bg-red-500/10 border border-red-500 rounded-md">
+                                    <p className="text-red-400 text-sm">{error}</p>
+                                </div>
+                            )}
+
                             <Button
                                 type="submit"
                                 className="w-full bg-green-500 hover:bg-green-600 text-white"

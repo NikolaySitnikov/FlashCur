@@ -24,7 +24,15 @@ export function setupSocketHandlers(
                 return next(new Error('Authentication required'))
             }
 
-            // Verify JWT token (simplified - in production, use proper JWT verification)
+            // For development: allow mock tokens without database lookup
+            if (process.env.NODE_ENV === 'development' && token.startsWith('mock-token-')) {
+                logger.info('Using mock token for Socket.io authentication')
+                socket.userId = '1' // Mock user ID
+                socket.userTier = 'free'
+                return next()
+            }
+
+            // Production: Verify JWT token
             // For now, we'll assume the token contains user info
             const user = await prisma.user.findUnique({
                 where: { id: token }, // This is simplified - in production, decode JWT

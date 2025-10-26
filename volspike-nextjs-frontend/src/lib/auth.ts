@@ -28,10 +28,14 @@ export const authConfig: NextAuthConfig = {
                 // return user
 
                 // For now, return a mock user for development
-                if (credentials.email === 'test@volspike.com' && credentials.password === 'password') {
+                // Support multiple test accounts
+                if (
+                    (credentials.email === 'test@volspike.com' && credentials.password === 'password') ||
+                    (credentials.email === 'test-free@example.com' && credentials.password === 'password123')
+                ) {
                     return {
                         id: '1',
-                        email: 'test@volspike.com',
+                        email: credentials.email,
                         name: 'Test User',
                         tier: 'free' as const,
                     }

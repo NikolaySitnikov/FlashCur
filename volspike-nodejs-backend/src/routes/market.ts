@@ -14,8 +14,21 @@ const market = new Hono()
 // Get market data with tier-based throttling
 market.get('/data', async (c) => {
     try {
-        const user = requireUser(c)
-        const tier = user?.tier || 'free'
+        // For development: allow unauthenticated access
+        let user, tier = 'free'
+        try {
+            user = requireUser(c)
+            tier = user?.tier || 'free'
+        } catch (error) {
+            // In development, use mock user if not authenticated
+            if (process.env.NODE_ENV === 'development') {
+                logger.info('Using mock user for market data (development mode)')
+                user = { id: '1', email: 'dev@volspike.com', tier: 'free' } as any
+                tier = 'free'
+            } else {
+                throw error
+            }
+        }
 
         // Get cached market data
         const marketData = await getCachedMarketData()

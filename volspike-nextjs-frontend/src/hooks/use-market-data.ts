@@ -19,7 +19,7 @@ export function useMarketData() {
     return useQuery({
         queryKey: ['market-data'],
         queryFn: async (): Promise<MarketData[]> => {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/market-data`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/market/data`, {
                 headers: {
                     'Authorization': `Bearer ${session?.accessToken}`,
                 },
