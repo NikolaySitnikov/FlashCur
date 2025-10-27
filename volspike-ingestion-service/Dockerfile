@@ -2,14 +2,24 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files (relative path - we're in volspike-ingestion-service)
+# Copy package files
 COPY package*.json ./
 
-# Install production dependencies ONLY
-RUN npm ci --omit=dev
+# Copy source code and config
+COPY src ./src
+COPY tsconfig.json ./
 
-# Copy pre-compiled dist folder (relative path)
-COPY dist ./dist
+# Install ALL dependencies (including devDependencies needed for tsc)
+RUN npm ci
+
+# Compile TypeScript
+RUN npm run build
+
+# Remove dev dependencies
+RUN npm prune --omit=dev
+
+# Remove source files (no longer needed)
+RUN rm -rf src tsconfig.json
 
 EXPOSE 3002
 
