@@ -1,185 +1,193 @@
-'use client'
-
-import { useEffect, useState, useRef } from 'react'
-import { useSession } from 'next-auth/react'
-
-interface BinanceTicker {
-  s: string  // symbol
-  c: string  // last price
-  v: string  // volume
-  q: string  // quote volume
-  P: string  // price change percent
-  r?: string // funding rate (from markPrice stream)
-}
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface MarketData {
   symbol: string
   price: number
   volume24h: number
-  volumeChange: number
-  fundingRate: number
-  openInterest: number
+  change24h: number
+  fundingRate?: number
   timestamp: number
 }
 
-export function useBinanceWebSocket() {
-  const { data: session } = useSession()
-  const [isConnected, setIsConnected] = useState(false)
-  const [marketData, setMarketData] = useState<MarketData[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const wsRef = useRef<WebSocket | null>(null)
-  const tickerMapRef = useRef<Map<string, BinanceTicker>>(new Map())
-  const fundingMapRef = useRef<Map<string, number>>(new Map())
+interface UseBinanceWebSocketProps {
+  tier: 'elite' | 'pro' | 'free'
+  onDataUpdate: (data: MarketData[]) => void
+  onError?: (error: string) => void
+}
 
-  useEffect(() => {
-    // Only connect for Elite tier users
-    if (!session?.user || session.user.tier !== 'elite') {
+export const useBinanceWebSocket = ({
+  tier,
+  onDataUpdate,
+  onError
+}: UseBinanceWebSocketProps) => {
+  const [isConnected, setIsConnected] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected')
+  const [lastUpdate, setLastUpdate] = useState<number>(0)
+
+  const wsRef = useRef<WebSocket | null>(null)
+  const tickersRef = useRef<Map<string, any>>(new Map())
+  const fundingRef = useRef<Map<string, any>>(new Map())
+  const lastEmitRef = useRef<number>(0)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Tier-based throttling intervals (in milliseconds)
+  const MIN_INTERVAL = tier === 'elite' ? 0 : (tier === 'pro' ? 300_000 : 900_000) // 0ms, 5min, 15min
+
+  const buildSnapshot = useCallback(() => {
+    const snapshot: MarketData[] = []
+
+    // Convert Map to Array for iteration
+    const tickerEntries = Array.from(tickersRef.current.entries())
+
+    for (const [symbol, ticker] of tickerEntries) {
+      const funding = fundingRef.current.get(symbol)
+
+      // Only include USDT pairs with sufficient volume
+      if (symbol.endsWith('USDT') && ticker.v && parseFloat(ticker.v) > 1000000) {
+        snapshot.push({
+          symbol,
+          price: parseFloat(ticker.c || ticker.lastPrice || '0'),
+          volume24h: parseFloat(ticker.v || ticker.quoteVolume || '0'),
+          change24h: parseFloat(ticker.P || ticker.priceChangePercent || '0'),
+          fundingRate: funding ? parseFloat(funding.r || funding.fr || '0') : undefined,
+          timestamp: Date.now()
+        })
+      }
+    }
+
+    // Sort by volume descending
+    return snapshot.sort((a, b) => b.volume24h - a.volume24h)
+  }, [])
+
+  const emitData = useCallback(() => {
+    const snapshot = buildSnapshot()
+    const now = Date.now()
+
+    // Check if we should emit based on tier throttling
+    if (tier === 'elite' || lastEmitRef.current === 0 || now - lastEmitRef.current >= MIN_INTERVAL) {
+      onDataUpdate(snapshot)
+      lastEmitRef.current = now
+      setLastUpdate(now)
+    }
+  }, [tier, MIN_INTERVAL, buildSnapshot, onDataUpdate])
+
+  const connect = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
       return
     }
 
-    const connectWebSocket = () => {
-      try {
-        // Use Binance combined stream for ticker and funding data
-        const wsUrl = 'wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr'
-        wsRef.current = new WebSocket(wsUrl)
+    setConnectionStatus('connecting')
 
-        wsRef.current.onopen = () => {
-          console.log('✅ Binance WebSocket connected (client-side)')
-          setIsConnected(true)
-          setError(null)
+    try {
+      // Binance combined stream for tickers and funding rates
+      const url = 'wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr'
+      wsRef.current = new WebSocket(url)
+
+      wsRef.current.onopen = () => {
+        console.log('✅ Binance WebSocket connected (client-side)')
+        setIsConnected(true)
+        setConnectionStatus('connected')
+
+        // Clear any pending reconnection
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current)
+          reconnectTimeoutRef.current = null
         }
+      }
 
-        wsRef.current.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data)
-            
-            if (message.stream && message.data) {
-              // Combined stream format
-              handleStreamData(message.stream, message.data)
-            } else if (Array.isArray(message)) {
-              // Direct array format
-              handleTickerData(message)
+      wsRef.current.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data)
+          const payload = msg?.data ?? msg
+          const arr = Array.isArray(payload) ? payload : [payload]
+
+          for (const item of arr) {
+            if (!item || !item.s) continue
+
+            // Handle 24hr ticker data
+            if (item.e === '24hrTicker' || item.c || item.v) {
+              tickersRef.current.set(item.s, item)
             }
-          } catch (err) {
-            console.error('Error parsing WebSocket message:', err)
+
+            // Handle mark price data (funding rates)
+            if (item.r !== undefined || item.fr !== undefined) {
+              fundingRef.current.set(item.s, item)
+            }
           }
-        }
 
-        wsRef.current.onerror = (error) => {
-          console.error('Binance WebSocket error:', error)
-          setError('WebSocket connection error')
-          setIsConnected(false)
-        }
+          // Emit data based on tier throttling
+          emitData()
 
-        wsRef.current.onclose = () => {
-          console.log('Binance WebSocket disconnected')
-          setIsConnected(false)
-          
-          // Auto-reconnect after 5 seconds
-          setTimeout(() => {
-            if (session?.user?.tier === 'elite') {
-              connectWebSocket()
-            }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error)
+        }
+      }
+
+      wsRef.current.onerror = (error) => {
+        console.warn('❌ Binance WebSocket error:', error)
+        setConnectionStatus('error')
+        onError?.('WebSocket connection error')
+      }
+
+      wsRef.current.onclose = (event) => {
+        console.log('🔌 Binance WebSocket closed:', event.code, event.reason)
+        setIsConnected(false)
+        setConnectionStatus('disconnected')
+
+        // Auto-reconnect after 5 seconds unless it was a clean close
+        if (event.code !== 1000 && !reconnectTimeoutRef.current) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('🔄 Attempting to reconnect to Binance WebSocket...')
+            connect()
           }, 5000)
         }
-
-      } catch (err) {
-        console.error('Failed to connect to Binance WebSocket:', err)
-        setError('Failed to connect to Binance')
       }
+
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error)
+      setConnectionStatus('error')
+      onError?.('Failed to create WebSocket connection')
+    }
+  }, [emitData, onError])
+
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
     }
 
-    connectWebSocket()
+    if (wsRef.current) {
+      wsRef.current.close(1000, 'Manual disconnect')
+      wsRef.current = null
+    }
+
+    setIsConnected(false)
+    setConnectionStatus('disconnected')
+  }, [])
+
+  // Connect on mount
+  useEffect(() => {
+    connect()
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close()
-        wsRef.current = null
-      }
+      disconnect()
     }
-  }, [session?.user?.tier])
+  }, [connect, disconnect])
 
-  const handleStreamData = (stream: string, data: any) => {
-    try {
-      if (stream === '!ticker@arr') {
-        handleTickerData(data)
-      } else if (stream === '!markPrice@arr') {
-        handleFundingData(data)
-      }
-    } catch (err) {
-      console.error(`Error handling stream ${stream}:`, err)
+  // Force emit data when tier changes
+  useEffect(() => {
+    if (isConnected) {
+      emitData()
     }
-  }
-
-  const handleTickerData = (data: BinanceTicker[]) => {
-    try {
-      if (!Array.isArray(data)) return
-
-      // Update ticker map
-      data.forEach(ticker => {
-        if (ticker.s && ticker.s.endsWith('USDT')) {
-          tickerMapRef.current.set(ticker.s, ticker)
-        }
-      })
-
-      // Convert to market data format
-      updateMarketData()
-    } catch (err) {
-      console.error('Error processing ticker data:', err)
-    }
-  }
-
-  const handleFundingData = (data: any[]) => {
-    try {
-      if (!Array.isArray(data)) return
-
-      data.forEach(item => {
-        if (item.s && item.r !== undefined) {
-          fundingMapRef.current.set(item.s, parseFloat(item.r))
-        }
-      })
-
-      // Update market data with new funding rates
-      updateMarketData()
-    } catch (err) {
-      console.error('Error processing funding data:', err)
-    }
-  }
-
-  const updateMarketData = () => {
-    const marketDataArray: MarketData[] = []
-    
-    tickerMapRef.current.forEach((ticker, symbol) => {
-      const price = parseFloat(ticker.c)
-      const volume24h = parseFloat(ticker.q)
-      
-      // Only include symbols with good volume
-      if (volume24h > 1000000) {
-        marketDataArray.push({
-          symbol,
-          price,
-          volume24h,
-          volumeChange: parseFloat(ticker.P) || 0,
-          fundingRate: fundingMapRef.current.get(symbol) || 0,
-          openInterest: 0,
-          timestamp: Date.now(),
-        })
-      }
-    })
-
-    // Sort by volume and update state
-    marketDataArray.sort((a, b) => b.volume24h - a.volume24h)
-    setMarketData(marketDataArray)
-  }
+  }, [tier, isConnected, emitData])
 
   return {
     isConnected,
-    marketData,
-    error,
-    reconnect: () => {
-      if (wsRef.current) {
-        wsRef.current.close()
-      }
-    }
+    connectionStatus,
+    lastUpdate,
+    connect,
+    disconnect,
+    // Manual trigger for immediate update (useful for testing)
+    forceUpdate: emitData
   }
 }

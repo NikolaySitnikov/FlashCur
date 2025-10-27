@@ -2,5 +2,6 @@ name = "volspike-binance-proxy"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
-# Free tier limits are generous for this use case
-# 100,000 requests per day, 10ms CPU time per request
+# Cron trigger - runs every 5 minutes
+[triggers]
+crons = ["*/5 * * * *"]

@@ -16,13 +16,60 @@ export function Dashboard() {
     const { data: session, status } = useSession()
     const { socket, isConnected } = useSocket()
     const { data: marketData, isLoading, error } = useMarketData()
-    const { isConnected: binanceConnected, marketData: binanceData, error: binanceError } = useBinanceWebSocket()
     const [alerts, setAlerts] = useState<any[]>([])
-    
-    // Use client-side Binance data for Elite tier, fallback to API data
-    const currentMarketData = session?.user?.tier === 'elite' && binanceData.length > 0 
-        ? binanceData 
-        : marketData || []
+    const [currentMarketData, setCurrentMarketData] = useState<any[]>([])
+    const [nextUpdateCountdown, setNextUpdateCountdown] = useState<number>(0)
+
+    // Determine user tier
+    const userTier = session?.user?.tier || 'free'
+
+    // Tier-based throttling intervals (in milliseconds)
+    const UPDATE_INTERVAL = userTier === 'elite' ? 0 : (userTier === 'pro' ? 300_000 : 900_000) // 0ms, 5min, 15min
+
+    // Use client-side Binance WebSocket for all tiers with throttling
+    const {
+        isConnected: binanceConnected,
+        connectionStatus,
+        lastUpdate,
+        forceUpdate
+    } = useBinanceWebSocket({
+        tier: userTier as 'elite' | 'pro' | 'free',
+        onDataUpdate: (data) => {
+            setCurrentMarketData(data)
+        },
+        onError: (error) => {
+            console.error('Binance WebSocket error:', error)
+        }
+    })
+
+    // Fallback to API data if WebSocket fails
+    useEffect(() => {
+        if (!binanceConnected && marketData && marketData.length > 0) {
+            setCurrentMarketData(marketData)
+        }
+    }, [binanceConnected, marketData])
+
+    // Countdown timer for next update (non-elite tiers)
+    useEffect(() => {
+        if (userTier === 'elite' || UPDATE_INTERVAL === 0) {
+            setNextUpdateCountdown(0)
+            return
+        }
+
+        const interval = setInterval(() => {
+            const now = Date.now()
+            const timeSinceLastUpdate = now - lastUpdate
+            const timeUntilNext = UPDATE_INTERVAL - timeSinceLastUpdate
+
+            if (timeUntilNext > 0) {
+                setNextUpdateCountdown(Math.ceil(timeUntilNext / 1000))
+            } else {
+                setNextUpdateCountdown(0)
+            }
+        }, 1000)
+
+        return () => clearInterval(interval)
+    }, [userTier, UPDATE_INTERVAL, lastUpdate])
 
     useEffect(() => {
         if (socket && isConnected) {
@@ -81,28 +128,45 @@ export function Dashboard() {
                     <div className="lg:col-span-3">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Live Market Data</CardTitle>
+                                <CardTitle>
+                                    Live Market Data
+                                    <span className="ml-2 text-sm font-normal text-gray-500">
+                                        ({userTier.toUpperCase()} Tier)
+                                    </span>
+                                </CardTitle>
                                 <CardDescription>
                                     Real-time volume spikes and market movements
-                                    {session?.user?.tier === 'elite' ? (
-                                        binanceConnected ? (
-                                            <span className="ml-2 text-green-500">● Live Data (Binance)</span>
-                                        ) : (
-                                            <span className="ml-2 text-yellow-500">● Connecting...</span>
-                                        )
+                                    {binanceConnected ? (
+                                        <span className="ml-2 text-green-500">● Live Data (Binance WebSocket)</span>
+                                    ) : connectionStatus === 'connecting' ? (
+                                        <span className="ml-2 text-yellow-500">● Connecting to Binance...</span>
+                                    ) : connectionStatus === 'error' ? (
+                                        <span className="ml-2 text-red-500">● Binance Connection Failed</span>
                                     ) : (
-                                        isConnected && (
-                                            <span className="ml-2 text-blue-500">● Cached Data</span>
-                                        )
+                                        <span className="ml-2 text-blue-500">● Cached Data</span>
+                                    )}
+                                    {lastUpdate > 0 && (
+                                        <span className="ml-2 text-gray-500">
+                                            (Updated {Math.floor((Date.now() - lastUpdate) / 1000)}s ago)
+                                        </span>
+                                    )}
+                                    {nextUpdateCountdown > 0 && userTier !== 'elite' && (
+                                        <span className="ml-2 text-blue-500">
+                                            • Next update in {Math.floor(nextUpdateCountdown / 60)}:{(nextUpdateCountdown % 60).toString().padStart(2, '0')}
+                                        </span>
                                     )}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {isLoading ? (
                                     <LoadingSpinner />
-                                ) : (error || binanceError) ? (
+                                ) : error ? (
                                     <div className="text-red-500">
-                                        Error loading market data: {error || binanceError}
+                                        Error loading market data: {String(error)}
+                                    </div>
+                                ) : currentMarketData.length === 0 ? (
+                                    <div className="text-yellow-500">
+                                        No market data available. {binanceConnected ? 'Waiting for WebSocket data...' : 'Please check your connection.'}
                                     </div>
                                 ) : (
                                     <MarketTable data={currentMarketData} />

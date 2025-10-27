@@ -10,7 +10,8 @@ interface MarketData {
     symbol: string
     price: number
     volume24h: number
-    volumeChange: number
+    change24h?: number  // Changed from volumeChange to change24h to match Cloudflare Worker data
+    volumeChange?: number  // Keep for backward compatibility
     fundingRate: number
     openInterest: number
     timestamp: number
@@ -33,8 +34,8 @@ export function MarketTable({ data }: MarketTableProps) {
                 bValue = b.volume24h
                 break
             case 'change':
-                aValue = a.volumeChange
-                bValue = b.volumeChange
+                aValue = a.change24h ?? a.volumeChange ?? 0
+                bValue = b.change24h ?? b.volumeChange ?? 0
                 break
             case 'price':
                 aValue = a.price
@@ -120,24 +121,30 @@ export function MarketTable({ data }: MarketTableProps) {
                                     </td>
                                     <td className="p-2 text-right">
                                         <div className="flex items-center justify-end">
-                                            {item.volumeChange > 0 ? (
-                                                <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                                            ) : (
-                                                <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-                                            )}
-                                            <span className={`font-mono ${item.volumeChange > 0 ? 'text-green-500' : 'text-red-500'
-                                                }`}>
-                                                {item.volumeChange > 0 ? '+' : ''}{item.volumeChange.toFixed(2)}%
-                                            </span>
+                                            {(() => {
+                                                const changeValue = item.change24h ?? item.volumeChange ?? 0;
+                                                return (
+                                                    <>
+                                                        {changeValue > 0 ? (
+                                                            <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                                                        ) : (
+                                                            <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+                                                        )}
+                                                        <span className={`font-mono ${changeValue > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                            {changeValue > 0 ? '+' : ''}{changeValue.toFixed(2)}%
+                                                        </span>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </td>
                                     <td className="p-2 text-right font-mono">
-                                        <span className={item.fundingRate > 0 ? 'text-green-500' : 'text-red-500'}>
-                                            {item.fundingRate > 0 ? '+' : ''}{(item.fundingRate * 100).toFixed(4)}%
+                                        <span className={(item.fundingRate ?? 0) > 0 ? 'text-green-500' : 'text-red-500'}>
+                                            {(item.fundingRate ?? 0) > 0 ? '+' : ''}{((item.fundingRate ?? 0) * 100).toFixed(4)}%
                                         </span>
                                     </td>
                                     <td className="p-2 text-right font-mono">
-                                        ${item.openInterest.toLocaleString()}
+                                        ${(item.openInterest ?? 0).toLocaleString()}
                                     </td>
                                 </tr>
                             ))}
