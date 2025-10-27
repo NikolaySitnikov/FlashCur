@@ -1,22 +1,18 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useForm } from 'react-hook-form'
+import { useEffect, useMemo, useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { Card, CardContent } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { clsx } from 'clsx'
-import { Mail, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
+import { Loader2, Mail } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -49,17 +45,13 @@ function passwordStrength(pw: string): number {
 }
 
 export default function AuthPage() {
-    const [openWallet, setOpenWallet] = useState(false)
-    const [showPassword, setShowPassword] = useState(false)
-    const [tab, setTab] = useState<'signin' | 'signup'>('signup')
-    const [isLoading, setIsLoading] = useState(false)
-    const [verificationMessage, setVerificationMessage] = useState('')
-    const [showVerificationAlert, setShowVerificationAlert] = useState(false)
     const router = useRouter()
+    const searchParams = useSearchParams()
 
     const signupForm = useForm<SignupForm>({
         resolver: zodResolver(signupSchema),
         defaultValues: { email: '', password: '', remember: true },
+        mode: 'onChange',
     })
 
     const signinForm = useForm<SigninForm>({
@@ -67,13 +59,40 @@ export default function AuthPage() {
         defaultValues: { email: '', password: '', remember: true },
     })
 
+    const signupPasswordValue = signupForm.watch('password')
     const pwStrength = useMemo(
-        () => passwordStrength(signupForm.watch('password') || ''),
-        [signupForm.watch('password')]
+        () => passwordStrength(signupPasswordValue || ''),
+        [signupPasswordValue]
     )
 
+    const [tab, setTab] = useState<'signin' | 'signup'>(
+        searchParams?.get('tab') === 'signup' ? 'signup' : 'signin'
+    )
+    const [showPassword, setShowPassword] = useState(false)
+    const [isAuthLoading, setIsAuthLoading] = useState(false)
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+    const [isResending, setIsResending] = useState(false)
+    const [authError, setAuthError] = useState('')
+    const [verificationMessage, setVerificationMessage] = useState('')
+    const [showVerificationAlert, setShowVerificationAlert] = useState(false)
+
+    useEffect(() => {
+        const tabParam = searchParams.get('tab')
+        if (tabParam === 'signin' || tabParam === 'signup') {
+            setTab(tabParam)
+        }
+    }, [searchParams])
+
+    useEffect(() => {
+        setAuthError('')
+        signinForm.clearErrors()
+        signupForm.clearErrors()
+    }, [tab, signinForm, signupForm])
+
     async function handleSignin(data: SigninForm) {
-        setIsLoading(true)
+        setIsAuthLoading(true)
+        setAuthError('')
+
         try {
             const result = await signIn('credentials', {
                 email: data.email,
@@ -84,17 +103,25 @@ export default function AuthPage() {
             if (result?.ok) {
                 router.push('/')
             } else {
-                signinForm.setError('password', { message: 'Invalid email or password' })
+                const message = 'Invalid email or password. Please try again.'
+                setAuthError(message)
+                signinForm.setError('password', { message })
             }
         } catch (error) {
-            signinForm.setError('password', { message: 'An error occurred during sign in' })
+            const message = 'An error occurred during sign in. Please try again.'
+            setAuthError(message)
+            signinForm.setError('password', { message })
         } finally {
-            setIsLoading(false)
+            setIsAuthLoading(false)
         }
     }
 
     async function handleSignup(data: SignupForm) {
-        setIsLoading(true)
+        setIsAuthLoading(true)
+        setAuthError('')
+        setVerificationMessage('')
+        setShowVerificationAlert(false)
+
         try {
             const response = await fetch(`${API_URL}/api/auth/signup`, {
                 method: 'POST',
@@ -102,35 +129,55 @@ export default function AuthPage() {
                 body: JSON.stringify({ email: data.email, password: data.password, tier: 'free' }),
             })
 
-            const payload = await response.json()
+            const payload = await response.json().catch(() => ({}))
 
             if (!response.ok) {
-                signupForm.setError('password', { message: payload?.error || 'Could not create account' })
+                const message = payload?.error || 'Could not create account'
+                signupForm.setError('password', { message })
+                setAuthError(message)
                 return
             }
 
-            if (payload.requiresVerification) {
-                setVerificationMessage(payload.message || 'Please check your email to verify your account.')
+            if (payload?.requiresVerification) {
+                const message = payload.message || 'Please check your email to verify your account.'
+                setVerificationMessage(message)
                 setShowVerificationAlert(true)
                 signupForm.reset()
+                setTab('signin')
+                return
+            }
+
+            const signinResult = await signIn('credentials', {
+                email: data.email,
+                password: data.password,
+                redirect: false,
+            })
+
+            if (signinResult?.ok) {
+                router.push('/')
             } else {
-                await handleSignin({ email: data.email, password: data.password, remember: data.remember })
+                const message = 'Account created. Please verify your email, then sign in.'
+                setVerificationMessage(message)
+                setShowVerificationAlert(true)
             }
         } catch (error) {
-            signupForm.setError('password', { message: 'Network error. Please try again.' })
+            const message = 'Network error. Please try again.'
+            signupForm.setError('password', { message })
+            setAuthError(message)
         } finally {
-            setIsLoading(false)
+            setIsAuthLoading(false)
         }
     }
 
     async function handleGoogleSignIn() {
-        setIsLoading(true)
+        setIsGoogleLoading(true)
+        setAuthError('')
+
         try {
             await signIn('google', { callbackUrl: '/' })
         } catch (error) {
-            console.error('Google sign in error:', error)
-        } finally {
-            setIsLoading(false)
+            setAuthError('Google sign in failed. Please try again.')
+            setIsGoogleLoading(false)
         }
     }
 
@@ -138,7 +185,7 @@ export default function AuthPage() {
         const email = signupForm.getValues('email') || signinForm.getValues('email')
         if (!email) return
 
-        setIsLoading(true)
+        setIsResending(true)
         try {
             const response = await fetch(`${API_URL}/api/auth/request-verification`, {
                 method: 'POST',
@@ -146,217 +193,263 @@ export default function AuthPage() {
                 body: JSON.stringify({ email }),
             })
 
-            const data = await response.json()
-            setVerificationMessage(data.message || 'Verification email sent successfully.')
+            const data = await response.json().catch(() => ({}))
+            setVerificationMessage(data?.message || 'Verification email sent successfully.')
             setShowVerificationAlert(true)
         } catch (error) {
             setVerificationMessage('Failed to resend verification email. Please try again.')
             setShowVerificationAlert(true)
         } finally {
-            setIsLoading(false)
+            setIsResending(false)
         }
     }
 
-    return (
-        <main className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
-            {/* Background gradient */}
-            <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0"
-                style={{
-                    background:
-                        'radial-gradient(70rem 70rem at 50% -10%, rgba(34,197,94,0.18), transparent 45%), radial-gradient(45rem 45rem at -10% 80%, rgba(34,197,94,0.10), transparent 40%), linear-gradient(180deg, #020617 0%, #020617 100%)',
-                }}
-            />
+    const isBusy = isAuthLoading || isGoogleLoading
 
-            <section className="relative mx-auto flex max-w-7xl flex-col items-center px-6 py-14">
-                {/* Brand */}
-                <div className="mb-8 text-center">
-                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 ring-1 ring-emerald-400/50 shadow-[0_0_40px_rgba(16,185,129,0.35)]">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-emerald-400">
-                            <path d="M13 2L3 14h7l-1 8 11-12h-7V2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
+            <div className="w-full max-w-md">
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-full mb-4 shadow-[0_0_30px_rgba(16,185,129,0.35)]">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </div>
-                    <h1 className="text-4xl font-semibold tracking-tight">VolSpike</h1>
-                    <p className="mt-2 text-sm text-slate-400">Professional cryptocurrency market analysis and volume alerts</p>
+                    <h1 className="text-3xl font-bold text-white mb-2">VolSpike</h1>
+                    <p className="text-gray-400">Professional cryptocurrency market analysis and volume alerts</p>
                 </div>
 
-                {/* Card */}
-                <Card className="w-full max-w-md bg-slate-900/70 backdrop-blur-md ring-1 ring-white/10 shadow-2xl rounded-2xl">
-                    <CardContent className="p-6">
-                        {/* Verification Alert */}
+                <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
+                    <CardHeader className="space-y-4">
+                        <div className="flex justify-center space-x-2 text-sm" role="tablist" aria-label="Authentication mode">
+                            <button
+                                type="button"
+                                className={`flex-1 rounded-full border px-4 py-2 transition-all ${tab === 'signin'
+                                    ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+                                    : 'border-gray-700 bg-gray-800/80 text-gray-300 hover:border-gray-600'}`}
+                                onClick={() => setTab('signin')}
+                                aria-selected={tab === 'signin'}
+                            >
+                                Email Login
+                            </button>
+                            <button
+                                type="button"
+                                className={`flex-1 rounded-full border px-4 py-2 transition-all ${tab === 'signup'
+                                    ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+                                    : 'border-gray-700 bg-gray-800/80 text-gray-300 hover:border-gray-600'}`}
+                                onClick={() => setTab('signup')}
+                                aria-selected={tab === 'signup'}
+                            >
+                                Create Account
+                            </button>
+                        </div>
+                        <div className="space-y-1 text-center">
+                            <CardTitle className="text-2xl text-white">
+                                {tab === 'signin' ? 'Welcome back' : 'Create your account'}
+                            </CardTitle>
+                            <CardDescription className="text-gray-400">
+                                {tab === 'signin'
+                                    ? 'Sign in to access real-time volume spike alerts'
+                                    : 'Start tracking Binance perp markets in seconds'}
+                            </CardDescription>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                         {showVerificationAlert && (
-                            <Alert className="mb-4 border-blue-500 bg-blue-50 dark:bg-blue-950">
-                                <Mail className="h-4 w-4" />
-                                <AlertDescription>
-                                    {verificationMessage}
-                                    <Button
-                                        variant="link"
-                                        size="sm"
+                            <div className="flex items-start gap-3 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-3 text-sm text-green-200">
+                                <Mail className="mt-0.5 h-4 w-4" />
+                                <div>
+                                    <p>{verificationMessage}</p>
+                                    <button
+                                        type="button"
                                         onClick={resendVerification}
-                                        disabled={isLoading}
-                                        className="ml-2 p-0 h-auto text-blue-600 hover:text-blue-500"
+                                        className="mt-2 inline-flex items-center text-xs font-semibold text-green-200 underline underline-offset-4 hover:text-green-100 disabled:opacity-70"
+                                        disabled={isResending}
                                     >
-                                        Resend email
-                                    </Button>
-                                </AlertDescription>
-                            </Alert>
+                                        {isResending ? 'Resending...' : 'Resend email'}
+                                    </button>
+                                </div>
+                            </div>
                         )}
 
-                        {/* Tabs */}
-                        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
-                            <TabsList className="grid w-full grid-cols-2 rounded-xl bg-slate-800/60 p-1">
-                                <TabsTrigger value="signin" className="data-[state=active]:bg-slate-700 data-[state=active]:text-white">
-                                    Sign in
-                                </TabsTrigger>
-                                <TabsTrigger value="signup" className="data-[state=active]:bg-slate-700 data-[state=active]:text-white">
-                                    Create account
-                                </TabsTrigger>
-                            </TabsList>
-
-                            {/* Sign in */}
-                            <TabsContent value="signin" className="mt-6 space-y-4">
-                                <form onSubmit={signinForm.handleSubmit(handleSignin)} noValidate>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="si-email">Email address</Label>
+                        {tab === 'signin' ? (
+                            <form onSubmit={signinForm.handleSubmit(handleSignin)} noValidate className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="signin-email" className="text-gray-300">Email Address</Label>
+                                    <Input
+                                        id="signin-email"
+                                        type="email"
+                                        placeholder="you@example.com"
+                                        className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
+                                        {...signinForm.register('email')}
+                                    />
+                                    {signinForm.formState.errors.email && (
+                                        <p className="text-xs text-red-300">{signinForm.formState.errors.email.message}</p>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="signin-password" className="text-gray-300">Password</Label>
+                                    <div className="relative">
                                         <Input
-                                            id="si-email"
-                                            type="email"
-                                            placeholder="you@example.com"
-                                            {...signinForm.register('email')}
-                                            className="bg-slate-800/70 border-white/10"
-                                        />
-                                        {signinForm.formState.errors.email && (
-                                            <p className="text-xs text-red-300">{signinForm.formState.errors.email.message}</p>
-                                        )}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label htmlFor="si-password">Password</Label>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="text-xs text-slate-400 hover:text-slate-200"
-                                            >
-                                                {showPassword ? 'Hide' : 'Show'}
-                                            </button>
-                                        </div>
-                                        <Input
-                                            id="si-password"
+                                            id="signin-password"
                                             type={showPassword ? 'text' : 'password'}
-                                            placeholder="Your password"
+                                            placeholder="Enter your password"
+                                            className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400 pr-10"
                                             {...signinForm.register('password')}
-                                            className="bg-slate-800/70 border-white/10"
                                         />
-                                        {signinForm.formState.errors.password && (
-                                            <p className="text-xs text-red-300">{signinForm.formState.errors.password.message}</p>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                                        >
+                                            {showPassword ? (
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            )}
+                                        </button>
                                     </div>
-                                    <Button
-                                        type="submit"
-                                        className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500"
-                                        disabled={isLoading}
-                                    >
-                                        {isLoading ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Signing in...
-                                            </>
-                                        ) : (
-                                            'Sign in'
+                                    {signinForm.formState.errors.password && (
+                                        <p className="text-xs text-red-300">{signinForm.formState.errors.password.message}</p>
+                                    )}
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Controller
+                                        control={signinForm.control}
+                                        name="remember"
+                                        render={({ field }) => (
+                                            <Checkbox
+                                                id="signin-remember"
+                                                checked={field.value ?? false}
+                                                onCheckedChange={(checked) => field.onChange(Boolean(checked))}
+                                            />
                                         )}
-                                    </Button>
-                                </form>
-                            </TabsContent>
-
-                            {/* Create account */}
-                            <TabsContent value="signup" className="mt-6 space-y-4">
-                                <form onSubmit={signupForm.handleSubmit(handleSignup)} noValidate>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="su-email">Email address</Label>
-                                        <Input
-                                            id="su-email"
-                                            type="email"
-                                            placeholder="you@example.com"
-                                            {...signupForm.register('email')}
-                                            className="bg-slate-800/70 border-white/10"
-                                        />
-                                        {signupForm.formState.errors.email && (
-                                            <p className="text-xs text-red-300">{signupForm.formState.errors.email.message}</p>
-                                        )}
+                                    />
+                                    <Label htmlFor="signin-remember" className="text-gray-300 text-sm">
+                                        Remember me for 30 days
+                                    </Label>
+                                </div>
+                                {authError && (
+                                    <div className="rounded-md bg-red-500/10 border border-red-500 px-3 py-2 text-sm text-red-400">
+                                        {authError}
                                     </div>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label htmlFor="su-password">Password</Label>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="text-xs text-slate-400 hover:text-slate-200"
-                                            >
-                                                {showPassword ? 'Hide' : 'Show'}
-                                            </button>
-                                        </div>
+                                )}
+                                <Button
+                                    type="submit"
+                                    className="w-full bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.35)] hover:brightness-105"
+                                    disabled={isBusy}
+                                >
+                                    {isAuthLoading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Signing in...
+                                        </>
+                                    ) : (
+                                        'Sign in'
+                                    )}
+                                </Button>
+                            </form>
+                        ) : (
+                            <form onSubmit={signupForm.handleSubmit(handleSignup)} noValidate className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="signup-email" className="text-gray-300">Email Address</Label>
+                                    <Input
+                                        id="signup-email"
+                                        type="email"
+                                        placeholder="you@example.com"
+                                        className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
+                                        {...signupForm.register('email')}
+                                    />
+                                    {signupForm.formState.errors.email && (
+                                        <p className="text-xs text-red-300">{signupForm.formState.errors.email.message}</p>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="signup-password" className="text-gray-300">Password</Label>
+                                    <div className="relative">
                                         <Input
-                                            id="su-password"
+                                            id="signup-password"
                                             type={showPassword ? 'text' : 'password'}
-                                            placeholder="Create a strong password"
+                                            placeholder="Create a secure password"
+                                            className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400 pr-10"
                                             {...signupForm.register('password')}
-                                            className="bg-slate-800/70 border-white/10"
                                         />
-                                        {/* Strength meter */}
-                                        <div className="mt-2 flex gap-1" aria-hidden>
-                                            {[0, 1, 2, 3].map((i) => (
-                                                <div
-                                                    key={i}
-                                                    className={clsx(
-                                                        'h-1.5 w-1/4 rounded-full',
-                                                        pwStrength > i ? 'bg-emerald-400' : 'bg-slate-600'
-                                                    )}
-                                                />
-                                            ))}
-                                        </div>
-                                        <p className="text-xs text-slate-400">
-                                            Min 12 chars with upper, number & symbol
-                                        </p>
-                                        {signupForm.formState.errors.password && (
-                                            <p className="text-xs text-red-300">{signupForm.formState.errors.password.message}</p>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                                        >
+                                            {showPassword ? (
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            )}
+                                        </button>
                                     </div>
-                                    <Button
-                                        type="submit"
-                                        className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500"
-                                        disabled={!signupForm.formState.isValid || isLoading}
-                                    >
-                                        {isLoading ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Creating account...
-                                            </>
-                                        ) : (
-                                            'Create account'
-                                        )}
-                                    </Button>
-                                </form>
-                            </TabsContent>
-                        </Tabs>
+                                    <div className="mt-2 flex gap-1" aria-hidden>
+                                        {[0, 1, 2, 3].map((i) => (
+                                            <div
+                                                key={i}
+                                                className={`h-1.5 flex-1 rounded-full ${pwStrength > i ? 'bg-green-400' : 'bg-gray-600'}`}
+                                            />
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-gray-400">
+                                        Minimum 12 characters with uppercase, number and symbol
+                                    </p>
+                                    {signupForm.formState.errors.password && (
+                                        <p className="text-xs text-red-300">{signupForm.formState.errors.password.message}</p>
+                                    )}
+                                </div>
+                                {authError && (
+                                    <div className="rounded-md bg-red-500/10 border border-red-500 px-3 py-2 text-sm text-red-400">
+                                        {authError}
+                                    </div>
+                                )}
+                                <Button
+                                    type="submit"
+                                    className="w-full bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.35)] hover:brightness-105"
+                                    disabled={isBusy || !signupForm.formState.isValid}
+                                >
+                                    {isAuthLoading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Creating account...
+                                        </>
+                                    ) : (
+                                        'Create account'
+                                    )}
+                                </Button>
+                            </form>
+                        )}
 
-                        <div className="my-6 flex items-center gap-4">
-                            <Separator className="flex-1 bg-white/10" />
-                            <span className="text-xs text-slate-500">or</span>
-                            <Separator className="flex-1 bg-white/10" />
+                        <div className="flex items-center space-x-4">
+                            <div className="flex-1 h-px bg-gray-700" />
+                            <span className="bg-gray-800 px-2 text-gray-400">or</span>
+                            <div className="flex-1 h-px bg-gray-700" />
                         </div>
 
-                        {/* Google Sign In */}
                         <Button
-                            variant="outline"
-                            className="w-full border-white/10 bg-slate-800/60 hover:bg-slate-700/60"
+                            type="button"
                             onClick={handleGoogleSignIn}
-                            disabled={isLoading}
+                            disabled={isBusy}
+                            className="w-full border border-green-400/60 bg-transparent text-green-300 hover:bg-green-500/15"
+                            variant="outline"
                         >
-                            {isLoading ? (
+                            {isGoogleLoading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Signing in...
+                                    Connecting...
                                 </>
                             ) : (
                                 <>
@@ -383,59 +476,120 @@ export default function AuthPage() {
                             )}
                         </Button>
 
-                        {/* Connect Wallet */}
-                        <Button
-                            variant="outline"
-                            className="w-full mt-3 border-white/10 bg-slate-800/60 hover:bg-slate-700/60"
-                            onClick={() => setOpenWallet(true)}
-                            disabled={isLoading}
-                        >
-                            Connect Wallet
-                        </Button>
+                        <div className="space-y-3">
+                            <ConnectButton.Custom>
+                                {({
+                                    account,
+                                    chain,
+                                    openAccountModal,
+                                    openChainModal,
+                                    openConnectModal,
+                                    authenticationStatus,
+                                    mounted,
+                                }) => {
+                                    const ready = mounted && authenticationStatus !== 'loading'
+                                    const connected =
+                                        ready &&
+                                        account &&
+                                        chain &&
+                                        (!authenticationStatus || authenticationStatus === 'authenticated')
 
-                        <p className="mt-6 text-center text-sm text-slate-400">
-                            {tab === 'signin' ? (
-                                <>
-                                    New here?{' '}
-                                    <button
-                                        className="text-emerald-400 hover:text-emerald-300 underline-offset-2 hover:underline"
-                                        onClick={() => setTab('signup')}
-                                        type="button"
-                                    >
-                                        Create an account
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    Already registered?{' '}
-                                    <button
-                                        className="text-emerald-400 hover:text-emerald-300 underline-offset-2 hover:underline"
-                                        onClick={() => setTab('signin')}
-                                        type="button"
-                                    >
-                                        Sign in instead
-                                    </button>
-                                </>
-                            )}
-                        </p>
+                                    return (
+                                        <div
+                                            {...(!ready && {
+                                                'aria-hidden': true,
+                                                style: {
+                                                    opacity: 0,
+                                                    pointerEvents: 'none',
+                                                    userSelect: 'none',
+                                                },
+                                            })}
+                                        >
+                                            {(() => {
+                                                if (!connected) {
+                                                    return (
+                                                        <Button
+                                                            onClick={openConnectModal}
+                                                            className="w-full border border-green-400/60 bg-transparent text-green-300 hover:bg-green-500/15"
+                                                            disabled={!ready || isBusy}
+                                                        >
+                                                            Connect Wallet
+                                                        </Button>
+                                                    )
+                                                }
+
+                                                if (chain.unsupported) {
+                                                    return (
+                                                        <Button
+                                                            onClick={openChainModal}
+                                                            className="w-full bg-red-500 hover:bg-red-600 text-white"
+                                                        >
+                                                            Wrong network
+                                                        </Button>
+                                                    )
+                                                }
+
+                                                return (
+                                                    <div className="flex space-x-2">
+                                                        <Button
+                                                            onClick={openChainModal}
+                                                            className="flex-1 bg-purple-500 hover:bg-purple-600 text-white"
+                                                        >
+                                                            {chain.hasIcon && (
+                                                                <div
+                                                                    style={{
+                                                                        background: chain.iconBackground,
+                                                                        width: 12,
+                                                                        height: 12,
+                                                                        borderRadius: 999,
+                                                                        overflow: 'hidden',
+                                                                        marginRight: 4,
+                                                                    }}
+                                                                >
+                                                                    {chain.iconUrl && (
+                                                                        <img
+                                                                            alt={chain.name ?? 'Chain icon'}
+                                                                            src={chain.iconUrl}
+                                                                            style={{ width: 12, height: 12 }}
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                            {chain.name}
+                                                        </Button>
+                                                        <Button
+                                                            onClick={openAccountModal}
+                                                            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white"
+                                                        >
+                                                            {account.displayName}
+                                                            {account.displayBalance
+                                                                ? ` (${account.displayBalance})`
+                                                                : ''}
+                                                        </Button>
+                                                    </div>
+                                                )
+                                            })()}
+                                        </div>
+                                    )
+                                }}
+                            </ConnectButton.Custom>
+                        </div>
+
+                        <div className="text-center">
+                            <p className="text-gray-400 text-sm">
+                                {tab === 'signin' ? 'Need an account?' : 'Already registered?'}{' '}
+                                <button
+                                    type="button"
+                                    className="text-green-400 hover:text-green-300 font-semibold"
+                                    onClick={() => setTab(tab === 'signin' ? 'signup' : 'signin')}
+                                >
+                                    {tab === 'signin' ? 'Create one for free' : 'Sign in instead'}
+                                </button>
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
-            </section>
-
-            {/* Wallet Dialog */}
-            <Dialog open={openWallet} onOpenChange={setOpenWallet}>
-                <DialogContent className="bg-slate-900/90 backdrop-blur ring-1 ring-white/10 border-white/10">
-                    <DialogHeader>
-                        <DialogTitle>Connect your wallet</DialogTitle>
-                    </DialogHeader>
-                    <div className="mt-2 rounded-xl border border-white/10 p-4">
-                        <ConnectButton showBalance={false} accountStatus="avatar" />
-                    </div>
-                    <p className="mt-3 text-xs text-slate-400">
-                        We never store your private keys. SIWE is used for authentication; signature is verified server-side.
-                    </p>
-                </DialogContent>
-            </Dialog>
-        </main>
+            </div>
+        </div>
     )
 }

@@ -1,14 +1,14 @@
 import { Suspense } from 'react'
+import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { Dashboard } from '@/components/dashboard'
-import { LoginPage } from '@/components/login-page'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 export default async function HomePage() {
     const session = await auth()
 
     if (!session) {
-        return <LoginPage />
+        redirect('/auth?tab=signin')
     }
 
     return (

@@ -1,4 +1,4 @@
-import { LoginPage } from '@/components/login-page'
+import { redirect } from 'next/navigation'
 
 export const metadata = {
     title: 'Sign In - VolSpike',
@@ -6,5 +6,5 @@ export const metadata = {
 }
 
 export default function LoginPageRoute() {
-    return <LoginPage initialMode="signin" />
+    redirect('/auth?tab=signin')
 }
