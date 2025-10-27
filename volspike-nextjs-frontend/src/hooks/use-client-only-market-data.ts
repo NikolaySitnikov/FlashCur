@@ -40,7 +40,7 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
             // Filter for USDT perpetual pairs only
             if (!sym.endsWith('USDT')) continue;
             
-            const volume24h = Number(t.v || t.quoteVolume || 0);
+            const volume24h = Number(t.q || t.quoteVolume || t.v || 0);
             
             // Filter for >$100M in 24h volume
             if (volume24h < 100_000_000) continue;
@@ -51,7 +51,7 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                 price: Number(t.c || t.lastPrice || 0),
                 volume24h: volume24h,
                 change24h: Number(t.P || t.priceChangePercent || 0),
-                fundingRate: f ? Number(f.r || f.fr || 0) : 0,
+                fundingRate: f ? Number(f.r || f.R || f.fr || 0) : 0,
                 openInterest: 0, // Not available in ticker stream
                 timestamp: Date.now(),
             });
@@ -112,6 +112,17 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                         }
                         if (it?.r !== undefined || it?.fr !== undefined) {
                             fundingRef.current.set(it.s, it);
+                            
+                            // Debug logging for funding rate data
+                            if (msg.stream === '!markPrice@arr') {
+                                console.log('📊 MarkPrice data:', {
+                                    symbol: it.s,
+                                    r: it.r,
+                                    R: it.R,
+                                    fr: it.fr,
+                                    parsed: Number(it.r || it.R || it.fr || 0)
+                                });
+                            }
                         }
                     }
 
