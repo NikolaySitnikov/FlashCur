@@ -13,6 +13,9 @@ COPY tsconfig.json ./
 # Install ALL dependencies (including devDependencies needed for tsc)
 RUN npm ci
 
+# Generate Prisma Client
+RUN npx prisma generate
+
 # Compile TypeScript
 RUN npm run build
 
