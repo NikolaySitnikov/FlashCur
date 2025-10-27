@@ -8,7 +8,8 @@ COPY package*.json ./
 # Copy source code and config
 COPY src ./src
 COPY tsconfig.json ./
-COPY prisma ./prisma
+# Copy Prisma schema from backend (shared schema)
+COPY ../volspike-nodejs-backend/prisma ./prisma
 
 # Install ALL dependencies
 RUN npm ci
