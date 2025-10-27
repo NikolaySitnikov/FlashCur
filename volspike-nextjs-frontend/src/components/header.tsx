@@ -14,7 +14,6 @@ export function Header() {
             <div className="container flex h-16 items-center justify-between">
                 <div className="flex items-center space-x-4">
                     <h1 className="text-2xl font-bold">VolSpike</h1>
-                    <span className="text-sm text-muted-foreground">Binance Perps Guru</span>
                 </div>
 
                 <div className="flex items-center space-x-4">

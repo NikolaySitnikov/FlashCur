@@ -10,6 +10,7 @@ import { AlertPanel } from '@/components/alert-panel'
 import { TierUpgrade } from '@/components/tier-upgrade'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export function Dashboard() {
     const { data: session, status } = useSession()
@@ -23,7 +24,6 @@ export function Dashboard() {
     // Use client-only market data (no API calls, no Redis)
     const {
         data: marketData,
-        status: connectionStatus,
         lastUpdate,
         nextUpdate,
         isLive,
@@ -114,68 +114,92 @@ export function Dashboard() {
         )
     }
 
+    const marketDataCard = (
+        <Card>
+            <CardHeader>
+                <CardTitle>
+                    Market Data
+                    <span className="ml-2 text-sm font-normal text-gray-500">
+                        ({userTier.toUpperCase()} Tier)
+                    </span>
+                </CardTitle>
+                <CardDescription>
+                    Real-time volume spikes and market movements
+                    {isLive ? (
+                        <span className="ml-2 text-green-500">● Live Data (Binance WebSocket)</span>
+                    ) : isConnecting ? (
+                        <span className="ml-2 text-yellow-500">● Connecting to Binance...</span>
+                    ) : isReconnecting ? (
+                        <span className="ml-2 text-yellow-500">● Reconnecting...</span>
+                    ) : hasError ? (
+                        <span className="ml-2 text-red-500">● Connection Failed</span>
+                    ) : (
+                        <span className="ml-2 text-blue-500">● Loading...</span>
+                    )}
+                    {lastUpdate > 0 && (
+                        <span className="ml-2 text-gray-500">
+                            (Updated {Math.floor((Date.now() - lastUpdate) / 1000)}s ago)
+                        </span>
+                    )}
+                    {countdownDisplay && (
+                        <span className="ml-2 text-blue-500">
+                            • Next update in {countdownDisplay}
+                        </span>
+                    )}
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isConnecting ? (
+                    <LoadingSpinner />
+                ) : hasError ? (
+                    <div className="text-red-500">
+                        Connection failed. Please refresh the page.
+                    </div>
+                ) : marketData.length === 0 ? (
+                    <div className="text-yellow-500">
+                        No market data available. {isConnecting ? 'Connecting to Binance...' : 'Please check your connection.'}
+                    </div>
+                ) : (
+                    <MarketTable
+                        data={marketData}
+                        userTier={userTier as 'free' | 'pro' | 'elite'}
+                        withContainer={false}
+                    />
+                )}
+            </CardContent>
+        </Card>
+    )
+
+    const alertsCard = <AlertPanel alerts={alerts} />
+
     return (
         <div className="min-h-screen bg-background">
             <Header />
 
             <main className="container mx-auto px-4 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    {/* Main Market Data */}
-                    <div className="lg:col-span-3">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>
-                                    Live Market Data
-                                    <span className="ml-2 text-sm font-normal text-gray-500">
-                                        ({userTier.toUpperCase()} Tier)
-                                    </span>
-                                </CardTitle>
-                                <CardDescription>
-                                    Real-time volume spikes and market movements
-                                    {isLive ? (
-                                        <span className="ml-2 text-green-500">● Live Data (Binance WebSocket)</span>
-                                    ) : isConnecting ? (
-                                        <span className="ml-2 text-yellow-500">● Connecting to Binance...</span>
-                                    ) : isReconnecting ? (
-                                        <span className="ml-2 text-yellow-500">● Reconnecting...</span>
-                                    ) : hasError ? (
-                                        <span className="ml-2 text-red-500">● Connection Failed</span>
-                                    ) : (
-                                        <span className="ml-2 text-blue-500">● Loading...</span>
-                                    )}
-                                    {lastUpdate > 0 && (
-                                        <span className="ml-2 text-gray-500">
-                                            (Updated {Math.floor((Date.now() - lastUpdate) / 1000)}s ago)
-                                        </span>
-                                    )}
-                                    {countdownDisplay && (
-                                        <span className="ml-2 text-blue-500">
-                                            • Next update in {countdownDisplay}
-                                        </span>
-                                    )}
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {isConnecting ? (
-                                    <LoadingSpinner />
-                                ) : hasError ? (
-                                    <div className="text-red-500">
-                                        Connection failed. Please refresh the page.
-                                    </div>
-                                ) : marketData.length === 0 ? (
-                                    <div className="text-yellow-500">
-                                        No market data available. {isConnecting ? 'Connecting to Binance...' : 'Please check your connection.'}
-                                    </div>
-                                ) : (
-                                    <MarketTable data={marketData} userTier={userTier as 'free' | 'pro' | 'elite'} />
-                                )}
-                            </CardContent>
-                        </Card>
+                <div className="space-y-6">
+                    <div className="lg:hidden">
+                        <Tabs defaultValue="market" className="w-full">
+                            <TabsList className="grid grid-cols-2">
+                                <TabsTrigger value="market">Market Data</TabsTrigger>
+                                <TabsTrigger value="alerts">Volume Alerts</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="market" className="mt-4">
+                                {marketDataCard}
+                            </TabsContent>
+                            <TabsContent value="alerts" className="mt-4">
+                                {alertsCard}
+                            </TabsContent>
+                        </Tabs>
                     </div>
 
-                    {/* Alerts Panel */}
-                    <div className="lg:col-span-1">
-                        <AlertPanel alerts={alerts} />
+                    <div className="hidden gap-6 lg:grid lg:grid-cols-4">
+                        <div className="lg:col-span-3">
+                            {marketDataCard}
+                        </div>
+                        <div className="lg:col-span-1">
+                            {alertsCard}
+                        </div>
                     </div>
                 </div>
             </main>

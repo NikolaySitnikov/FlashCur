@@ -19,9 +19,10 @@ interface MarketData {
 interface MarketTableProps {
     data: MarketData[]
     userTier?: 'free' | 'pro' | 'elite'
+    withContainer?: boolean
 }
 
-export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
+export function MarketTable({ data, userTier = 'free', withContainer = true }: MarketTableProps) {
     const [sortBy, setSortBy] = useState<'symbol' | 'volume' | 'change' | 'price' | 'funding'>('volume')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
@@ -81,132 +82,138 @@ export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
         }
     }
 
+    const tableContent = (
+        <div className="overflow-x-auto">
+            <table className="w-full">
+                <thead>
+                    <tr className="border-b">
+                        <th className="text-left p-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSort('symbol')}
+                                className="h-auto p-0 font-semibold"
+                            >
+                                Symbol
+                                {sortBy === 'symbol' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
+                            </Button>
+                        </th>
+                        <th className="text-right p-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSort('price')}
+                                className="h-auto p-0 font-semibold"
+                            >
+                                Price
+                                {sortBy === 'price' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
+                            </Button>
+                        </th>
+                        <th className="text-right p-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSort('volume')}
+                                className="h-auto p-0 font-semibold"
+                            >
+                                <Volume2 className="h-4 w-4 mr-1" />
+                                24h Volume
+                                {sortBy === 'volume' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
+                            </Button>
+                        </th>
+                        <th className="text-right p-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSort('change')}
+                                className="h-auto p-0 font-semibold"
+                            >
+                                Volume Change
+                                {sortBy === 'change' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
+                            </Button>
+                        </th>
+                        <th className="text-right p-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSort('funding')}
+                                className="h-auto p-0 font-semibold"
+                            >
+                                Funding Rate
+                                {sortBy === 'funding' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
+                            </Button>
+                        </th>
+                        {userTier !== 'free' && (
+                            <th className="text-right p-2">Open Interest</th>
+                        )}
+                    </tr>
+                </thead>
+                <tbody>
+                    {sortedData.map((item) => (
+                        <tr
+                            key={item.symbol}
+                            className={[
+                                'border-b hover:bg-muted/50 transition-colors',
+                                (item.fundingRate ?? 0) >= 0.0003 ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : '',
+                                (item.fundingRate ?? 0) <= -0.0003 ? 'bg-red-500/10 hover:bg-red-500/20' : '',
+                            ].join(' ').trim().replace(/\s+/g, ' ')}
+                        >
+                            <td className="p-2 font-mono text-sm">{formatSymbol(item.symbol)}</td>
+                            <td className="p-2 text-right font-mono">
+                                ${item.price.toLocaleString()}
+                            </td>
+                            <td className="p-2 text-right font-mono">
+                                ${formatVolume(item.volume24h)}
+                            </td>
+                            <td className="p-2 text-right">
+                                <div className="flex items-center justify-end">
+                                    {(() => {
+                                        const changeValue = item.change24h ?? item.volumeChange ?? 0;
+                                        return (
+                                            <>
+                                                {changeValue > 0 ? (
+                                                    <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                                                ) : (
+                                                    <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+                                                )}
+                                                <span className={`font-mono ${changeValue > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                    {changeValue > 0 ? '+' : ''}{changeValue.toFixed(2)}%
+                                                </span>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                            </td>
+                            <td className="p-2 text-right font-mono">
+                                <span className={(item.fundingRate ?? 0) > 0 ? 'text-green-500' : 'text-red-500'}>
+                                    {(item.fundingRate ?? 0) > 0 ? '+' : ''}{((item.fundingRate ?? 0) * 100).toFixed(4)}%
+                                </span>
+                            </td>
+                            {userTier !== 'free' && (
+                                <td className="p-2 text-right font-mono">
+                                    ${(item.openInterest ?? 0).toLocaleString()}
+                                </td>
+                            )}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    )
+
+    if (!withContainer) {
+        return tableContent
+    }
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Live Market Data</CardTitle>
+                <CardTitle>Market Data</CardTitle>
                 <CardDescription>
                     Real-time volume spikes and market movements
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b">
-                                <th className="text-left p-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleSort('symbol')}
-                                        className="h-auto p-0 font-semibold"
-                                    >
-                                        Symbol
-                                        {sortBy === 'symbol' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
-                                    </Button>
-                                </th>
-                                <th className="text-right p-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleSort('price')}
-                                        className="h-auto p-0 font-semibold"
-                                    >
-                                        Price
-                                        {sortBy === 'price' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
-                                    </Button>
-                                </th>
-                                <th className="text-right p-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleSort('volume')}
-                                        className="h-auto p-0 font-semibold"
-                                    >
-                                        <Volume2 className="h-4 w-4 mr-1" />
-                                        24h Volume
-                                        {sortBy === 'volume' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
-                                    </Button>
-                                </th>
-                                <th className="text-right p-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleSort('change')}
-                                        className="h-auto p-0 font-semibold"
-                                    >
-                                        Volume Change
-                                        {sortBy === 'change' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
-                                    </Button>
-                                </th>
-                                <th className="text-right p-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleSort('funding')}
-                                        className="h-auto p-0 font-semibold"
-                                    >
-                                        Funding Rate
-                                        {sortBy === 'funding' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
-                                    </Button>
-                                </th>
-                                {userTier !== 'free' && (
-                                    <th className="text-right p-2">Open Interest</th>
-                                )}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sortedData.map((item) => (
-                                <tr
-                                    key={item.symbol}
-                                    className={[
-                                        'border-b hover:bg-muted/50 transition-colors',
-                                        (item.fundingRate ?? 0) >= 0.0003 ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : '',
-                                        (item.fundingRate ?? 0) <= -0.0003 ? 'bg-red-500/10 hover:bg-red-500/20' : '',
-                                    ].join(' ').trim().replace(/\s+/g, ' ')}
-                                >
-                                    <td className="p-2 font-mono text-sm">{formatSymbol(item.symbol)}</td>
-                                    <td className="p-2 text-right font-mono">
-                                        ${item.price.toLocaleString()}
-                                    </td>
-                                    <td className="p-2 text-right font-mono">
-                                        ${formatVolume(item.volume24h)}
-                                    </td>
-                                    <td className="p-2 text-right">
-                                        <div className="flex items-center justify-end">
-                                            {(() => {
-                                                const changeValue = item.change24h ?? item.volumeChange ?? 0;
-                                                return (
-                                                    <>
-                                                        {changeValue > 0 ? (
-                                                            <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                                                        ) : (
-                                                            <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-                                                        )}
-                                                        <span className={`font-mono ${changeValue > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                            {changeValue > 0 ? '+' : ''}{changeValue.toFixed(2)}%
-                                                        </span>
-                                                    </>
-                                                );
-                                            })()}
-                                        </div>
-                                    </td>
-                                    <td className="p-2 text-right font-mono">
-                                        <span className={(item.fundingRate ?? 0) > 0 ? 'text-green-500' : 'text-red-500'}>
-                                            {(item.fundingRate ?? 0) > 0 ? '+' : ''}{((item.fundingRate ?? 0) * 100).toFixed(4)}%
-                                        </span>
-                                    </td>
-                                    {userTier !== 'free' && (
-                                        <td className="p-2 text-right font-mono">
-                                            ${(item.openInterest ?? 0).toLocaleString()}
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </CardContent>
+            <CardContent>{tableContent}</CardContent>
         </Card>
     )
 }
