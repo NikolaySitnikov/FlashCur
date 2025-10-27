@@ -91,26 +91,28 @@ export function LoginPage({ initialMode }: LoginPageProps) {
                     <CardHeader className="space-y-4">
                         {/* Only show tabs if we're on the root page (no initialMode means both tabs visible) */}
                         {!initialMode && (
-                            <div className="flex justify-center space-x-2" role="tablist" aria-label="Authentication mode">
-                                <Button
-                                    type="button"
-                                    variant={mode === 'signin' ? 'default' : 'secondary'}
-                                    className={`flex-1 ${mode === 'signin' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-                                    onClick={() => setMode('signin')}
-                                    aria-selected={mode === 'signin'}
-                                >
-                                    Sign in
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={mode === 'signup' ? 'default' : 'secondary'}
-                                    className={`flex-1 ${mode === 'signup' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-                                    onClick={() => setMode('signup')}
-                                    aria-selected={mode === 'signup'}
-                                >
-                                    Create account
-                                </Button>
-                            </div>
+                        <div className="flex justify-center space-x-2 text-sm" role="tablist" aria-label="Authentication mode">
+                            <button
+                                type="button"
+                                className={`flex-1 rounded-full border px-4 py-2 transition-all ${mode === 'signin'
+                                    ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+                                    : 'border-gray-700 bg-gray-800/80 text-gray-300 hover:border-gray-600'}`}
+                                onClick={() => setMode('signin')}
+                                aria-selected={mode === 'signin'}
+                            >
+                                Email Login
+                            </button>
+                            <button
+                                type="button"
+                                className={`flex-1 rounded-full border px-4 py-2 transition-all ${mode === 'signup'
+                                    ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+                                    : 'border-gray-700 bg-gray-800/80 text-gray-300 hover:border-gray-600'}`}
+                                onClick={() => setMode('signup')}
+                                aria-selected={mode === 'signup'}
+                            >
+                                Create Account
+                            </button>
+                        </div>
                         )}
                         <div className="space-y-1 text-center">
                             <CardTitle className="text-2xl text-white">
@@ -191,7 +193,7 @@ export function LoginPage({ initialMode }: LoginPageProps) {
                             )}
                             <Button
                                 type="submit"
-                                className="w-full bg-green-500 hover:bg-green-600 text-white"
+                                className="w-full bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.35)] hover:brightness-105"
                                 disabled={isLoading}
                             >
                                 {isLoading ? `${actionLabel}...` : actionLabel}
@@ -241,7 +243,7 @@ export function LoginPage({ initialMode }: LoginPageProps) {
                                                     return (
                                                         <Button
                                                             onClick={openConnectModal}
-                                                            className="w-full bg-green-500 hover:bg-green-600 text-white"
+                                                            className="w-full border border-green-400/60 bg-transparent text-green-300 hover:bg-green-500/15"
                                                         >
                                                             Connect Wallet
                                                         </Button>
@@ -311,7 +313,7 @@ export function LoginPage({ initialMode }: LoginPageProps) {
                                 {mode === 'signin' ? 'Need an account?' : 'Already registered?'}{' '}
                                 <button
                                     type="button"
-                                    className="text-green-500 hover:text-green-400 font-medium"
+                                    className="text-green-400 hover:text-green-300 font-semibold"
                                     onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
                                 >
                                     {mode === 'signin' ? 'Create one for free' : 'Sign in instead'}
