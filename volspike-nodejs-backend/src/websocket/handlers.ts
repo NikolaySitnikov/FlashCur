@@ -180,21 +180,57 @@ export function setupSocketHandlers(
         })
     })
 
-    // Broadcast market updates to all connected clients
+    // Track last update times per tier
+    const lastUpdateTimes = {
+        free: 0,
+        pro: 0,
+        elite: 0
+    }
+
+    // Tier-aware market update broadcasting
     setInterval(async () => {
         try {
             const marketData = await getCachedMarketData()
-            if (marketData) {
-                // Broadcast to all connected clients
-                io.emit('market-update', marketData)
+            if (!marketData) return
 
-                // Publish to Redis for other services
-                await publishMarketUpdate(marketData)
+            const now = Date.now()
+
+            // Elite tier: every 30 seconds
+            if (now - lastUpdateTimes.elite >= 30000) {
+                io.to('tier-elite').emit('market-update', {
+                    data: marketData,
+                    tier: 'elite',
+                    timestamp: now
+                })
+                lastUpdateTimes.elite = now
             }
+
+            // Pro tier: every 5 minutes
+            if (now - lastUpdateTimes.pro >= 300000) {
+                io.to('tier-pro').emit('market-update', {
+                    data: marketData,
+                    tier: 'pro',
+                    timestamp: now
+                })
+                lastUpdateTimes.pro = now
+            }
+
+            // Free tier: every 15 minutes
+            if (now - lastUpdateTimes.free >= 900000) {
+                io.to('tier-free').emit('market-update', {
+                    data: marketData,
+                    tier: 'free',
+                    timestamp: now
+                })
+                lastUpdateTimes.free = now
+            }
+
+            // Publish to Redis for other services
+            await publishMarketUpdate(marketData)
         } catch (error) {
             logger.error('Error broadcasting market update:', error)
         }
-    }, 5000) // Broadcast every 5 seconds
+    }, 10000) // Check every 10 seconds
 
     // Handle alert broadcasting
     io.on('alert-triggered', async (alert: any) => {

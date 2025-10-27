@@ -14,7 +14,8 @@ export class BinanceWebSocketClient extends EventEmitter {
 
     async connect() {
         try {
-            const wsUrl = 'wss://fstream.binance.com/ws/!ticker@arr'
+            // Use combined stream for better reliability
+            const wsUrl = 'wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr'
             this.ws = new WebSocket(wsUrl)
 
             this.ws.on('open', () => {
@@ -67,18 +68,62 @@ export class BinanceWebSocketClient extends EventEmitter {
 
     private handleMessage(message: any) {
         try {
-            if (Array.isArray(message)) {
-                // Handle ticker data
-                this.emit('ticker', message)
+            // Handle combined stream format
+            if (message.stream && message.data) {
+                // Combined stream: { stream: "!ticker@arr", data: [...] }
+                this.handleStreamData(message.stream, message.data)
+            } else if (Array.isArray(message)) {
+                // Direct array format
+                this.handleTickerData(message)
             } else if (message.e === '24hrTicker') {
-                // Handle individual ticker updates
-                this.emit('ticker', [message])
+                // Single ticker update
+                this.handleTickerData([message])
             } else if (message.e === 'markPriceUpdate') {
-                // Handle funding rate updates
+                // Funding rate update
                 this.emit('funding', [message])
+            } else {
+                logger.debug('Unknown message format:', JSON.stringify(message).substring(0, 100))
             }
         } catch (error) {
             logger.error('Error handling WebSocket message:', error)
+            // Don't crash the handler, just log and continue
+        }
+    }
+
+    private handleStreamData(stream: string, data: any) {
+        try {
+            if (stream === '!ticker@arr') {
+                this.handleTickerData(data)
+            } else if (stream === '!markPrice@arr') {
+                this.emit('funding', data)
+            }
+        } catch (error) {
+            logger.error(`Error handling stream ${stream}:`, error)
+        }
+    }
+
+    private handleTickerData(data: any[]) {
+        try {
+            if (!Array.isArray(data)) {
+                logger.warn('Expected array for ticker data, got:', typeof data)
+                return
+            }
+
+            // Filter and validate ticker data
+            const validTickers = data.filter(item =>
+                item &&
+                typeof item === 'object' &&
+                item.s &&
+                item.s.endsWith('USDT') &&
+                typeof item.c === 'string' &&
+                typeof item.v === 'string'
+            )
+
+            if (validTickers.length > 0) {
+                this.emit('ticker', validTickers)
+            }
+        } catch (error) {
+            logger.error('Error processing ticker data:', error)
         }
     }
 

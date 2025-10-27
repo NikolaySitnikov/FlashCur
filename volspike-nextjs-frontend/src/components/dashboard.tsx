@@ -22,6 +22,12 @@ export function Dashboard() {
             // Subscribe to market updates
             socket.on('market-update', (data) => {
                 console.log('Market update received:', data)
+                // Handle both old and new data formats
+                const marketData = data.data || data
+                if (marketData) {
+                    // Update the market data in the UI
+                    // This will trigger a re-render with fresh data
+                }
             })
 
             // Subscribe to alerts

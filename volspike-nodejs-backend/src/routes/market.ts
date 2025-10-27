@@ -5,7 +5,7 @@ import { createLogger } from '../lib/logger'
 import { User } from '../types'
 import { getUser, requireUser } from '../lib/hono-extensions'
 import { getMarketData } from '../services/binance-client'
-import { getCachedMarketData } from '../services/redis-client'
+import { getCachedMarketData, redis } from '../services/redis-client'
 
 const logger = createLogger()
 
@@ -35,6 +35,11 @@ market.options('/spikes', (c) => {
     return c.text('', 200)
 })
 
+market.options('/health', (c) => {
+    logger.debug('OPTIONS /api/market/health - preflight request')
+    return c.text('', 200)
+})
+
 // ============================================
 // GET /data - Market data with tier-based throttling
 // ============================================
@@ -61,9 +66,14 @@ market.get('/data', async (c) => {
         const marketData = await getCachedMarketData()
 
         if (!marketData || marketData.length === 0) {
-            // Fallback to direct API call
-            const freshData = await getMarketData()
-            return c.json(freshData)
+            // Return empty data with stale indicator instead of 500
+            logger.warn('No cached market data available, returning empty response')
+            return c.json({
+                data: [],
+                stale: true,
+                message: 'Market data temporarily unavailable',
+                lastUpdate: null
+            }, 200)
         }
 
         // Apply tier-based filtering
@@ -84,7 +94,12 @@ market.get('/data', async (c) => {
 
         logger.info(`Market data requested by ${user?.email} (${tier} tier)`)
 
-        return c.json(filteredData)
+        return c.json({
+            data: filteredData,
+            stale: false,
+            lastUpdate: marketData[0]?.timestamp || Date.now(),
+            tier: tier
+        })
     } catch (error) {
         logger.error('Market data error:', error)
         return c.json({ error: 'Failed to fetch market data' }, 500)
@@ -225,6 +240,55 @@ market.get('/spikes', async (c) => {
     } catch (error) {
         logger.error('Volume spikes error:', error)
         return c.json({ error: 'Failed to fetch volume spikes' }, 500)
+    }
+})
+
+// ============================================
+// GET /health - System health and ingestion status
+// ============================================
+
+market.get('/health', async (c) => {
+    try {
+        // Check Redis connection
+        const redisStatus = redis.status === 'ready' ? 'connected' : 'disconnected'
+
+        // Check if we have cached market data
+        const marketData = await getCachedMarketData()
+        const hasData = marketData && marketData.length > 0
+
+        // Get ingestion heartbeat
+        const heartbeat = await redis.get('ingestion:heartbeat')
+        const lastError = await redis.get('ingestion:last_error')
+
+        const health = {
+            status: 'ok',
+            timestamp: Date.now(),
+            redis: {
+                status: redisStatus,
+                connected: redisStatus === 'connected'
+            },
+            ingestion: {
+                hasData,
+                lastHeartbeat: heartbeat ? parseInt(heartbeat) : null,
+                lastError: lastError || null,
+                dataAge: hasData && marketData[0]?.timestamp
+                    ? Date.now() - marketData[0].timestamp
+                    : null
+            },
+            market: {
+                symbolsCount: hasData ? marketData.length : 0,
+                lastUpdate: hasData ? marketData[0]?.timestamp : null
+            }
+        }
+
+        return c.json(health)
+    } catch (error) {
+        logger.error('Health check error:', error)
+        return c.json({
+            status: 'error',
+            error: 'Health check failed',
+            timestamp: Date.now()
+        }, 500)
     }
 })
 

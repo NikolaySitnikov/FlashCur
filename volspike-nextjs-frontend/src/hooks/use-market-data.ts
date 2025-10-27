@@ -42,7 +42,14 @@ export function useMarketData() {
                 throw new Error('Failed to fetch market data')
             }
 
-            return response.json()
+            const result = await response.json()
+
+            // Handle new response format with stale indicator
+            if (result.stale) {
+                console.warn('[useMarketData] Received stale data:', result.message)
+            }
+
+            return result.data || result // Backward compatibility
         },
         enabled: !!session,
         refetchInterval: session?.user?.tier === 'elite' ? 30000 : 300000, // 30s for elite, 5min for others

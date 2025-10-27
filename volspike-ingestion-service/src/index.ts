@@ -97,8 +97,14 @@ class IngestionService {
                     // Check for volume spikes
                     await this.checkVolumeSpikes(normalizedData)
 
+                    // Update heartbeat
+                    await redis.setex('ingestion:heartbeat', 120, Date.now().toString())
+                    await redis.del('ingestion:last_error') // Clear any previous errors
+
                 } catch (error) {
                     logger.error('Error processing ticker data:', error)
+                    // Store error for debugging
+                    await redis.setex('ingestion:last_error', 300, String(error).slice(0, 200))
                 }
             })
 
