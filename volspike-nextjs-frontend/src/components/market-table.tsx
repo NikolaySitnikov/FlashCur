@@ -76,8 +76,13 @@ export function MarketTable({ data, userTier = 'free', withContainer = true }: M
     const handleSort = (column: 'symbol' | 'volume' | 'change' | 'price' | 'funding') => {
         if (sortBy === column) {
             setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+            return
+        }
+
+        setSortBy(column)
+        if (column === 'symbol') {
+            setSortOrder('asc')
         } else {
-            setSortBy(column)
             setSortOrder('desc')
         }
     }
