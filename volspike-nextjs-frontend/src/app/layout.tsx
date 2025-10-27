@@ -4,6 +4,7 @@ import './globals.css'
 import '@rainbow-me/rainbowkit/styles.css'
 import { Providers } from '@/components/providers'
 import { Toaster } from 'react-hot-toast'
+import { Footer } from '@/components/footer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -37,7 +38,12 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
             <body className={inter.className}>
                 <Providers>
-                    {children}
+                    <div className="flex min-h-screen flex-col bg-background">
+                        <div className="flex-1 flex flex-col">
+                            {children}
+                        </div>
+                        <Footer />
+                    </div>
                     <Toaster
                         position="top-right"
                         toastOptions={{

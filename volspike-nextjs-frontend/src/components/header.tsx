@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from '@/components/ui/button'
@@ -12,9 +14,17 @@ export function Header() {
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="container flex h-16 items-center justify-between">
-                <div className="flex items-center space-x-4">
-                    <h1 className="text-2xl font-bold">VolSpike</h1>
-                </div>
+                <Link href="/" className="flex items-center space-x-3">
+                    <Image
+                        src="/volspike-logo.svg"
+                        alt="VolSpike logo"
+                        width={36}
+                        height={36}
+                        priority
+                        className="h-9 w-9"
+                    />
+                    <span className="text-2xl font-bold tracking-tight">VolSpike</span>
+                </Link>
 
                 <div className="flex items-center space-x-4">
                     <ThemeToggle />
