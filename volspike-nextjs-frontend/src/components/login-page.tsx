@@ -16,8 +16,8 @@ interface LoginPageProps {
     initialMode?: 'signin' | 'signup'
 }
 
-export function LoginPage({ initialMode = 'signin' }: LoginPageProps) {
-    const [mode, setMode] = useState<'signin' | 'signup'>(initialMode)
+export function LoginPage({ initialMode }: LoginPageProps) {
+    const [mode, setMode] = useState<'signin' | 'signup'>(initialMode || 'signin')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [rememberMe, setRememberMe] = useState(false)
@@ -89,7 +89,8 @@ export function LoginPage({ initialMode = 'signin' }: LoginPageProps) {
                 {/* Login Card */}
                 <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
                     <CardHeader className="space-y-4">
-                        {initialMode === 'signin' && (
+                        {/* Only show tabs if we're on the root page (no initialMode means both tabs visible) */}
+                        {!initialMode && (
                             <div className="flex justify-center space-x-2" role="tablist" aria-label="Authentication mode">
                                 <Button
                                     type="button"
