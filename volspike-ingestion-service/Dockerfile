@@ -1,3 +1,4 @@
+# Cache buster: $(date)
 FROM node:18-alpine
 
 WORKDIR /app
