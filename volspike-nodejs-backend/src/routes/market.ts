@@ -62,8 +62,11 @@ market.get('/data', async (c) => {
             }
         }
 
-        // Get cached market data
+        // Get cached market data from GitHub Actions ingestion
         const marketData = await getCachedMarketData()
+        const lastUpdate = await redis.get('market:lastUpdate')
+        const heartbeat = await redis.get('ingestion:heartbeat')
+        const lastError = await redis.get('ingestion:last_error')
 
         if (!marketData || marketData.length === 0) {
             // Return empty data with stale indicator instead of 500
@@ -71,8 +74,13 @@ market.get('/data', async (c) => {
             return c.json({
                 data: [],
                 stale: true,
-                message: 'Market data temporarily unavailable',
-                lastUpdate: null
+                message: 'Market data temporarily unavailable - GitHub Actions ingestion may be running',
+                lastUpdate: lastUpdate ? parseInt(lastUpdate) : null,
+                ingestionStatus: {
+                    hasData: false,
+                    lastHeartbeat: heartbeat ? parseInt(heartbeat) : null,
+                    lastError: lastError || null
+                }
             }, 200)
         }
 
@@ -97,8 +105,13 @@ market.get('/data', async (c) => {
         return c.json({
             data: filteredData,
             stale: false,
-            lastUpdate: marketData[0]?.timestamp || Date.now(),
-            tier: tier
+            lastUpdate: lastUpdate ? parseInt(lastUpdate) : marketData[0]?.timestamp || Date.now(),
+            tier: tier,
+            ingestionStatus: {
+                hasData: true,
+                lastHeartbeat: heartbeat ? parseInt(heartbeat) : null,
+                lastError: lastError || null
+            }
         })
     } catch (error) {
         logger.error('Market data error:', error)

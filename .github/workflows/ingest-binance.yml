@@ -1,0 +1,39 @@
+name: Ingest Binance Data to Redis
+
+on:
+  schedule:
+    # Run every 5 minutes
+    - cron: "*/5 * * * *"
+  # Allow manual trigger
+  workflow_dispatch:
+  # Run on push to main (for testing)
+  push:
+    branches: [ main ]
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          npm install @upstash/redis node-fetch
+          
+      - name: Run Binance ingestion
+        run: node scripts/ingest-binance.js
+        env:
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          
+      - name: Notify on failure
+        if: failure()
+        run: echo "Ingestion failed - check logs"

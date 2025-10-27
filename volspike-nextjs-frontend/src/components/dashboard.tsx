@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSocket } from '@/hooks/use-socket'
 import { useMarketData } from '@/hooks/use-market-data'
+import { useBinanceWebSocket } from '@/hooks/use-binance-websocket'
 import { Header } from '@/components/header'
 import { MarketTable } from '@/components/market-table'
 import { AlertPanel } from '@/components/alert-panel'
@@ -15,7 +16,13 @@ export function Dashboard() {
     const { data: session, status } = useSession()
     const { socket, isConnected } = useSocket()
     const { data: marketData, isLoading, error } = useMarketData()
+    const { isConnected: binanceConnected, marketData: binanceData, error: binanceError } = useBinanceWebSocket()
     const [alerts, setAlerts] = useState<any[]>([])
+    
+    // Use client-side Binance data for Elite tier, fallback to API data
+    const currentMarketData = session?.user?.tier === 'elite' && binanceData.length > 0 
+        ? binanceData 
+        : marketData || []
 
     useEffect(() => {
         if (socket && isConnected) {
@@ -77,18 +84,28 @@ export function Dashboard() {
                                 <CardTitle>Live Market Data</CardTitle>
                                 <CardDescription>
                                     Real-time volume spikes and market movements
-                                    {isConnected && (
-                                        <span className="ml-2 text-green-500">● Connected</span>
+                                    {session?.user?.tier === 'elite' ? (
+                                        binanceConnected ? (
+                                            <span className="ml-2 text-green-500">● Live Data (Binance)</span>
+                                        ) : (
+                                            <span className="ml-2 text-yellow-500">● Connecting...</span>
+                                        )
+                                    ) : (
+                                        isConnected && (
+                                            <span className="ml-2 text-blue-500">● Cached Data</span>
+                                        )
                                     )}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {isLoading ? (
                                     <LoadingSpinner />
-                                ) : error ? (
-                                    <div className="text-red-500">Error loading market data</div>
+                                ) : (error || binanceError) ? (
+                                    <div className="text-red-500">
+                                        Error loading market data: {error || binanceError}
+                                    </div>
                                 ) : (
-                                    <MarketTable data={marketData || []} />
+                                    <MarketTable data={currentMarketData} />
                                 )}
                             </CardContent>
                         </Card>
