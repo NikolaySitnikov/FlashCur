@@ -82,7 +82,7 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                 reconnectAttemptsRef.current = 0;
                 setStatus('live');
                 console.log('✅ Binance WebSocket connected');
-                
+
                 // Initialize countdown for non-elite tiers
                 if (tier !== 'elite') {
                     const now = Date.now();

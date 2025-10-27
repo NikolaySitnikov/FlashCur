@@ -15,6 +15,7 @@ export function Dashboard() {
     const { data: session, status } = useSession()
     const { socket, isConnected } = useSocket()
     const [alerts, setAlerts] = useState<any[]>([])
+    const [countdownDisplay, setCountdownDisplay] = useState<string>('')
 
     // Determine user tier
     const userTier = session?.user?.tier || 'free'
@@ -36,32 +37,35 @@ export function Dashboard() {
         }
     })
 
-    // Countdown timer for next update (non-elite tiers)
+    // Real-time countdown timer for next update (non-elite tiers)
     useEffect(() => {
-        if (userTier === 'elite' || nextUpdate === 0) return
+        if (userTier === 'elite' || nextUpdate === 0) {
+            setCountdownDisplay('')
+            return
+        }
 
-        const interval = setInterval(() => {
+        const updateCountdown = () => {
             const now = Date.now()
             const remaining = Math.max(0, nextUpdate - now)
+            
             if (remaining === 0) {
-                clearInterval(interval)
+                setCountdownDisplay('')
+                return
             }
-        }, 1000)
+            
+            const minutes = Math.floor(remaining / 60000)
+            const seconds = Math.floor((remaining % 60000) / 1000)
+            setCountdownDisplay(`${minutes}:${seconds.toString().padStart(2, '0')}`)
+        }
+
+        // Update immediately
+        updateCountdown()
+
+        // Update every second
+        const interval = setInterval(updateCountdown, 1000)
 
         return () => clearInterval(interval)
     }, [nextUpdate, userTier])
-
-    // Get countdown display
-    const getCountdownDisplay = () => {
-        if (userTier === 'elite') return null
-        if (nextUpdate === 0) return null
-
-        const remaining = Math.max(0, nextUpdate - Date.now())
-        const minutes = Math.floor(remaining / 60000)
-        const seconds = Math.floor((remaining % 60000) / 1000)
-
-        return `${minutes}:${seconds.toString().padStart(2, '0')}`
-    }
 
     useEffect(() => {
         if (socket && isConnected) {
@@ -144,9 +148,9 @@ export function Dashboard() {
                                             (Updated {Math.floor((Date.now() - lastUpdate) / 1000)}s ago)
                                         </span>
                                     )}
-                                    {getCountdownDisplay() && (
+                                    {countdownDisplay && (
                                         <span className="ml-2 text-blue-500">
-                                            • Next update in {getCountdownDisplay()}
+                                            • Next update in {countdownDisplay}
                                         </span>
                                     )}
                                 </CardDescription>
