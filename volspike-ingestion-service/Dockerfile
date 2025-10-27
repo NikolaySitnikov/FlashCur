@@ -1,4 +1,3 @@
-# Cache buster: $(date)
 FROM node:18-alpine
 
 WORKDIR /app
@@ -9,8 +8,9 @@ COPY package*.json ./
 # Copy source code and config
 COPY src ./src
 COPY tsconfig.json ./
+COPY prisma ./prisma
 
-# Install ALL dependencies (including devDependencies needed for tsc)
+# Install ALL dependencies
 RUN npm ci
 
 # Generate Prisma Client
@@ -21,9 +21,6 @@ RUN npm run build
 
 # Remove dev dependencies
 RUN npm prune --omit=dev
-
-# Remove source files (no longer needed)
-RUN rm -rf src tsconfig.json
 
 EXPOSE 3002
 
