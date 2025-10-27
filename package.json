@@ -1,0 +1,16 @@
+{
+  "name": "volspike-ingestion-scripts",
+  "version": "1.0.0",
+  "description": "Binance data ingestion scripts for VolSpike",
+  "type": "module",
+  "scripts": {
+    "ingest": "node scripts/ingest-binance.js"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.0",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
