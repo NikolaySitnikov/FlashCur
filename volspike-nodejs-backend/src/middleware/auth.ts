@@ -36,7 +36,7 @@ export async function authMiddleware(c: Context, next: Next) {
         // ✅ Verify real JWT tokens
         else {
             try {
-                const secret = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'your-secret-key'
+                const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'your-secret-key'
                 const secretBytes = new TextEncoder().encode(secret)
                 const { payload } = await jwtVerify(token, secretBytes)
 
