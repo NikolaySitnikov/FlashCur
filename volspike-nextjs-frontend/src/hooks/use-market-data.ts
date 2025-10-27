@@ -23,7 +23,7 @@ export function useMarketData() {
             console.log('[useMarketData] Session:', session)
             console.log('[useMarketData] AccessToken:', session?.accessToken)
             console.log('[useMarketData] User ID:', session?.user?.id)
-            
+
             // Use accessToken if available, fallback to user ID
             const token = session?.accessToken || session?.user?.id || 'unknown'
             console.log('[useMarketData] Sending token:', token)

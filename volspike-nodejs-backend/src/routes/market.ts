@@ -98,7 +98,7 @@ market.get('/data', async (c) => {
 market.get('/symbol/:symbol', async (c) => {
     try {
         const symbol = c.req.param('symbol')
-        
+
         let user
         try {
             user = requireUser(c)
@@ -138,7 +138,7 @@ market.get('/history/:symbol', async (c) => {
         const limit = parseInt(c.req.query('limit') || '100')
 
         let user, tier = 'free'
-        
+
         try {
             user = requireUser(c)
             tier = user?.tier || 'free'
@@ -193,7 +193,7 @@ market.get('/history/:symbol', async (c) => {
 market.get('/spikes', async (c) => {
     try {
         let user, tier = 'free'
-        
+
         try {
             user = requireUser(c)
             tier = user?.tier || 'free'

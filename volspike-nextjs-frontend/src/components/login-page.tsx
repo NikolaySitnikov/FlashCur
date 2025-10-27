@@ -10,39 +10,62 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 export function LoginPage() {
+    const [mode, setMode] = useState<'signin' | 'signup'>('signin')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [rememberMe, setRememberMe] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
+    const [success, setSuccess] = useState('')
     const router = useRouter()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
         setError('')
+        setSuccess('')
 
         try {
+            if (mode === 'signup') {
+                const signupResponse = await fetch(`${API_URL}/api/auth/signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password, tier: 'free' }),
+                })
+
+                if (!signupResponse.ok) {
+                    const payload = await signupResponse.json().catch(() => ({}))
+                    throw new Error(payload?.error || 'Failed to create account')
+                }
+
+                setSuccess('Account created! Logging you in...')
+            }
+
             const result = await signIn('credentials', {
                 email,
                 password,
                 redirect: false,
             })
 
-            if (result?.error) {
-                setError('Invalid email or password. Please try again.')
-            } else if (result?.ok) {
-                // Success - redirect to dashboard
-                router.push('/')
+            if (result?.error || !result?.ok) {
+                throw new Error('Invalid email or password. Please try again.')
             }
-        } catch (error) {
-            console.error('Login error:', error)
-            setError('An error occurred during login. Please try again.')
+
+            router.push('/')
+        } catch (err) {
+            console.error('Authentication error:', err)
+            setError(err instanceof Error ? err.message : 'An error occurred during authentication.')
         } finally {
             setIsLoading(false)
         }
     }
+
+    const actionLabel = mode === 'signup' ? 'Create account' : 'Sign in'
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
@@ -60,11 +83,37 @@ export function LoginPage() {
 
                 {/* Login Card */}
                 <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
-                    <CardHeader className="space-y-1">
-                        <CardTitle className="text-2xl text-white text-center">Welcome back</CardTitle>
-                        <CardDescription className="text-gray-400 text-center">
-                            Sign in to access real-time volume spike alerts
-                        </CardDescription>
+                    <CardHeader className="space-y-4">
+                        <div className="flex justify-center space-x-2" role="tablist" aria-label="Authentication mode">
+                            <Button
+                                type="button"
+                                variant={mode === 'signin' ? 'default' : 'secondary'}
+                                className={`flex-1 ${mode === 'signin' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                                onClick={() => setMode('signin')}
+                                aria-selected={mode === 'signin'}
+                            >
+                                Sign in
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={mode === 'signup' ? 'default' : 'secondary'}
+                                className={`flex-1 ${mode === 'signup' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                                onClick={() => setMode('signup')}
+                                aria-selected={mode === 'signup'}
+                            >
+                                Create account
+                            </Button>
+                        </div>
+                        <div className="space-y-1 text-center">
+                            <CardTitle className="text-2xl text-white">
+                                {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+                            </CardTitle>
+                            <CardDescription className="text-gray-400">
+                                {mode === 'signin'
+                                    ? 'Sign in to access real-time volume spike alerts'
+                                    : 'Start tracking Binance perp markets in seconds'}
+                            </CardDescription>
+                        </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {/* Email/Password Form */}
@@ -86,7 +135,7 @@ export function LoginPage() {
                                 <Input
                                     id="password"
                                     type="password"
-                                    placeholder="Enter your password"
+                                    placeholder={mode === 'signup' ? 'Create a secure password' : 'Enter your password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
@@ -104,30 +153,30 @@ export function LoginPage() {
                                 </Label>
                             </div>
 
-                            {/* Error Message */}
                             {error && (
-                                <div className="p-3 bg-red-500/10 border border-red-500 rounded-md">
-                                    <p className="text-red-400 text-sm">{error}</p>
+                                <div className="rounded-md bg-red-500/10 border border-red-500 px-3 py-2 text-sm text-red-400">
+                                    {error}
                                 </div>
                             )}
-
+                            {success && (
+                                <div className="rounded-md bg-green-500/10 border border-green-500 px-3 py-2 text-sm text-green-400">
+                                    {success}
+                                </div>
+                            )}
                             <Button
                                 type="submit"
                                 className="w-full bg-green-500 hover:bg-green-600 text-white"
                                 disabled={isLoading}
                             >
-                                {isLoading ? 'Signing in...' : '🚀 Sign In'}
+                                {isLoading ? `${actionLabel}...` : actionLabel}
                             </Button>
                         </form>
 
                         {/* Divider */}
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-gray-600" />
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-gray-800 px-2 text-gray-400">or</span>
-                            </div>
+                        <div className="flex items-center space-x-4">
+                            <div className="flex-1 h-px bg-gray-700" />
+                            <span className="bg-gray-800 px-2 text-gray-400">or</span>
+                            <div className="flex-1 h-px bg-gray-700" />
                         </div>
 
                         {/* Wallet Connection */}
@@ -230,13 +279,17 @@ export function LoginPage() {
                             </ConnectButton.Custom>
                         </div>
 
-                        {/* Sign Up Link */}
+                        {/* Mode helper */}
                         <div className="text-center">
                             <p className="text-gray-400 text-sm">
-                                Don't have an account?{' '}
-                                <a href="#" className="text-green-500 hover:text-green-400 font-medium">
-                                    Sign up for free
-                                </a>
+                                {mode === 'signin' ? 'Need an account?' : 'Already registered?'}{' '}
+                                <button
+                                    type="button"
+                                    className="text-green-500 hover:text-green-400 font-medium"
+                                    onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+                                >
+                                    {mode === 'signin' ? 'Create one for free' : 'Sign in instead'}
+                                </button>
                             </p>
                         </div>
                     </CardContent>

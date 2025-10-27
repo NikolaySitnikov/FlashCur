@@ -6,6 +6,7 @@ declare module 'next-auth' {
     email: string
     name?: string
     tier?: 'free' | 'pro' | 'elite'
+    accessToken?: string
   }
 
   interface Session {
