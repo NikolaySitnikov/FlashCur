@@ -55,11 +55,11 @@ export function Dashboard() {
     const getCountdownDisplay = () => {
         if (userTier === 'elite') return null
         if (nextUpdate === 0) return null
-        
+
         const remaining = Math.max(0, nextUpdate - Date.now())
         const minutes = Math.floor(remaining / 60000)
         const seconds = Math.floor((remaining % 60000) / 1000)
-        
+
         return `${minutes}:${seconds.toString().padStart(2, '0')}`
     }
 
