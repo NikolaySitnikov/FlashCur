@@ -47,12 +47,12 @@ export function Dashboard() {
         const updateCountdown = () => {
             const now = Date.now()
             const remaining = Math.max(0, nextUpdate - now)
-            
+
             if (remaining === 0) {
                 setCountdownDisplay('')
                 return
             }
-            
+
             const minutes = Math.floor(remaining / 60000)
             const seconds = Math.floor((remaining % 60000) / 1000)
             setCountdownDisplay(`${minutes}:${seconds.toString().padStart(2, '0')}`)
