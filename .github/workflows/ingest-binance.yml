@@ -18,11 +18,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
+      - name: Debug - Show files and working directory
+        run: |
+          echo "=== Working Directory ==="
+          pwd
+          echo "=== Git Branch ==="
+          git rev-parse --abbrev-ref HEAD
+          echo "=== Files in root ==="
+          ls -la
+          echo "=== Check for package files ==="
+          test -f package.json && echo "✅ package.json OK" || (echo "❌ NO package.json"; exit 1)
+          test -f package-lock.json && echo "✅ package-lock.json OK" || (echo "❌ NO package-lock.json"; exit 1)
+          echo "=== Scripts directory ==="
+          ls -la scripts || echo "No scripts directory found"
+        
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: package-lock.json
           
       - name: Install dependencies
         run: npm ci
