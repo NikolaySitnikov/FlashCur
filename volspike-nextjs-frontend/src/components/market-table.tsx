@@ -22,7 +22,7 @@ interface MarketTableProps {
 }
 
 export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
-    const [sortBy, setSortBy] = useState<'symbol' | 'volume' | 'change' | 'price'>('volume')
+    const [sortBy, setSortBy] = useState<'symbol' | 'volume' | 'change' | 'price' | 'funding'>('volume')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
     const formatVolume = (value: number) => {
@@ -61,6 +61,10 @@ export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
                 aValue = a.price
                 bValue = b.price
                 break
+            case 'funding':
+                aValue = a.fundingRate ?? 0
+                bValue = b.fundingRate ?? 0
+                break
             default:
                 return 0
         }
@@ -68,7 +72,7 @@ export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
         return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
     })
 
-    const handleSort = (column: 'symbol' | 'volume' | 'change' | 'price') => {
+    const handleSort = (column: 'symbol' | 'volume' | 'change' | 'price' | 'funding') => {
         if (sortBy === column) {
             setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
         } else {
@@ -135,7 +139,17 @@ export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
                                         {sortBy === 'change' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
                                     </Button>
                                 </th>
-                                <th className="text-right p-2">Funding Rate</th>
+                                <th className="text-right p-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleSort('funding')}
+                                        className="h-auto p-0 font-semibold"
+                                    >
+                                        Funding Rate
+                                        {sortBy === 'funding' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
+                                    </Button>
+                                </th>
                                 {userTier !== 'free' && (
                                     <th className="text-right p-2">Open Interest</th>
                                 )}
@@ -143,7 +157,14 @@ export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
                         </thead>
                         <tbody>
                             {sortedData.map((item) => (
-                                <tr key={item.symbol} className="border-b hover:bg-muted/50">
+                                <tr
+                                    key={item.symbol}
+                                    className={[
+                                        'border-b hover:bg-muted/50 transition-colors',
+                                        (item.fundingRate ?? 0) >= 0.0003 ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : '',
+                                        (item.fundingRate ?? 0) <= -0.0003 ? 'bg-red-500/10 hover:bg-red-500/20' : '',
+                                    ].join(' ').trim().replace(/\s+/g, ' ')}
+                                >
                                     <td className="p-2 font-mono text-sm">{formatSymbol(item.symbol)}</td>
                                     <td className="p-2 text-right font-mono">
                                         ${item.price.toLocaleString()}
