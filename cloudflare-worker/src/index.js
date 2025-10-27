@@ -1,12 +1,10 @@
-// Cloudflare Worker to proxy Binance API requests
-// This avoids Railway's shared IP being blocked by Binance
-
+// Enhanced Cloudflare Worker for Binance API proxy with caching
 export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url)
+  async fetch(req, env, ctx) {
+    const url = new URL(req.url);
     
     // Handle CORS preflight
-    if (request.method === 'OPTIONS') {
+    if (req.method === 'OPTIONS') {
       return new Response(null, {
         status: 200,
         headers: {
@@ -14,41 +12,48 @@ export default {
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
-      })
+      });
     }
     
-    // Map /binance/** to https://fapi.binance.com/**
-    if (url.pathname.startsWith('/binance/')) {
-      const binancePath = url.pathname.replace('/binance', '')
-      const binanceUrl = `https://fapi.binance.com${binancePath}${url.search}`
+    // Forward /fapi/* to Binance futures API
+    if (url.pathname.startsWith('/fapi/')) {
+      const upstream = 'https://fapi.binance.com' + url.pathname + url.search;
       
       try {
-        const response = await fetch(binanceUrl, {
-          method: request.method,
-          headers: {
-            'User-Agent': 'VolSpike-Proxy/1.0',
-            'Accept': 'application/json',
+        const resp = await fetch(upstream, {
+          headers: { 
+            'User-Agent': 'volspike-proxy',
+            'Accept': 'application/json'
           },
-        })
+          cf: { 
+            cacheTtl: 30, // Cache for 30 seconds
+            cacheEverything: true 
+          }
+        });
         
-        const data = await response.text()
+        const data = await resp.text();
         
         return new Response(data, {
-          status: response.status,
+          status: resp.status,
           headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'public, max-age=30', // Cache for 30 seconds
+            'content-type': resp.headers.get('content-type') || 'application/json',
+            'access-control-allow-origin': '*',
+            'cache-control': 'public, max-age=30',
+            'x-proxy-cache': resp.headers.get('cf-cache-status') || 'MISS'
           },
-        })
+        });
       } catch (error) {
-        return new Response(JSON.stringify({ error: 'Proxy error', message: error.message }), {
+        return new Response(JSON.stringify({ 
+          error: 'Proxy error', 
+          message: error.message,
+          timestamp: Date.now()
+        }), {
           status: 500,
           headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
+            'content-type': 'application/json',
+            'access-control-allow-origin': '*',
           },
-        })
+        });
       }
     }
     
@@ -57,15 +62,16 @@ export default {
       return new Response(JSON.stringify({ 
         status: 'ok', 
         timestamp: Date.now(),
-        service: 'volspike-binance-proxy'
+        service: 'volspike-binance-proxy',
+        version: '2.0'
       }), {
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          'content-type': 'application/json',
+          'access-control-allow-origin': '*',
         },
-      })
+      });
     }
     
-    return new Response('Not Found', { status: 404 })
+    return new Response('Not Found', { status: 404 });
   },
 }

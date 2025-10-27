@@ -8,23 +8,66 @@ const redis = new Redis({
 
 const toNum = (v) => (v == null ? null : Number(v));
 
+// Use Cloudflare Worker proxy if available, fallback to direct Binance
+const BASE = process.env.BINANCE_BASE_URL || 'https://fapi.binance.com';
+const TICKER_24H = `${BASE}/fapi/v1/ticker/24hr`;
+const PREMIUM = `${BASE}/fapi/v1/premiumIndex`;
+
+async function getJson(url) {
+  const res = await fetch(url, { 
+    headers: { 'User-Agent': 'volspike-ingest' },
+    timeout: 10000 // 10 second timeout
+  });
+  
+  if (res.status === 451) throw new Error('BINANCE_451');
+  if (res.status === 429) throw new Error('BINANCE_429');
+  if (!res.ok) throw new Error(`HTTP_${res.status}`);
+  
+  return res.json();
+}
+
 async function ingestBinanceData() {
   try {
     console.log("🔄 Starting Binance data ingestion...");
+    console.log(`📡 Using base URL: ${BASE}`);
     
-    // Fetch 24h ticker data for all perpetual futures
-    const tickerResponse = await fetch("https://fapi.binance.com/fapi/v1/ticker/24hr");
-    if (!tickerResponse.ok) {
-      throw new Error(`Binance API error: ${tickerResponse.status}`);
-    }
-    const tickers = await tickerResponse.json();
+    let tickers, fundingRates;
     
-    // Fetch funding rates
-    const fundingResponse = await fetch("https://fapi.binance.com/fapi/v1/premiumIndex");
-    if (!fundingResponse.ok) {
-      throw new Error(`Binance funding API error: ${fundingResponse.status}`);
+    try {
+      // Fetch 24h ticker data and funding rates in parallel
+      [tickers, fundingRates] = await Promise.all([
+        getJson(TICKER_24H),
+        getJson(PREMIUM)
+      ]);
+    } catch (error) {
+      // If we get 451 and we're not already using a proxy, try fallback
+      if (String(error.message).includes('BINANCE_451') && BASE === 'https://fapi.binance.com') {
+        const workerBase = process.env.WORKER_FALLBACK_BASE;
+        if (workerBase) {
+          console.log(`🔄 Direct Binance blocked (451), trying Worker proxy: ${workerBase}`);
+          const workerTicker = `${workerBase}/fapi/v1/ticker/24hr`;
+          const workerPremium = `${workerBase}/fapi/v1/premiumIndex`;
+          
+          [tickers, fundingRates] = await Promise.all([
+            getJson(workerTicker),
+            getJson(workerPremium)
+          ]);
+        } else {
+          throw error;
+        }
+      } else if (String(error.message).includes('BINANCE_429')) {
+        // Rate limited - wait and retry once
+        console.log("⏳ Rate limited (429), waiting 2 seconds before retry...");
+        await new Promise(r => setTimeout(r, 2000 + Math.random() * 1000));
+        
+        [tickers, fundingRates] = await Promise.all([
+          getJson(TICKER_24H),
+          getJson(PREMIUM)
+        ]);
+      } else {
+        throw error;
+      }
     }
-    const fundingRates = await fundingResponse.json();
     
     // Create funding rate map
     const fundingMap = new Map(

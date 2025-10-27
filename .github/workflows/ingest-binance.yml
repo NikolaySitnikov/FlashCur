@@ -47,6 +47,8 @@ jobs:
         env:
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          BINANCE_BASE_URL: ${{ secrets.BINANCE_BASE_URL }}
+          WORKER_FALLBACK_BASE: ${{ secrets.WORKER_FALLBACK_BASE }}
           
       - name: Notify on failure
         if: failure()
