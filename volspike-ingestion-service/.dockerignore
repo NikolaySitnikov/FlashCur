@@ -5,5 +5,6 @@
 !package*.json
 !tsconfig.json
 !src/
+!prisma/
 !Dockerfile
 !.dockerignore
