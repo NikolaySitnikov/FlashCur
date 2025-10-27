@@ -74,7 +74,7 @@ export function Footer() {
                 <div className="mt-10 flex flex-col gap-2 border-t border-border/50 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                     <span>© {currentYear} VolSpike Labs. All rights reserved.</span>
                     <span className="text-foreground/60">
-                        Crafted for high-volatility markets • Binance Perps Guru
+                        Crafted for high-volatility markets
                     </span>
                 </div>
             </div>
