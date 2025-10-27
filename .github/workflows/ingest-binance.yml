@@ -25,7 +25,7 @@ jobs:
           cache: 'npm'
           
       - name: Install dependencies
-        run: npm install
+        run: npm ci
           
       - name: Run Binance ingestion
         run: node scripts/ingest-binance.js
