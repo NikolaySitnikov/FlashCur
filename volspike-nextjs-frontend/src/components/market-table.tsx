@@ -19,9 +19,10 @@ interface MarketData {
 
 interface MarketTableProps {
     data: MarketData[]
+    userTier?: 'free' | 'pro' | 'elite'
 }
 
-export function MarketTable({ data }: MarketTableProps) {
+export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
     const [sortBy, setSortBy] = useState<'volume' | 'change' | 'price'>('volume')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
@@ -106,7 +107,9 @@ export function MarketTable({ data }: MarketTableProps) {
                                     </Button>
                                 </th>
                                 <th className="text-right p-2">Funding Rate</th>
-                                <th className="text-right p-2">Open Interest</th>
+                                {userTier !== 'free' && (
+                                    <th className="text-right p-2">Open Interest</th>
+                                )}
                             </tr>
                         </thead>
                         <tbody>
@@ -143,9 +146,11 @@ export function MarketTable({ data }: MarketTableProps) {
                                             {(item.fundingRate ?? 0) > 0 ? '+' : ''}{((item.fundingRate ?? 0) * 100).toFixed(4)}%
                                         </span>
                                     </td>
-                                    <td className="p-2 text-right font-mono">
-                                        ${(item.openInterest ?? 0).toLocaleString()}
-                                    </td>
+                                    {userTier !== 'free' && (
+                                        <td className="p-2 text-right font-mono">
+                                            ${(item.openInterest ?? 0).toLocaleString()}
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>

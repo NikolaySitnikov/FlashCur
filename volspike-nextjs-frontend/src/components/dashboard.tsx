@@ -167,7 +167,7 @@ export function Dashboard() {
                                         No market data available. {isConnecting ? 'Connecting to Binance...' : 'Please check your connection.'}
                                     </div>
                                 ) : (
-                                    <MarketTable data={marketData} />
+                                    <MarketTable data={marketData} userTier={userTier as 'free' | 'pro' | 'elite'} />
                                 )}
                             </CardContent>
                         </Card>

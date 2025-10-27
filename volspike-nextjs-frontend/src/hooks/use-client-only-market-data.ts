@@ -37,11 +37,19 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
         const out: MarketData[] = [];
 
         for (const [sym, t] of Array.from(tickersRef.current.entries())) {
+            // Filter for USDT perpetual pairs only
+            if (!sym.endsWith('USDT')) continue;
+            
+            const volume24h = Number(t.v || t.quoteVolume || 0);
+            
+            // Filter for >$100M in 24h volume
+            if (volume24h < 100_000_000) continue;
+            
             const f = fundingRef.current.get(sym);
             out.push({
                 symbol: sym,
                 price: Number(t.c || t.lastPrice || 0),
-                volume24h: Number(t.v || t.quoteVolume || 0),
+                volume24h: volume24h,
                 change24h: Number(t.P || t.priceChangePercent || 0),
                 fundingRate: f ? Number(f.r || f.fr || 0) : 0,
                 openInterest: 0, // Not available in ticker stream
@@ -49,9 +57,9 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
             });
         }
 
-        // Sort by volume and limit to top 300 for performance
-        out.sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0));
-        return out.slice(0, 300);
+        // Sort by volume (highest to lowest) - no limit, show all qualifying pairs
+        out.sort((a, b) => b.volume24h - a.volume24h);
+        return out;
     };
 
     const render = (snapshot: MarketData[]) => {
