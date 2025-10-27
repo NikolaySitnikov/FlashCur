@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { TrendingUp, TrendingDown, Volume2 } from 'lucide-react'
-import { format } from 'date-fns'
 
 interface MarketData {
     symbol: string
@@ -26,30 +25,30 @@ export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
     const [sortBy, setSortBy] = useState<'symbol' | 'volume' | 'change' | 'price'>('volume')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-    // Format volume with B/M suffixes
-    const formatVolume = (volume: number): string => {
-        if (volume >= 1_000_000_000) {
-            return `${(volume / 1_000_000_000).toFixed(2)}B`
-        } else if (volume >= 1_000_000) {
-            return `${(volume / 1_000_000).toFixed(2)}M`
-        } else {
-            return volume.toLocaleString()
+    const formatVolume = (value: number) => {
+        const abs = Math.abs(value)
+        if (abs >= 1_000_000_000) {
+            return `${(value / 1_000_000_000).toFixed(2)}B`
         }
+        if (abs >= 1_000_000) {
+            return `${(value / 1_000_000).toFixed(2)}M`
+        }
+        if (abs >= 1_000) {
+            return `${(value / 1_000).toFixed(2)}K`
+        }
+        return value.toLocaleString(undefined, { maximumFractionDigits: 2 })
     }
 
-    // Remove USDT suffix from symbol display
-    const formatSymbol = (symbol: string): string => {
-        return symbol.replace('USDT', '')
-    }
+    const formatSymbol = (symbol: string) => symbol.replace(/USDT$/i, '')
 
     const sortedData = [...data].sort((a, b) => {
-        let aValue: number | string, bValue: number | string
+        let aValue: number, bValue: number
 
         switch (sortBy) {
             case 'symbol':
-                aValue = a.symbol
-                bValue = b.symbol
-                break
+                return sortOrder === 'asc'
+                    ? formatSymbol(a.symbol).localeCompare(formatSymbol(b.symbol))
+                    : formatSymbol(b.symbol).localeCompare(formatSymbol(a.symbol))
             case 'volume':
                 aValue = a.volume24h
                 bValue = b.volume24h
@@ -66,13 +65,7 @@ export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
                 return 0
         }
 
-        if (sortBy === 'symbol') {
-            return sortOrder === 'asc' 
-                ? (aValue as string).localeCompare(bValue as string)
-                : (bValue as string).localeCompare(aValue as string)
-        }
-
-        return sortOrder === 'asc' ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number)
+        return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
     })
 
     const handleSort = (column: 'symbol' | 'volume' | 'change' | 'price') => {

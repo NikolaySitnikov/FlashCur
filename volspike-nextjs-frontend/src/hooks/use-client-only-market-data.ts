@@ -1,5 +1,33 @@
 import { useState, useEffect, useRef } from 'react';
 
+const parseFundingRate = (raw: any): number => {
+    if (!raw) return 0;
+
+    const candidates = [
+        raw.r,
+        raw.R,
+        raw.lastFundingRate,
+        raw.fr,
+        raw.fundingRate,
+        raw.estimatedSettlePriceRate,
+    ];
+
+    for (const candidate of candidates) {
+        if (candidate === undefined || candidate === null) continue;
+
+        const numeric =
+            typeof candidate === 'number'
+                ? candidate
+                : Number(candidate);
+
+        if (!Number.isNaN(numeric)) {
+            return numeric;
+        }
+    }
+
+    return 0;
+};
+
 interface MarketData {
     symbol: string;
     price: number;
@@ -39,19 +67,20 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
         for (const [sym, t] of Array.from(tickersRef.current.entries())) {
             // Filter for USDT perpetual pairs only
             if (!sym.endsWith('USDT')) continue;
-            
+
             const volume24h = Number(t.q || t.quoteVolume || t.v || 0);
-            
+
             // Filter for >$100M in 24h volume
             if (volume24h < 100_000_000) continue;
-            
+
             const f = fundingRef.current.get(sym);
+            const fundingRate = parseFundingRate(f);
             out.push({
                 symbol: sym,
                 price: Number(t.c || t.lastPrice || 0),
                 volume24h: volume24h,
                 change24h: Number(t.P || t.priceChangePercent || 0),
-                fundingRate: f ? Number(f.r || f.R || f.fr || 0) : 0,
+                fundingRate,
                 openInterest: 0, // Not available in ticker stream
                 timestamp: Date.now(),
             });
@@ -78,6 +107,44 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
         onDataUpdate?.(snapshot);
     };
 
+    const primeFundingSnapshot = async () => {
+        try {
+            const response = await fetch('https://fapi.binance.com/fapi/v1/premiumIndex');
+            if (!response.ok) return;
+
+            const payload = await response.json();
+            if (!Array.isArray(payload)) return;
+
+            let seeded = false;
+
+            for (const entry of payload) {
+                if (typeof entry?.symbol !== 'string' || !entry.symbol.endsWith('USDT')) continue;
+
+                fundingRef.current.set(entry.symbol, {
+                    s: entry.symbol,
+                    r: entry.lastFundingRate ?? entry.r,
+                    lastFundingRate: entry.lastFundingRate,
+                });
+
+                seeded = true;
+            }
+
+            if (seeded && tickersRef.current.size > 0) {
+                const snapshot = buildSnapshot();
+                if (snapshot.length > 0) {
+                    render(snapshot);
+                    lastRenderRef.current = Date.now();
+                    if (tier !== 'elite') {
+                        const nextUpdateTime = lastRenderRef.current + CADENCE;
+                        setNextUpdate(nextUpdateTime);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to seed funding rates from REST:', error);
+        }
+    };
+
     const connect = () => {
         const WS_URL = 'wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr';
 
@@ -97,6 +164,8 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                     const nextUpdateTime = now + CADENCE;
                     setNextUpdate(nextUpdateTime);
                 }
+
+                void primeFundingSnapshot();
             };
 
             wsRef.current.onmessage = (ev) => {
@@ -104,37 +173,31 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                     const msg = JSON.parse(ev.data);
                     const payload = msg?.data ?? msg;
                     const arr = Array.isArray(payload) ? payload : [payload];
-                    
-                    // Debug: Log first few messages to understand data structure
-                    if (Math.random() < 0.01) { // Log 1% of messages to avoid spam
-                        console.log('🔍 WebSocket message:', {
-                            stream: msg.stream,
-                            dataLength: arr.length,
-                            sampleData: arr[0]
-                        });
-                    }
 
                     // Process ticker data
                     for (const it of arr) {
-                        // Handle ticker data
                         if (it?.e === '24hrTicker' || it?.c || it?.v) {
                             tickersRef.current.set(it.s, it);
                         }
-                        
-                        // Handle mark price data (funding rates)
-                        if (it?.e === 'markPriceUpdate' || it?.r !== undefined || it?.fr !== undefined) {
+                        if (
+                            it?.r !== undefined ||
+                            it?.R !== undefined ||
+                            it?.fr !== undefined ||
+                            it?.lastFundingRate !== undefined
+                        ) {
                             fundingRef.current.set(it.s, it);
-                            
+
                             // Debug logging for funding rate data
-                            console.log('📊 Funding data:', {
-                                stream: msg.stream,
-                                symbol: it.s,
-                                event: it.e,
-                                r: it.r,
-                                R: it.R,
-                                fr: it.fr,
-                                parsed: Number(it.r || it.R || it.fr || 0)
-                            });
+                            if (msg.stream === '!markPrice@arr') {
+                                console.log('📊 MarkPrice data:', {
+                                    symbol: it.s,
+                                    r: it.r,
+                                    R: it.R,
+                                    fr: it.fr,
+                                    lastFundingRate: it.lastFundingRate,
+                                    parsed: parseFundingRate(it)
+                                });
+                            }
                         }
                     }
 
