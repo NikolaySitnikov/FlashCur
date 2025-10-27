@@ -8,8 +8,10 @@ interface MarketData {
     symbol: string
     price: number
     volume24h: number
-    change24h: number
-    fundingRate?: number
+    change24h?: number
+    volumeChange?: number
+    fundingRate: number
+    openInterest: number
     timestamp: number
 }
 
@@ -46,7 +48,8 @@ export default function TestPage() {
                     price: parseFloat(ticker.c || ticker.lastPrice || '0'),
                     volume24h: parseFloat(ticker.v || ticker.quoteVolume || '0'),
                     change24h: parseFloat(ticker.P || ticker.priceChangePercent || '0'),
-                    fundingRate: funding ? parseFloat(funding.r || funding.fr || '0') : undefined,
+                    fundingRate: funding ? parseFloat(funding.r || funding.fr || '0') : 0,
+                    openInterest: 0, // WebSocket doesn't provide open interest
                     timestamp: Date.now()
                 })
             }
