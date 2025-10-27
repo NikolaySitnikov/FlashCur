@@ -39,8 +39,8 @@ export function Footer() {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-8 text-sm sm:grid-cols-2">
-                        <div>
+                    <div className="grid grid-cols-1 gap-8 text-sm sm:grid-cols-2 lg:flex lg:items-start lg:gap-14">
+                        <div className="min-w-[140px]">
                             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                 Platform
                             </h3>
@@ -54,7 +54,7 @@ export function Footer() {
                                 ))}
                             </ul>
                         </div>
-                        <div>
+                        <div className="min-w-[140px]">
                             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                 Company
                             </h3>
