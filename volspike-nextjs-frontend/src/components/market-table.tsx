@@ -23,13 +23,33 @@ interface MarketTableProps {
 }
 
 export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
-    const [sortBy, setSortBy] = useState<'volume' | 'change' | 'price'>('volume')
+    const [sortBy, setSortBy] = useState<'symbol' | 'volume' | 'change' | 'price'>('volume')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
+    // Format volume with B/M suffixes
+    const formatVolume = (volume: number): string => {
+        if (volume >= 1_000_000_000) {
+            return `${(volume / 1_000_000_000).toFixed(2)}B`
+        } else if (volume >= 1_000_000) {
+            return `${(volume / 1_000_000).toFixed(2)}M`
+        } else {
+            return volume.toLocaleString()
+        }
+    }
+
+    // Remove USDT suffix from symbol display
+    const formatSymbol = (symbol: string): string => {
+        return symbol.replace('USDT', '')
+    }
+
     const sortedData = [...data].sort((a, b) => {
-        let aValue: number, bValue: number
+        let aValue: number | string, bValue: number | string
 
         switch (sortBy) {
+            case 'symbol':
+                aValue = a.symbol
+                bValue = b.symbol
+                break
             case 'volume':
                 aValue = a.volume24h
                 bValue = b.volume24h
@@ -46,10 +66,16 @@ export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
                 return 0
         }
 
-        return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
+        if (sortBy === 'symbol') {
+            return sortOrder === 'asc' 
+                ? (aValue as string).localeCompare(bValue as string)
+                : (bValue as string).localeCompare(aValue as string)
+        }
+
+        return sortOrder === 'asc' ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number)
     })
 
-    const handleSort = (column: 'volume' | 'change' | 'price') => {
+    const handleSort = (column: 'symbol' | 'volume' | 'change' | 'price') => {
         if (sortBy === column) {
             setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
         } else {
@@ -71,7 +97,17 @@ export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
                     <table className="w-full">
                         <thead>
                             <tr className="border-b">
-                                <th className="text-left p-2">Symbol</th>
+                                <th className="text-left p-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleSort('symbol')}
+                                        className="h-auto p-0 font-semibold"
+                                    >
+                                        Symbol
+                                        {sortBy === 'symbol' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
+                                    </Button>
+                                </th>
                                 <th className="text-right p-2">
                                     <Button
                                         variant="ghost"
@@ -115,12 +151,12 @@ export function MarketTable({ data, userTier = 'free' }: MarketTableProps) {
                         <tbody>
                             {sortedData.map((item) => (
                                 <tr key={item.symbol} className="border-b hover:bg-muted/50">
-                                    <td className="p-2 font-mono text-sm">{item.symbol}</td>
+                                    <td className="p-2 font-mono text-sm">{formatSymbol(item.symbol)}</td>
                                     <td className="p-2 text-right font-mono">
                                         ${item.price.toLocaleString()}
                                     </td>
                                     <td className="p-2 text-right font-mono">
-                                        ${item.volume24h.toLocaleString()}
+                                        ${formatVolume(item.volume24h)}
                                     </td>
                                     <td className="p-2 text-right">
                                         <div className="flex items-center justify-end">

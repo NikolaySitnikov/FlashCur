@@ -104,25 +104,37 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                     const msg = JSON.parse(ev.data);
                     const payload = msg?.data ?? msg;
                     const arr = Array.isArray(payload) ? payload : [payload];
+                    
+                    // Debug: Log first few messages to understand data structure
+                    if (Math.random() < 0.01) { // Log 1% of messages to avoid spam
+                        console.log('🔍 WebSocket message:', {
+                            stream: msg.stream,
+                            dataLength: arr.length,
+                            sampleData: arr[0]
+                        });
+                    }
 
                     // Process ticker data
                     for (const it of arr) {
+                        // Handle ticker data
                         if (it?.e === '24hrTicker' || it?.c || it?.v) {
                             tickersRef.current.set(it.s, it);
                         }
-                        if (it?.r !== undefined || it?.fr !== undefined) {
+                        
+                        // Handle mark price data (funding rates)
+                        if (it?.e === 'markPriceUpdate' || it?.r !== undefined || it?.fr !== undefined) {
                             fundingRef.current.set(it.s, it);
                             
                             // Debug logging for funding rate data
-                            if (msg.stream === '!markPrice@arr') {
-                                console.log('📊 MarkPrice data:', {
-                                    symbol: it.s,
-                                    r: it.r,
-                                    R: it.R,
-                                    fr: it.fr,
-                                    parsed: Number(it.r || it.R || it.fr || 0)
-                                });
-                            }
+                            console.log('📊 Funding data:', {
+                                stream: msg.stream,
+                                symbol: it.s,
+                                event: it.e,
+                                r: it.r,
+                                R: it.R,
+                                fr: it.fr,
+                                parsed: Number(it.r || it.R || it.fr || 0)
+                            });
                         }
                     }
 
