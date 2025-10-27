@@ -12,8 +12,12 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-export function LoginPage() {
-    const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+interface LoginPageProps {
+    initialMode?: 'signin' | 'signup'
+}
+
+export function LoginPage({ initialMode = 'signin' }: LoginPageProps) {
+    const [mode, setMode] = useState<'signin' | 'signup'>(initialMode)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [rememberMe, setRememberMe] = useState(false)
