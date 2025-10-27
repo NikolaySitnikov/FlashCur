@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger as honoLogger } from 'hono/logger'
-import { createServer } from 'http'
+import { serve } from '@hono/node-server'
 import { Server as SocketIOServer } from 'socket.io'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { createClient } from 'redis'
@@ -29,7 +29,6 @@ const app = new Hono()
 // CORS CONFIGURATION
 // ============================================
 
-// Determine allowed origins based on environment
 const getAllowedOrigins = (): string[] => {
     const origins = [
         process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -39,7 +38,6 @@ const getAllowedOrigins = (): string[] => {
         'https://vol-spike-nikolaysitnikovs-projects.vercel.app'
     ]
 
-    // In development, also allow localhost variants
     if (process.env.NODE_ENV === 'development') {
         origins.push(
             'http://localhost:3000',
@@ -49,31 +47,27 @@ const getAllowedOrigins = (): string[] => {
         )
     }
 
-    return [...new Set(origins)] // Remove duplicates
+    return [...new Set(origins)]
 }
 
 // ============================================
 // MIDDLEWARE - Order matters!
 // ============================================
 
-// 1. Logging (first, to log all requests)
 app.use('*', honoLogger())
-
-// 2. CORS (before routes, so preflight is handled)
 app.use('*', cors({
     origin: getAllowedOrigins(),
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
     exposeHeaders: ['Content-Length', 'X-Total-Count', 'X-Page-Count'],
-    maxAge: 86400, // 24 hours
+    maxAge: 86400,
 }))
 
 // ============================================
 // ROUTES
 // ============================================
 
-// Health check - MUST be before other middleware that requires auth
 app.get('/health', (c) => {
     return c.json({
         status: 'ok',
@@ -83,23 +77,19 @@ app.get('/health', (c) => {
     })
 })
 
-// API routes (public/semi-public)
 app.route('/api/auth', authRoutes)
 app.route('/api/market', marketRoutes)
 app.route('/api/watchlist', watchlistRoutes)
 app.route('/api/alerts', alertRoutes)
 app.route('/api/payments', paymentRoutes)
 
-// Protected routes (require authentication)
 app.use('/api/protected/*', authMiddleware)
 app.use('/api/protected/*', rateLimitMiddleware)
 
-// 404 handler
 app.notFound((c) => {
     return c.json({ error: 'Not Found' }, 404)
 })
 
-// Global error handler
 app.onError((err, c) => {
     logger.error('Unhandled error:', {
         message: err.message,
@@ -116,63 +106,22 @@ app.onError((err, c) => {
 })
 
 // ============================================
-// HTTP SERVER - Manual creation (not using serve())
+// HTTP SERVER USING HONO'S serve()
 // ============================================
 
-const httpServer = createServer(async (req, res) => {
-    try {
-        // Parse URL
-        const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
+const port = Number(process.env.PORT) || 3001
+const host = '0.0.0.0'
 
-        // Create Web API Request
-        const request = new Request(url, {
-            method: req.method,
-            headers: req.headers as Record<string, string>,
-            // Only pass body for non-GET/HEAD requests
-            body: ['GET', 'HEAD', 'DELETE'].includes(req.method || '') ? undefined : req,
-        })
-
-        // Call Hono's fetch
-        const response = await app.fetch(request)
-
-        // Write status and headers
-        res.writeHead(response.status, Object.fromEntries(response.headers))
-
-        // Stream body
-        if (response.body) {
-            const reader = response.body.getReader()
-
-            const pump = async () => {
-                try {
-                    const { done, value } = await reader.read()
-                    if (done) {
-                        res.end()
-                        return
-                    }
-                    res.write(value)
-                    await pump()
-                } catch (streamErr) {
-                    logger.error('Stream error:', streamErr)
-                    if (!res.writableEnded) {
-                        res.end()
-                    }
-                }
-            }
-
-            await pump()
-        } else {
-            res.end()
-        }
-    } catch (error) {
-        logger.error('Request error:', error)
-        if (!res.writableEnded) {
-            res.writeHead(500, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({
-                error: 'Internal Server Error',
-                message: process.env.NODE_ENV === 'development' ? String(error) : undefined
-            }))
-        }
-    }
+const httpServer = serve({
+    fetch: app.fetch,
+    port,
+    hostname: host,
+}, (info) => {
+    logger.info(`🚀 VolSpike Backend running on ${host}:${port}`)
+    logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
+    logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
+    logger.info(`🌐 Allowed CORS origins: ${getAllowedOrigins().join(', ')}`)
+    logger.info(`✅ Server ready to accept requests`)
 })
 
 // ============================================
@@ -190,10 +139,8 @@ const io = new SocketIOServer(httpServer, {
 
 logger.info('✅ Socket.IO attached to HTTP server')
 
-// Setup Socket.IO handlers first
 setupSocketHandlers(io, prisma, logger)
 
-// Connection logging
 io.on('connection', (socket) => {
     logger.info(`Socket.IO connected: ${socket.id}`)
     socket.on('disconnect', () => {
@@ -273,20 +220,5 @@ const shutdown = async (signal: string) => {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
-
-// ============================================
-// START SERVER
-// ============================================
-
-const port = Number(process.env.PORT) || 3001
-const host = '0.0.0.0'
-
-httpServer.listen(port, host, () => {
-    logger.info(`🚀 VolSpike Backend running on ${host}:${port}`)
-    logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`)
-    logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`)
-    logger.info(`🌐 Allowed CORS origins: ${getAllowedOrigins().join(', ')}`)
-    logger.info(`✅ Server ready to accept requests`)
-})
 
 export default app
