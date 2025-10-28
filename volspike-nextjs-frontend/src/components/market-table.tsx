@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { TrendingUp, TrendingDown, Volume2 } from 'lucide-react'
 
 const FUNDING_ALERT_THRESHOLD = 0.0003
 
@@ -101,7 +100,7 @@ export function MarketTable({ data, userTier = 'free', withContainer = true }: M
                                 onClick={() => handleSort('symbol')}
                                 className="h-auto p-0 font-semibold"
                             >
-                                Symbol
+                                Ticker
                                 {sortBy === 'symbol' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
                             </Button>
                         </th>
@@ -120,22 +119,10 @@ export function MarketTable({ data, userTier = 'free', withContainer = true }: M
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleSort('volume')}
-                                className="h-auto p-0 font-semibold"
-                            >
-                                <Volume2 className="h-4 w-4 mr-1" />
-                                24h Volume
-                                {sortBy === 'volume' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
-                            </Button>
-                        </th>
-                        <th className="text-right p-2">
-                            <Button
-                                variant="ghost"
-                                size="sm"
                                 onClick={() => handleSort('change')}
                                 className="h-auto p-0 font-semibold"
                             >
-                                Volume Change
+                                Price Change
                                 {sortBy === 'change' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
                             </Button>
                         </th>
@@ -148,6 +135,17 @@ export function MarketTable({ data, userTier = 'free', withContainer = true }: M
                             >
                                 Funding Rate
                                 {sortBy === 'funding' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
+                            </Button>
+                        </th>
+                        <th className="text-right p-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSort('volume')}
+                                className="h-auto p-0 font-semibold"
+                            >
+                                24h Volume
+                                {sortBy === 'volume' && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
                             </Button>
                         </th>
                         {userTier !== 'free' && (
@@ -185,31 +183,22 @@ export function MarketTable({ data, userTier = 'free', withContainer = true }: M
                                     ${item.price.toLocaleString()}
                                 </td>
                                 <td className="p-2 text-right font-mono">
-                                    ${formatVolume(item.volume24h)}
-                                </td>
-                                <td className="p-2 text-right">
-                                    <div className="flex items-center justify-end">
-                                        {(() => {
-                                            const changeValue = item.change24h ?? item.volumeChange ?? 0;
-                                            return (
-                                                <>
-                                                    {changeValue > 0 ? (
-                                                        <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                                                    ) : (
-                                                        <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-                                                    )}
-                                                    <span className={`font-mono ${changeValue > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                        {changeValue > 0 ? '+' : ''}{changeValue.toFixed(2)}%
-                                                    </span>
-                                                </>
-                                            );
-                                        })()}
-                                    </div>
+                                    {(() => {
+                                        const changeValue = item.change24h ?? item.volumeChange ?? 0;
+                                        return (
+                                            <span className="font-mono">
+                                                {changeValue > 0 ? '+' : ''}{changeValue.toFixed(2)}%
+                                            </span>
+                                        );
+                                    })()}
                                 </td>
                                 <td className="p-2 text-right font-mono">
                                     <span className={fundingClass}>
                                         {fundingRate > 0 ? '+' : ''}{(fundingRate * 100).toFixed(4)}%
                                     </span>
+                                </td>
+                                <td className="p-2 text-right font-mono">
+                                    ${formatVolume(item.volume24h)}
                                 </td>
                                 {userTier !== 'free' && (
                                     <td className="p-2 text-right font-mono">
