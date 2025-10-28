@@ -115,15 +115,7 @@ function mapHealthResponse(raw: RawHealthResponse) {
 
 export default async function MetricsPage() {
     const session = await auth()
-
-    // Check if user is admin
-    if (!session?.user || session.user.role !== 'ADMIN') {
-        redirect('/auth')
-    }
-
-    if (!session.accessToken) {
-        redirect('/auth?reason=missing-token')
-    }
+    const accessToken = session?.accessToken
 
     let metrics: SystemMetrics = {
         totalUsers: 0,
@@ -137,22 +129,24 @@ export default async function MetricsPage() {
 
     let health: RawHealthResponse = {}
 
-    try {
-        metrics = await fetchWithAuth<SystemMetrics>(
-            '/api/admin/metrics',
-            session.accessToken,
-        )
-    } catch (error) {
-        console.error('[AdminMetrics] Failed to load system metrics:', error)
-    }
+    if (accessToken) {
+        try {
+            metrics = await fetchWithAuth<SystemMetrics>(
+                '/api/admin/metrics',
+                accessToken,
+            )
+        } catch (error) {
+            console.error('[AdminMetrics] Failed to load system metrics:', error)
+        }
 
-    try {
-        health = await fetchWithAuth<RawHealthResponse>(
-            '/api/admin/metrics/health',
-            session.accessToken,
-        )
-    } catch (error) {
-        console.error('[AdminMetrics] Failed to load health metrics:', error)
+        try {
+            health = await fetchWithAuth<RawHealthResponse>(
+                '/api/admin/metrics/health',
+                accessToken,
+            )
+        } catch (error) {
+            console.error('[AdminMetrics] Failed to load health metrics:', error)
+        }
     }
 
     return (
