@@ -61,7 +61,7 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
     // Tier-based update intervals
     const CADENCE = tier === 'elite' ? 0 : (tier === 'pro' ? 300_000 : 900_000); // 0ms, 5min, 15min
 
-    const buildSnapshot = (): MarketData[] => {
+    const buildSnapshot = useCallback((): MarketData[] => {
         const out: MarketData[] = [];
 
         for (const [sym, t] of Array.from(tickersRef.current.entries())) {
@@ -89,9 +89,9 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
         // Sort by volume (highest to lowest) - no limit, show all qualifying pairs
         out.sort((a, b) => b.volume24h - a.volume24h);
         return out;
-    };
+    }, []);
 
-    const render = (snapshot: MarketData[]) => {
+    const render = useCallback((snapshot: MarketData[]) => {
         setData(snapshot);
         setLastUpdate(Date.now());
 
@@ -105,9 +105,9 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
 
         // Call callback if provided
         onDataUpdate?.(snapshot);
-    };
+    }, [onDataUpdate]);
 
-    const primeFundingSnapshot = async () => {
+    const primeFundingSnapshot = useCallback(async () => {
         try {
             const response = await fetch('https://fapi.binance.com/fapi/v1/premiumIndex');
             if (!response.ok) return;
@@ -143,7 +143,25 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
         } catch (error) {
             console.error('Failed to seed funding rates from REST:', error);
         }
-    };
+    }, [buildSnapshot, render, tier, CADENCE]);
+
+    const geofenceFallback = useCallback(() => {
+        console.log('Region may be blocked, trying localStorage fallback');
+
+        try {
+            const raw = localStorage.getItem('volspike:lastSnapshot');
+            if (raw) {
+                const { rows } = JSON.parse(raw);
+                if (rows?.length) {
+                    render(rows);
+                    setStatus('error');
+                    return;
+                }
+            }
+        } catch { }
+
+        setStatus('error');
+    }, [render]);
 
     const connect = useCallback(() => {
         const WS_URL = 'wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr';
@@ -270,25 +288,7 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
             console.error('Failed to connect to WebSocket:', error);
             setStatus('error');
         }
-    }, [tier, CADENCE]);
-
-    const geofenceFallback = () => {
-        console.log('Region may be blocked, trying localStorage fallback');
-
-        try {
-            const raw = localStorage.getItem('volspike:lastSnapshot');
-            if (raw) {
-                const { rows } = JSON.parse(raw);
-                if (rows?.length) {
-                    render(rows);
-                    setStatus('error');
-                    return;
-                }
-            }
-        } catch { }
-
-        setStatus('error');
-    };
+    }, [tier, CADENCE, geofenceFallback, primeFundingSnapshot, render]);
 
     useEffect(() => {
         connect();
