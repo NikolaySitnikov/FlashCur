@@ -16,7 +16,7 @@
         "outDir": "./dist",
         "rootDir": "./src",
         "resolveJsonModule": true,
-        "isolatedModules": true,
+        "downlevelIteration": true,
         "incremental": true,
         "baseUrl": ".",
         "paths": {

@@ -60,6 +60,9 @@ export const authConfig: NextAuthConfig = {
                         name: user.email,
                         tier: user.tier,
                         emailVerified: user.emailVerified,
+                        role: user.role,
+                        status: user.status,
+                        twoFactorEnabled: user.twoFactorEnabled,
                         accessToken: token,
                     }
                 } catch (error) {
@@ -84,6 +87,9 @@ export const authConfig: NextAuthConfig = {
                 token.email = user.email
                 token.tier = user.tier
                 token.emailVerified = user.emailVerified
+                token.role = user.role
+                token.status = user.status
+                token.twoFactorEnabled = user.twoFactorEnabled
                 token.accessToken = user.accessToken
                 console.log(`[Auth] JWT callback - User logged in: ${user.email}`)
             }
@@ -111,6 +117,9 @@ export const authConfig: NextAuthConfig = {
                         token.id = dbUser.id
                         token.tier = dbUser.tier
                         token.emailVerified = dbUser.emailVerified
+                        token.role = dbUser.role
+                        token.status = dbUser.status
+                        token.twoFactorEnabled = dbUser.twoFactorEnabled
                         token.accessToken = dbToken
                     }
                 } catch (error) {
@@ -127,6 +136,9 @@ export const authConfig: NextAuthConfig = {
                 session.user.name = session.user.name || token.email?.split('@')[0] || 'VolSpike User'
                 session.user.tier = token.tier
                 session.user.emailVerified = token.emailVerified
+                session.user.role = token.role
+                session.user.status = token.status
+                session.user.twoFactorEnabled = token.twoFactorEnabled
                 session.accessToken = token.accessToken
                 console.log(`[Auth] Session callback - User: ${token.email}, AccessToken set to JWT`)
             }

@@ -14,6 +14,7 @@ import { marketRoutes } from './routes/market'
 import { watchlistRoutes } from './routes/watchlist'
 import { alertRoutes } from './routes/alerts'
 import { paymentRoutes } from './routes/payments'
+import { adminRoutes } from './routes/admin'
 import { setupSocketHandlers } from './websocket/handlers'
 
 // Initialize Prisma
@@ -93,6 +94,9 @@ app.route('/api/market', marketRoutes)
 app.route('/api/watchlist', watchlistRoutes)
 app.route('/api/alerts', alertRoutes)
 app.route('/api/payments', paymentRoutes)
+
+// Admin routes (protected with admin middleware) - temporarily disabled
+// app.route('/api/admin', adminRoutes)
 
 // Protected routes (require authentication)
 app.use('/api/protected/*', authMiddleware)

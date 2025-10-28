@@ -132,6 +132,9 @@ auth.post('/signin', async (c) => {
                 emailVerified: user.emailVerified,
                 refreshInterval: user.refreshInterval,
                 theme: user.theme,
+                role: user.role,
+                status: user.status,
+                twoFactorEnabled: user.twoFactorEnabled,
             },
         })
     } catch (error) {
@@ -266,6 +269,9 @@ auth.post('/oauth-link', async (c) => {
                 emailVerified: user.emailVerified,
                 refreshInterval: user.refreshInterval,
                 theme: user.theme,
+                role: user.role,
+                status: user.status,
+                twoFactorEnabled: user.twoFactorEnabled,
             },
         })
     } catch (error) {
@@ -429,6 +435,9 @@ auth.post('/siwe', async (c) => {
                 refreshInterval: user.refreshInterval,
                 theme: user.theme,
                 walletAddress: user.walletAddress,
+                role: user.role,
+                status: user.status,
+                twoFactorEnabled: user.twoFactorEnabled,
             },
         })
     } catch (error) {

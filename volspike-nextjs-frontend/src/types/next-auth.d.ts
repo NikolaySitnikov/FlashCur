@@ -6,6 +6,9 @@ declare module 'next-auth' {
     email: string
     name?: string
     tier?: 'free' | 'pro' | 'elite'
+    role?: 'USER' | 'ADMIN'
+    status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED'
+    twoFactorEnabled?: boolean
     accessToken?: string
   }
 
@@ -15,6 +18,9 @@ declare module 'next-auth' {
       email: string
       name?: string
       tier?: 'free' | 'pro' | 'elite'
+      role?: 'USER' | 'ADMIN'
+      status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED'
+      twoFactorEnabled?: boolean
     }
     accessToken?: string
   }
@@ -25,6 +31,9 @@ declare module 'next-auth/jwt' {
     id: string
     email: string
     tier?: 'free' | 'pro' | 'elite'
+    role?: 'USER' | 'ADMIN'
+    status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED'
+    twoFactorEnabled?: boolean
     accessToken?: string
   }
 }
