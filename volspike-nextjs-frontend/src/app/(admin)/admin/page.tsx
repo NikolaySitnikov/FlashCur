@@ -37,43 +37,59 @@ async function fetchWithAuth<T>(path: string, token: string): Promise<T> {
 }
 
 async function getAdminStats(token: string) {
-    const data = await fetchWithAuth<{
-        totalUsers: number
-        activeUsers: number
-        totalRevenue: number
-        recentSignups: number
-        usersByTier: Array<{ tier: string; count: number }>
-    }>('/api/admin/metrics', token)
+    try {
+        const data = await fetchWithAuth<{
+            totalUsers: number
+            activeUsers: number
+            totalRevenue: number
+            recentSignups: number
+            usersByTier: Array<{ tier: string; count: number }>
+        }>('/api/admin/metrics', token)
 
-    return {
-        totalUsers: data.totalUsers ?? 0,
-        activeUsers: data.activeUsers ?? 0,
-        totalRevenue: data.totalRevenue ?? 0,
-        recentSignups: data.recentSignups ?? 0,
-        usersByTier: data.usersByTier ?? [],
+        return {
+            totalUsers: data.totalUsers ?? 0,
+            activeUsers: data.activeUsers ?? 0,
+            totalRevenue: data.totalRevenue ?? 0,
+            recentSignups: data.recentSignups ?? 0,
+            usersByTier: data.usersByTier ?? [],
+        }
+    } catch (error) {
+        console.error('[AdminDashboard] Failed to load admin metrics:', error)
+        return {
+            totalUsers: 0,
+            activeUsers: 0,
+            totalRevenue: 0,
+            recentSignups: 0,
+            usersByTier: [],
+        }
     }
 }
 
 async function getRecentActivity(token: string) {
-    const data = await fetchWithAuth<{
-        logs: Array<{
-            id: string
-            action: string
-            targetType: string
-            targetId?: string | null
-            createdAt: string
-            actor?: { email?: string | null }
-        }>
-    }>('/api/admin/audit?limit=5', token)
+    try {
+        const data = await fetchWithAuth<{
+            logs: Array<{
+                id: string
+                action: string
+                targetType: string
+                targetId?: string | null
+                createdAt: string
+                actor?: { email?: string | null }
+            }>
+        }>('/api/admin/audit?limit=5', token)
 
-    return data.logs.map((log) => ({
-        id: log.id,
-        action: log.action,
-        actor: { email: log.actor?.email ?? 'Unknown user' },
-        targetType: log.targetType ?? 'SYSTEM',
-        targetId: log.targetId ?? 'N/A',
-        createdAt: new Date(log.createdAt),
-    }))
+        return data.logs.map((log) => ({
+            id: log.id,
+            action: log.action,
+            actor: { email: log.actor?.email ?? 'Unknown user' },
+            targetType: log.targetType ?? 'SYSTEM',
+            targetId: log.targetId ?? 'N/A',
+            createdAt: new Date(log.createdAt),
+        }))
+    } catch (error) {
+        console.error('[AdminDashboard] Failed to load recent activity:', error)
+        return []
+    }
 }
 
 export default async function AdminDashboard() {
@@ -85,7 +101,7 @@ export default async function AdminDashboard() {
     }
 
     if (!session.accessToken) {
-        throw new Error('Missing admin access token')
+        redirect('/auth?reason=missing-token')
     }
 
     const [stats, recentActivity] = await Promise.all([

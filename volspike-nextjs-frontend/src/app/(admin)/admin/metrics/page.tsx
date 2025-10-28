@@ -58,14 +58,24 @@ async function fetchWithAuth<T>(path: string, token: string): Promise<T> {
 
 function mapHealthResponse(raw: RawHealthResponse) {
     const timestamp = raw.timestamp ?? new Date().toISOString()
-    const databaseStatus = raw.databaseStatus?.status === 'healthy' ? 'up' : 'down'
-    const apiStatus = raw.errorRate && raw.errorRate > 5 ? 'down' : 'up'
+    const databaseStatus =
+        raw.databaseStatus?.status === 'healthy' || raw.databaseStatus === undefined
+            ? 'up'
+            : 'down'
+    const apiStatus =
+        raw.errorRate !== undefined
+            ? raw.errorRate > 5
+                ? 'down'
+                : 'up'
+            : 'up'
+
+    const overallStatus =
+        databaseStatus === 'down' || apiStatus === 'down'
+            ? 'degraded'
+            : 'healthy'
 
     return {
-        status:
-            databaseStatus === 'down' || apiStatus === 'down'
-                ? 'degraded'
-                : 'healthy',
+        status: overallStatus,
         services: {
             database: {
                 status: databaseStatus,
@@ -112,58 +122,59 @@ export default async function MetricsPage() {
     }
 
     if (!session.accessToken) {
-        throw new Error('Missing admin access token')
+        redirect('/auth?reason=missing-token')
+    }
+
+    let metrics: SystemMetrics = {
+        totalUsers: 0,
+        activeUsers: 0,
+        usersByTier: [],
+        totalRevenue: 0,
+        recentSignups: 0,
+        failedLogins: 0,
+        adminSessions: 0,
+    }
+
+    let health: RawHealthResponse = {}
+
+    try {
+        metrics = await fetchWithAuth<SystemMetrics>(
+            '/api/admin/metrics',
+            session.accessToken,
+        )
+    } catch (error) {
+        console.error('[AdminMetrics] Failed to load system metrics:', error)
     }
 
     try {
-        // Fetch metrics data
-        const [metrics, health] = await Promise.all([
-            fetchWithAuth<SystemMetrics>(
-                '/api/admin/metrics',
-                session.accessToken,
-            ),
-            fetchWithAuth<RawHealthResponse>(
-                '/api/admin/metrics/health',
-                session.accessToken,
-            ),
-        ])
-
-        return (
-            <div className="space-y-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">System Metrics</h1>
-                    <p className="text-muted-foreground">
-                        Monitor system performance and user analytics
-                    </p>
-                </div>
-
-                {/* Metrics Cards */}
-                <MetricsCards metrics={metrics} />
-
-                {/* Charts */}
-                <div className="grid gap-6 md:grid-cols-2">
-                    <RevenueChart />
-                    <UserGrowthChart />
-                </div>
-
-                {/* System Health */}
-                <SystemHealth health={mapHealthResponse(health)} />
-            </div>
+        health = await fetchWithAuth<RawHealthResponse>(
+            '/api/admin/metrics/health',
+            session.accessToken,
         )
     } catch (error) {
-        console.error('Error fetching metrics:', error)
-        return (
-            <div className="space-y-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">System Metrics</h1>
-                    <p className="text-muted-foreground">
-                        Monitor system performance and user analytics
-                    </p>
-                </div>
-                <div className="text-center py-12">
-                    <p className="text-red-600">Error loading metrics. Please try again.</p>
-                </div>
-            </div>
-        )
+        console.error('[AdminMetrics] Failed to load health metrics:', error)
     }
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">System Metrics</h1>
+                <p className="text-muted-foreground">
+                    Monitor system performance and user analytics
+                </p>
+            </div>
+
+            {/* Metrics Cards */}
+            <MetricsCards metrics={metrics} />
+
+            {/* Charts */}
+            <div className="grid gap-6 md:grid-cols-2">
+                <RevenueChart />
+                <UserGrowthChart />
+            </div>
+
+            {/* System Health */}
+            <SystemHealth health={mapHealthResponse(health)} />
+        </div>
+    )
 }
