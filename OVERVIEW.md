@@ -201,10 +201,11 @@ VolSpike uses a modern **client-side WebSocket architecture** with the following
 ### Data Points Tracked
 - **Price Data**: Real-time bid/ask, last price, 24h change
 - **Volume Metrics**: 24h volume, volume spikes, volume ratios
-- **Funding Rates**: Current and historical funding rates
+- **Funding Rates**: Current and historical funding rates with visual alerts (±0.03% threshold)
 - **Open Interest**: Total open interest and changes
 - **Liquidation Data**: Estimated liquidation levels
 - **Market Depth**: Order book snapshots
+- **UI Enhancements**: Clean column layout (Ticker, Price, Price Change, Funding Rate, 24h Volume)
 
 ### Volume Spike Detection Algorithm
 

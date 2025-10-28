@@ -442,6 +442,8 @@ railway deploy
 - **Tier-based throttling** in frontend
 - **USDT pairs only** with >$100M volume filter
 - **Sorted by volume** (highest to lowest)
+- **Stable WebSocket connections** with useCallback optimization
+- **Enhanced funding rate alerts** with visual thresholds (±0.03%)
 
 ### Notification System
 - Email alerts (SendGrid)
