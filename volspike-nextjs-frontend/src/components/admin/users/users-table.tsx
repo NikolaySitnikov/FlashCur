@@ -162,7 +162,7 @@ export function UsersTable({ users, pagination, currentQuery }: UsersTableProps)
                         variant="outline"
                         onClick={() => {
                             // Implement bulk export
-                            toast.info('Bulk export functionality coming soon')
+                            toast.success('Bulk export functionality coming soon')
                         }}
                     >
                         Export

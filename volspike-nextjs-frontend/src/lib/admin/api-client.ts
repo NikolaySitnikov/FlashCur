@@ -1,4 +1,4 @@
-import { AdminUser, UserListResponse, CreateUserRequest, UpdateUserRequest, BulkActionRequest, AuditLogResponse, AuditLogQuery, SystemMetrics, SubscriptionSummary, AdminSettings, TwoFactorSetup, TwoFactorVerification } from '@/types/admin'
+import { AdminUser, UserListQuery, UserListResponse, CreateUserRequest, UpdateUserRequest, BulkActionRequest, AuditLogResponse, AuditLogQuery, SystemMetrics, SubscriptionSummary, AdminSettings, TwoFactorSetup, TwoFactorVerification } from '@/types/admin'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 

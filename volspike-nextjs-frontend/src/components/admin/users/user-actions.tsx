@@ -65,7 +65,7 @@ export function UserActions() {
     const handleExportUsers = async () => {
         try {
             // This would implement actual export functionality
-            toast.info('Export functionality coming soon')
+            toast.success('Export functionality coming soon')
         } catch (error) {
             toast.error('Export failed')
         }
@@ -74,7 +74,7 @@ export function UserActions() {
     const handleImportUsers = async () => {
         try {
             // This would implement actual import functionality
-            toast.info('Import functionality coming soon')
+            toast.success('Import functionality coming soon')
         } catch (error) {
             toast.error('Import failed')
         }

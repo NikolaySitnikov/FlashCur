@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 }
 
 interface SubscriptionsPageProps {
-    searchParams: {
+    searchParams: Promise<{
         userId?: string
         status?: string
         tier?: string
@@ -19,11 +19,12 @@ interface SubscriptionsPageProps {
         limit?: string
         sortBy?: string
         sortOrder?: string
-    }
+    }>
 }
 
 export default async function SubscriptionsPage({ searchParams }: SubscriptionsPageProps) {
     const session = await auth()
+    const params = await searchParams
 
     // Check if user is admin
     if (!session?.user || session.user.role !== 'ADMIN') {
@@ -36,13 +37,13 @@ export default async function SubscriptionsPage({ searchParams }: SubscriptionsP
     try {
         // Parse search params
         const query = {
-            userId: searchParams.userId,
-            status: searchParams.status as any,
-            tier: searchParams.tier as any,
-            page: searchParams.page ? parseInt(searchParams.page) : 1,
-            limit: searchParams.limit ? parseInt(searchParams.limit) : 20,
-            sortBy: searchParams.sortBy as any || 'createdAt',
-            sortOrder: searchParams.sortOrder as any || 'desc',
+            userId: params.userId,
+            status: params.status as any,
+            tier: params.tier as any,
+            page: params.page ? parseInt(params.page) : 1,
+            limit: params.limit ? parseInt(params.limit) : 20,
+            sortBy: params.sortBy as any || 'createdAt',
+            sortOrder: params.sortOrder as any || 'desc',
         }
 
         // Fetch subscriptions data

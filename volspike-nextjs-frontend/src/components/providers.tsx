@@ -2,9 +2,11 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SessionProvider } from 'next-auth/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from 'react-hot-toast'
+import { Footer } from '@/components/footer'
 
 // Dynamic import for Web3 providers to prevent hydration mismatches
 const Web3Providers = dynamic(
@@ -19,7 +21,8 @@ const Web3Providers = dynamic(
     }
 )
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({ children }: { children: React.ReactNode }) {
+    const [mounted, setMounted] = useState(false)
     const [queryClient] = useState(() => new QueryClient({
         defaultOptions: {
             queries: {
@@ -30,6 +33,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
     }))
 
+    useEffect(() => setMounted(true), [])
+
+    if (!mounted) {
+        return <>{children}</> // or null if your UI can tolerate blank first paint
+    }
+
+    // Anything that depends on window / localStorage / media queries must only run after mount
     return (
         <QueryClientProvider client={queryClient}>
             <SessionProvider>
@@ -40,8 +50,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
                         enableSystem
                         disableTransitionOnChange
                     >
-                        {children}
-                        {/* ReactQueryDevtools removed for cleaner UI */}
+                        <div className="flex min-h-screen flex-col bg-background">
+                            <div className="flex-1 flex flex-col">
+                                {children}
+                            </div>
+                            <Footer />
+                        </div>
+                        <Toaster
+                            position="top-right"
+                            toastOptions={{
+                                duration: 4000,
+                                style: {
+                                    background: 'hsl(var(--card))',
+                                    color: 'hsl(var(--card-foreground))',
+                                    border: '1px solid hsl(var(--border))',
+                                },
+                            }}
+                        />
                     </ThemeProvider>
                 </Web3Providers>
             </SessionProvider>

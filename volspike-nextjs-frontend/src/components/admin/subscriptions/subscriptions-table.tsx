@@ -34,11 +34,11 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'react-hot-toast'
-import { StripeSubscriptionAdmin } from '@/types/admin'
+import { SubscriptionSummary } from '@/types/admin'
 import { adminAPI } from '@/lib/admin/api-client'
 
 interface SubscriptionsTableProps {
-    subscriptions: StripeSubscriptionAdmin[]
+    subscriptions: SubscriptionSummary[]
     pagination: {
         total: number
         page: number
@@ -102,8 +102,9 @@ export function SubscriptionsTable({ subscriptions, pagination, currentQuery }: 
                     }
                     break
                 case 'refund':
-                    if (confirm('Are you sure you want to process a refund for this subscription?')) {
-                        await adminAPI.processRefund(subscriptionId)
+                    const subscription = subscriptions.find(sub => sub.id === subscriptionId)
+                    if (subscription && confirm('Are you sure you want to process a refund for this subscription?')) {
+                        await adminAPI.processRefund(subscription.userId, { reason: 'Admin refund' })
                         toast.success('Refund processed')
                         router.refresh()
                     }
@@ -177,7 +178,7 @@ export function SubscriptionsTable({ subscriptions, pagination, currentQuery }: 
                         {subscriptions.map((subscription) => {
                             const StatusIcon = statusIcons[subscription.status as keyof typeof statusIcons] || CheckCircle
                             const statusColorClass = statusColors[subscription.status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'
-                            const tier = getTierFromPrice(subscription.items.data[0]?.price.id || '')
+                            const tier = getTierFromPrice(subscription.stripePriceId || '')
 
                             return (
                                 <TableRow
@@ -189,7 +190,7 @@ export function SubscriptionsTable({ subscriptions, pagination, currentQuery }: 
                                         <div className="flex items-center space-x-2">
                                             <CreditCard className="h-4 w-4 text-muted-foreground" />
                                             <div className="flex flex-col">
-                                                <span className="font-medium">{subscription.customer}</span>
+                                                <span className="font-medium">{subscription.userEmail}</span>
                                                 <span className="text-xs text-muted-foreground">
                                                     ID: {subscription.id.slice(0, 8)}...
                                                 </span>
@@ -208,13 +209,13 @@ export function SubscriptionsTable({ subscriptions, pagination, currentQuery }: 
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        {subscription.current_period_end ? (
+                                        {subscription.currentPeriodEnd ? (
                                             <div className="flex flex-col">
                                                 <span className="text-sm">
-                                                    {format(new Date(subscription.current_period_end * 1000), 'MMM d, yyyy')}
+                                                    {format(new Date(subscription.currentPeriodEnd), 'MMM d, yyyy')}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground">
-                                                    {format(new Date(subscription.current_period_end * 1000), 'HH:mm:ss')}
+                                                    {format(new Date(subscription.currentPeriodEnd), 'HH:mm:ss')}
                                                 </span>
                                             </div>
                                         ) : (
@@ -225,17 +226,17 @@ export function SubscriptionsTable({ subscriptions, pagination, currentQuery }: 
                                         <div className="flex items-center space-x-1">
                                             <DollarSign className="h-3 w-3 text-muted-foreground" />
                                             <span className="text-sm font-medium">
-                                                ${(subscription.items.data[0]?.price.unit_amount || 0) / 100}
+                                                $0.00
                                             </span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <span className="text-sm">
-                                                {format(new Date(subscription.created * 1000), 'MMM d, yyyy')}
+                                                {format(new Date(subscription.createdAt), 'MMM d, yyyy')}
                                             </span>
                                             <span className="text-xs text-muted-foreground">
-                                                {format(new Date(subscription.created * 1000), 'HH:mm:ss')}
+                                                {format(new Date(subscription.createdAt), 'HH:mm:ss')}
                                             </span>
                                         </div>
                                     </TableCell>

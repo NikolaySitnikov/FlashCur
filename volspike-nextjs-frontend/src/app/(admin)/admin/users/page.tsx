@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 }
 
 interface UsersPageProps {
-    searchParams: {
+    searchParams: Promise<{
         search?: string
         role?: string
         tier?: string
@@ -21,11 +21,12 @@ interface UsersPageProps {
         limit?: string
         sortBy?: string
         sortOrder?: string
-    }
+    }>
 }
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
     const session = await auth()
+    const params = await searchParams
 
     // Check if user is admin
     if (!session?.user || session.user.role !== 'ADMIN') {
@@ -38,14 +39,14 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     try {
         // Parse search params
         const query = {
-            search: searchParams.search,
-            role: searchParams.role as any,
-            tier: searchParams.tier as any,
-            status: searchParams.status as any,
-            page: searchParams.page ? parseInt(searchParams.page) : 1,
-            limit: searchParams.limit ? parseInt(searchParams.limit) : 20,
-            sortBy: searchParams.sortBy as any || 'createdAt',
-            sortOrder: searchParams.sortOrder as any || 'desc',
+            search: params.search,
+            role: params.role as any,
+            tier: params.tier as any,
+            status: params.status as any,
+            page: params.page ? parseInt(params.page) : 1,
+            limit: params.limit ? parseInt(params.limit) : 20,
+            sortBy: params.sortBy as any || 'createdAt',
+            sortOrder: params.sortOrder as any || 'desc',
         }
 
         // Fetch users data

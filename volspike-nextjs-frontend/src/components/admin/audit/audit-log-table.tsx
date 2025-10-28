@@ -96,7 +96,7 @@ export function AuditLogTable({ logs, pagination, currentQuery }: AuditLogTableP
         try {
             const log = await adminAPI.getAuditLogById(logId)
             // This would open a modal or navigate to a details page
-            toast.info('Log details functionality coming soon')
+            toast.success('Log details functionality coming soon')
         } catch (error) {
             toast.error('Failed to load log details')
         } finally {

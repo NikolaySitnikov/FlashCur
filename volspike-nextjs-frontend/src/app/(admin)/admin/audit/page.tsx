@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 }
 
 interface AuditPageProps {
-    searchParams: {
+    searchParams: Promise<{
         actorUserId?: string
         action?: string
         targetType?: string
@@ -22,11 +22,12 @@ interface AuditPageProps {
         limit?: string
         sortBy?: string
         sortOrder?: string
-    }
+    }>
 }
 
 export default async function AuditPage({ searchParams }: AuditPageProps) {
     const session = await auth()
+    const params = await searchParams
 
     // Check if user is admin
     if (!session?.user || session.user.role !== 'ADMIN') {
@@ -39,16 +40,16 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
     try {
         // Parse search params
         const query = {
-            actorUserId: searchParams.actorUserId,
-            action: searchParams.action,
-            targetType: searchParams.targetType,
-            targetId: searchParams.targetId,
-            startDate: searchParams.startDate ? new Date(searchParams.startDate) : undefined,
-            endDate: searchParams.endDate ? new Date(searchParams.endDate) : undefined,
-            page: searchParams.page ? parseInt(searchParams.page) : 1,
-            limit: searchParams.limit ? parseInt(searchParams.limit) : 20,
-            sortBy: searchParams.sortBy as any || 'createdAt',
-            sortOrder: searchParams.sortOrder as any || 'desc',
+            actorUserId: params.actorUserId,
+            action: params.action,
+            targetType: params.targetType,
+            targetId: params.targetId,
+            startDate: params.startDate ? new Date(params.startDate) : undefined,
+            endDate: params.endDate ? new Date(params.endDate) : undefined,
+            page: params.page ? parseInt(params.page) : 1,
+            limit: params.limit ? parseInt(params.limit) : 20,
+            sortBy: params.sortBy as any || 'createdAt',
+            sortOrder: params.sortOrder as any || 'desc',
         }
 
         // Fetch audit logs data

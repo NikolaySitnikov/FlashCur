@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { adminAPI } from '@/lib/admin/api-client'
+import type { TwoFactorSetup } from '@/types/admin'
 
 interface TwoFactorSettingsProps {
     user: {
@@ -26,11 +27,7 @@ interface TwoFactorSettingsProps {
 
 export function TwoFactorSettings({ user }: TwoFactorSettingsProps) {
     const [loading, setLoading] = useState<string | null>(null)
-    const [setupData, setSetupData] = useState<{
-        secret: string
-        qrCodeUrl: string
-        backupCodes: string[]
-    } | null>(null)
+    const [setupData, setSetupData] = useState<TwoFactorSetup | null>(null)
     const [verificationCode, setVerificationCode] = useState('')
     const [backupCode, setBackupCode] = useState('')
 
@@ -134,7 +131,7 @@ export function TwoFactorSettings({ user }: TwoFactorSettingsProps) {
                                     <h3 className="text-lg font-medium mb-4">Scan QR Code</h3>
                                     <div className="inline-block p-4 bg-white border rounded-lg">
                                         <img
-                                            src={setupData.qrCodeUrl}
+                                            src={setupData.qrCode}
                                             alt="2FA QR Code"
                                             className="w-48 h-48"
                                         />
@@ -162,7 +159,7 @@ export function TwoFactorSettings({ user }: TwoFactorSettingsProps) {
                                         </Button>
                                     </div>
                                     <p className="text-sm text-muted-foreground mt-1">
-                                        Enter this key manually if you can't scan the QR code
+                                        Enter this key manually if you can&apos;t scan the QR code
                                     </p>
                                 </div>
 

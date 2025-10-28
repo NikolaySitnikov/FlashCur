@@ -2,11 +2,12 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import '@rainbow-me/rainbowkit/styles.css'
-import { Providers } from '@/components/providers'
-import { Toaster } from 'react-hot-toast'
-import { Footer } from '@/components/footer'
+import Providers from '@/components/providers'
 
 const inter = Inter({ subsets: ['latin'] })
+
+// IMPORTANT: do NOT add "use client" here.
+// Make sure the <html> has suppressHydrationWarning to absorb theme swaps.
 
 export const metadata: Metadata = {
     title: 'VolSpike - Binance Perps Guru Dashboard',
@@ -38,23 +39,7 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
             <body className={inter.className}>
                 <Providers>
-                    <div className="flex min-h-screen flex-col bg-background">
-                        <div className="flex-1 flex flex-col">
-                            {children}
-                        </div>
-                        <Footer />
-                    </div>
-                    <Toaster
-                        position="top-right"
-                        toastOptions={{
-                            duration: 4000,
-                            style: {
-                                background: 'hsl(var(--card))',
-                                color: 'hsl(var(--card-foreground))',
-                                border: '1px solid hsl(var(--border))',
-                            },
-                        }}
-                    />
+                    {children}
                 </Providers>
             </body>
         </html>
