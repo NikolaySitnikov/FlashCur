@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { TrendingUp, TrendingDown, Volume2 } from 'lucide-react'
 
+const FUNDING_ALERT_THRESHOLD = 0.0003
+
 interface MarketData {
     symbol: string
     price: number
@@ -154,53 +156,69 @@ export function MarketTable({ data, userTier = 'free', withContainer = true }: M
                     </tr>
                 </thead>
                 <tbody>
-                    {sortedData.map((item) => (
-                        <tr
-                            key={item.symbol}
-                            className={[
-                                'border-b hover:bg-muted/50 transition-colors',
-                                (item.fundingRate ?? 0) >= 0.0003 ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : '',
-                                (item.fundingRate ?? 0) <= -0.0003 ? 'bg-red-500/10 hover:bg-red-500/20' : '',
-                            ].join(' ').trim().replace(/\s+/g, ' ')}
-                        >
-                            <td className="p-2 font-mono text-sm">{formatSymbol(item.symbol)}</td>
-                            <td className="p-2 text-right font-mono">
-                                ${item.price.toLocaleString()}
-                            </td>
-                            <td className="p-2 text-right font-mono">
-                                ${formatVolume(item.volume24h)}
-                            </td>
-                            <td className="p-2 text-right">
-                                <div className="flex items-center justify-end">
-                                    {(() => {
-                                        const changeValue = item.change24h ?? item.volumeChange ?? 0;
-                                        return (
-                                            <>
-                                                {changeValue > 0 ? (
-                                                    <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                                                ) : (
-                                                    <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-                                                )}
-                                                <span className={`font-mono ${changeValue > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                    {changeValue > 0 ? '+' : ''}{changeValue.toFixed(2)}%
-                                                </span>
-                                            </>
-                                        );
-                                    })()}
-                                </div>
-                            </td>
-                            <td className="p-2 text-right font-mono">
-                                <span className={(item.fundingRate ?? 0) > 0 ? 'text-green-500' : 'text-red-500'}>
-                                    {(item.fundingRate ?? 0) > 0 ? '+' : ''}{((item.fundingRate ?? 0) * 100).toFixed(4)}%
-                                </span>
-                            </td>
-                            {userTier !== 'free' && (
+                    {sortedData.map((item) => {
+                        const fundingRate = item.fundingRate ?? 0
+                        const exceedsThreshold = Math.abs(fundingRate) >= FUNDING_ALERT_THRESHOLD
+
+                        const rowClasses = ['border-b', 'transition-colors']
+                        if (fundingRate >= FUNDING_ALERT_THRESHOLD) {
+                            rowClasses.push('bg-emerald-500/20', 'hover:bg-emerald-500/30')
+                        } else if (fundingRate <= -FUNDING_ALERT_THRESHOLD) {
+                            rowClasses.push('bg-red-500/20', 'hover:bg-red-500/30')
+                        } else {
+                            rowClasses.push('hover:bg-muted/50')
+                        }
+
+                        const fundingClass = exceedsThreshold
+                            ? fundingRate > 0
+                                ? 'text-emerald-500 font-semibold'
+                                : 'text-red-500 font-semibold'
+                            : 'text-foreground'
+
+                        return (
+                            <tr
+                                key={item.symbol}
+                                className={rowClasses.join(' ')}
+                            >
+                                <td className="p-2 font-mono text-sm">{formatSymbol(item.symbol)}</td>
                                 <td className="p-2 text-right font-mono">
-                                    ${(item.openInterest ?? 0).toLocaleString()}
+                                    ${item.price.toLocaleString()}
                                 </td>
-                            )}
-                        </tr>
-                    ))}
+                                <td className="p-2 text-right font-mono">
+                                    ${formatVolume(item.volume24h)}
+                                </td>
+                                <td className="p-2 text-right">
+                                    <div className="flex items-center justify-end">
+                                        {(() => {
+                                            const changeValue = item.change24h ?? item.volumeChange ?? 0;
+                                            return (
+                                                <>
+                                                    {changeValue > 0 ? (
+                                                        <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                                                    ) : (
+                                                        <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+                                                    )}
+                                                    <span className={`font-mono ${changeValue > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                        {changeValue > 0 ? '+' : ''}{changeValue.toFixed(2)}%
+                                                    </span>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                </td>
+                                <td className="p-2 text-right font-mono">
+                                    <span className={fundingClass}>
+                                        {fundingRate > 0 ? '+' : ''}{(fundingRate * 100).toFixed(4)}%
+                                    </span>
+                                </td>
+                                {userTier !== 'free' && (
+                                    <td className="p-2 text-right font-mono">
+                                        ${(item.openInterest ?? 0).toLocaleString()}
+                                    </td>
+                                )}
+                            </tr>
+                        )
+                    })}
                 </tbody>
             </table>
         </div>
