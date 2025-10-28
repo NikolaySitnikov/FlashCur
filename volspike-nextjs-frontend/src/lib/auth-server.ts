@@ -3,10 +3,10 @@ import { cookies } from 'next/headers'
 import { jwtVerify } from 'jose'
 
 type VerifyResult = {
-  ok: boolean
-  role?: 'admin' | 'user'
-  userId?: string
-  reason?: string
+    ok: boolean
+    role?: 'admin' | 'user'
+    userId?: string
+    reason?: string
 }
 
 export async function verifyAccessTokenAndRole(token?: string): Promise<VerifyResult> {
@@ -39,14 +39,15 @@ export async function verifyAccessTokenAndRole(token?: string): Promise<VerifyRe
     }
 }
 
-export function getServerAuthToken(): string | undefined {
+export async function getServerAuthToken(): Promise<string | undefined> {
     // Try to get token from NextAuth session cookie
-    const sessionToken = cookies().get('next-auth.session-token')?.value
+    const cookies = await import('next/headers').then(m => m.cookies())
+    const sessionToken = cookies.get('next-auth.session-token')?.value
     if (sessionToken) {
         return sessionToken
     }
     
     // Fallback to custom auth token cookie
-    return cookies().get('auth_token')?.value
+    return cookies.get('auth_token')?.value
 }
 

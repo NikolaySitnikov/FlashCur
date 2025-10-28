@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { getServerAuthToken, verifyAccessTokenAndRole } from '@/lib/auth-server'
 
 export default async function HomePage() {
-    const session = await auth()
+    const token = await getServerAuthToken()
+    const { ok } = await verifyAccessTokenAndRole(token)
 
-    if (!session) {
+    if (!ok) {
         redirect('/auth')
     }
 

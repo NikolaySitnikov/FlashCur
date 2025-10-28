@@ -51,12 +51,17 @@ export function SigninForm({ onSuccess, authError, setAuthError, showPassword, s
 
             if (result?.ok) {
                 onSuccess()
-                router.push('/')
+                // Use router.refresh() to update server components
+                router.refresh()
+                router.push('/dashboard')
             } else {
-                const message = 'Invalid email or password. Please try again.'
+                const message = result?.error === 'CredentialsSignin' 
+                    ? 'Invalid email or password. Please try again.'
+                    : 'An error occurred during sign in. Please try again.'
                 setAuthError(message)
             }
         } catch (error) {
+            console.error('[SigninForm] Sign in error:', error)
             const message = 'An error occurred during sign in. Please try again.'
             setAuthError(message)
         }
