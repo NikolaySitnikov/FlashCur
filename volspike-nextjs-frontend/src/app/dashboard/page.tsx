@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getServerAuthToken } from '@/lib/auth-server'
-import { verifyAccessTokenAndRole } from '@/lib/auth-verify'
+import { getServerAuthToken, verifyAccessTokenAndRole } from '@/lib/auth-server'
 import DebugFetchLogger from '@/components/debug-fetch-logger'
 
 export default async function DashboardPage() {
