@@ -1,6 +1,7 @@
 import 'server-only'
 import { cookies } from 'next/headers'
 import { jwtVerify } from 'jose'
+import { auth } from '@/lib/auth'
 
 const API_BASE_URL =
     process.env.BACKEND_API_URL ||
@@ -32,7 +33,7 @@ export async function verifyAccessTokenAndRole(token?: string) {
     }
 }
 
-export async function getServerAuthToken() {
-    const cookieStore = await cookies()
-    return cookieStore.get('accessToken')?.value
+export async function getServerAuthToken(): Promise<string | undefined> {
+    const session = await auth()
+    return session?.accessToken as string | undefined
 }

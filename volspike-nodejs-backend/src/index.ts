@@ -16,6 +16,7 @@ import { alertRoutes } from './routes/alerts'
 import { paymentRoutes } from './routes/payments'
 import { adminRoutes } from './routes/admin'
 import { setupSocketHandlers } from './websocket/handlers'
+import type { AppBindings, AppVariables } from './types/hono'
 
 // Initialize Prisma
 export const prisma = new PrismaClient()
@@ -24,7 +25,7 @@ export const prisma = new PrismaClient()
 const logger = createLogger()
 
 // Create Hono app
-const app = new Hono()
+const app = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>()
 
 // ============================================
 // CORS CONFIGURATION

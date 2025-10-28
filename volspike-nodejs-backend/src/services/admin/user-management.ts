@@ -184,6 +184,9 @@ export class UserManagementService {
                 where: { id: userId },
                 data: {
                     ...data,
+                    emailVerified: data.emailVerified === true ? new Date() :
+                        data.emailVerified === false ? null :
+                            data.emailVerified,
                     updatedAt: new Date(),
                 },
             })
@@ -318,7 +321,7 @@ export class UserManagementService {
                             break
                     }
                 } catch (error) {
-                    results.push({ userId, success: false, error: error.message })
+                    results.push({ userId, success: false, error: error instanceof Error ? error.message : 'Unknown error' })
                 }
             }
 

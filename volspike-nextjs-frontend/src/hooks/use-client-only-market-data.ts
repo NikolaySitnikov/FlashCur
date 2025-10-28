@@ -176,9 +176,11 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
     }, [render]);
 
     const connect = useCallback(() => {
-        const WS_URL = 'wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr';
+        // Use environment variable for WebSocket URL, fallback to Binance direct
+        const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr';
 
         try {
+            console.log('🔌 Connecting to WebSocket:', WS_URL);
             wsRef.current = new WebSocket(WS_URL);
             let opened = false;
 
@@ -269,14 +271,23 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                 }
             };
 
-            wsRef.current.onerror = (error) => {
-                console.error('WebSocket error:', error);
+            wsRef.current.onerror = (evt) => {
+                // Chrome often gives an empty object. Add context.
+                console.error('WebSocket error (likely handshake failure)', {
+                    url: WS_URL,
+                    readyState: wsRef.current?.readyState,
+                    event: evt
+                });
                 setStatus('error');
             };
 
-            wsRef.current.onclose = () => {
+            wsRef.current.onclose = (evt) => {
                 setStatus('reconnecting');
-                console.log('WebSocket closed, reconnecting...');
+                console.warn('WebSocket closed', {
+                    code: evt.code,
+                    reason: evt.reason,
+                    url: WS_URL
+                });
 
                 // Exponential backoff: 1s, 2s, 4s, 8s... up to 30s
                 const delay = Math.min(30_000, (2 ** reconnectAttemptsRef.current) * 1000);

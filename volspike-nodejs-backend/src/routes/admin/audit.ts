@@ -2,9 +2,10 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { prisma } from '../../index'
 import { createLogger } from '../../lib/logger'
+import type { AppBindings, AppVariables } from '../../types/hono'
 
 const logger = createLogger()
-const adminAuditRoutes = new Hono()
+const adminAuditRoutes = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>()
 
 // Validation schemas
 const auditLogQuerySchema = z.object({
@@ -165,7 +166,7 @@ adminAuditRoutes.get('/:id', async (c) => {
 adminAuditRoutes.get('/export', async (c) => {
     try {
         const format = c.req.query('format') || 'json'
-        
+
         // Get all audit logs for export
         const logs = await prisma.auditLog.findMany({
             include: {

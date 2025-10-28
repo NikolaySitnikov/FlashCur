@@ -1,38 +1,8 @@
 import { Role, UserStatus } from '@prisma/client'
+import { AuditAction, AuditTargetType } from './audit-consts'
 
-// Audit action types
-export type AuditAction =
-    | 'USER_CREATED'
-    | 'USER_UPDATED'
-    | 'USER_DELETED'
-    | 'USER_SUSPENDED'
-    | 'USER_ACTIVATED'
-    | 'USER_BANNED'
-    | 'SUBSCRIPTION_CREATED'
-    | 'SUBSCRIPTION_UPDATED'
-    | 'SUBSCRIPTION_CANCELLED'
-    | 'SUBSCRIPTION_REFUNDED'
-    | 'ADMIN_LOGIN'
-    | 'ADMIN_LOGOUT'
-    | 'ADMIN_2FA_ENABLED'
-    | 'ADMIN_2FA_DISABLED'
-    | 'ADMIN_2FA_FAILED'
-    | 'SETTINGS_UPDATED'
-    | 'BULK_ACTION_EXECUTED'
-    | 'SECURITY_EVENT'
-    | 'UNAUTHORIZED_ACCESS'
-    | 'RATE_LIMIT_EXCEEDED'
-    | 'CSRF_VIOLATION'
-
-// Target types for audit logs
-export type AuditTargetType =
-    | 'USER'
-    | 'SUBSCRIPTION'
-    | 'ADMIN'
-    | 'SETTINGS'
-    | 'SECURITY'
-    | 'SYSTEM'
-    | 'AUDIT'
+// Re-export the constants as types for backward compatibility
+export type { AuditAction, AuditTargetType }
 
 // Audit log entry interface
 export interface AuditLogEntry {

@@ -3,9 +3,10 @@ import { z } from 'zod'
 import { prisma } from '../../index'
 import { createLogger } from '../../lib/logger'
 import { Role, UserStatus } from '@prisma/client'
+import type { AppBindings, AppVariables } from '../../types/hono'
 
 const logger = createLogger()
-const adminUserRoutes = new Hono()
+const adminUserRoutes = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>()
 
 // Validation schemas
 const userListSchema = z.object({
@@ -24,7 +25,7 @@ const updateUserSchema = z.object({
     role: z.enum(['USER', 'ADMIN']).optional(),
     status: z.enum(['ACTIVE', 'SUSPENDED', 'BANNED']).optional(),
     notes: z.string().optional(),
-    emailVerified: z.boolean().optional(),
+    emailVerified: z.union([z.boolean(), z.string().datetime()]).optional(),
 })
 
 // GET /api/admin/users - List users
@@ -132,6 +133,9 @@ adminUserRoutes.patch('/:id', async (c) => {
             where: { id: userId },
             data: {
                 ...data,
+                emailVerified: data.emailVerified === true ? new Date() :
+                    data.emailVerified === false ? null :
+                        data.emailVerified,
                 updatedAt: new Date(),
             },
         })
@@ -198,15 +202,15 @@ adminUserRoutes.post('/:id/suspend', async (c) => {
 adminUserRoutes.post('/:id/reset-password', async (c) => {
     try {
         const userId = c.req.param('id')
-        
+
         // For now, just return success
         // Implement actual password reset logic later
         const adminUser = c.get('adminUser')
         logger.info(`Password reset requested for user ${userId} by admin ${adminUser?.email || 'unknown'}`)
 
-        return c.json({ 
-            success: true, 
-            message: 'Password reset email would be sent (not implemented yet)' 
+        return c.json({
+            success: true,
+            message: 'Password reset email would be sent (not implemented yet)'
         })
     } catch (error) {
         logger.error('Reset password error:', error)

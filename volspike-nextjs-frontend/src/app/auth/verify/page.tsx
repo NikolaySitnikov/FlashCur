@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { CheckCircle, XCircle, Loader2, Mail } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-export default function EmailVerificationPage() {
+function EmailVerificationContent() {
     const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'expired'>('loading')
     const [message, setMessage] = useState('')
     const [isResending, setIsResending] = useState(false)
@@ -191,5 +191,24 @@ export default function EmailVerificationPage() {
                 </CardContent>
             </Card>
         </main>
+    )
+}
+
+export default function EmailVerificationPage() {
+    return (
+        <Suspense fallback={
+            <main className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+                <Card className="w-full max-w-md">
+                    <CardHeader className="text-center">
+                        <div className="flex justify-center mb-4">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                        </div>
+                        <CardTitle className="text-xl font-semibold">Loading...</CardTitle>
+                    </CardHeader>
+                </Card>
+            </main>
+        }>
+            <EmailVerificationContent />
+        </Suspense>
     )
 }

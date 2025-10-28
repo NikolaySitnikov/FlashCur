@@ -2,9 +2,10 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { prisma } from '../../index'
 import { createLogger } from '../../lib/logger'
+import type { AppBindings, AppVariables } from '../../types/hono'
 
 const logger = createLogger()
-const adminSubscriptionRoutes = new Hono()
+const adminSubscriptionRoutes = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>()
 
 // Validation schemas
 const subscriptionListSchema = z.object({

@@ -5,8 +5,9 @@ import { adminSubscriptionRoutes } from './subscriptions'
 import { adminAuditRoutes } from './audit'
 import { adminMetricsRoutes } from './metrics'
 import { adminSettingsRoutes } from './settings'
+import type { AppBindings, AppVariables } from '../../types/hono'
 
-const adminRoutes = new Hono()
+const adminRoutes = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>()
 
 // Admin health check (before middleware so it can be tested)
 adminRoutes.get('/health', async (c) => {

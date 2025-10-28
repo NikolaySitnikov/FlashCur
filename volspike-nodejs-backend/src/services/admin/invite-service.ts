@@ -1,7 +1,7 @@
 import { prisma } from '../../index'
 import { createLogger } from '../../lib/logger'
 import { InviteEmailData } from '../../types/admin'
-import { AuditAction, AuditTargetType } from '../../types/audit'
+import { AuditAction, AuditTargetType } from '../../types/audit-consts'
 import { AuditService } from './audit-service'
 
 const logger = createLogger()

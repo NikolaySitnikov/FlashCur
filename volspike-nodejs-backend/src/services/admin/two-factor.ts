@@ -1,7 +1,7 @@
 import { prisma } from '../../index'
 import { createLogger } from '../../lib/logger'
 import { TwoFactorSetup, TwoFactorVerification } from '../../types/admin'
-import { AuditAction, AuditTargetType } from '../../types/audit'
+import { AuditAction, AuditTargetType } from '../../types/audit-consts'
 import { AuditService } from './audit-service'
 import * as speakeasy from 'speakeasy'
 import * as QRCode from 'qrcode'

@@ -1,7 +1,8 @@
 import { Context, Next } from 'hono'
 import { prisma } from '../index'
 import { createLogger } from '../lib/logger'
-import { AuditAction, AuditTargetType, CreateAuditLogData, AuditMetadata } from '../types/audit'
+import { AuditAction, AuditTargetType } from '../types/audit-consts'
+import { CreateAuditLogData, AuditMetadata } from '../types/audit'
 
 const logger = createLogger()
 
@@ -159,7 +160,7 @@ export async function auditSecurityEvent(
         const auditData: CreateAuditLogData = {
             actorUserId,
             action: AuditAction.SECURITY_EVENT,
-            targetType: 'SECURITY',
+            targetType: AuditTargetType.SECURITY,
             metadata: {
                 ...metadata,
                 additionalContext: { securityEvent: event, details },

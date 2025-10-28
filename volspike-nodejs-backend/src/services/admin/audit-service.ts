@@ -1,6 +1,7 @@
 import { prisma } from '../../index'
 import { createLogger } from '../../lib/logger'
-import { AuditAction, AuditTargetType, CreateAuditLogData, AuditLogQuery } from '../../types/audit'
+import { AuditAction, AuditTargetType } from '../../types/audit-consts'
+import { CreateAuditLogData, AuditLogQuery } from '../../types/audit'
 
 const logger = createLogger()
 
@@ -16,7 +17,7 @@ export class AuditService {
                     targetId: data.targetId,
                     oldValues: data.oldValues,
                     newValues: data.newValues,
-                    metadata: data.metadata,
+                    metadata: data.metadata as any,
                 },
             })
 

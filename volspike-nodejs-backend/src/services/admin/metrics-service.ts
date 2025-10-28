@@ -349,6 +349,47 @@ export class MetricsService {
         return []
     }
 
+    private static async getTopUsers(period: string): Promise<Array<{ id: string; email: string; count: number }>> {
+        const startDate = this.getStartDate(period)
+
+        const result = await prisma.auditLog.groupBy({
+            by: ['actorUserId'],
+            where: {
+                createdAt: {
+                    gte: startDate,
+                },
+            },
+            _count: true,
+            orderBy: {
+                _count: {
+                    actorUserId: 'desc',
+                },
+            },
+            take: 10,
+        })
+
+        // Get user details for each actor
+        const userIds = result.map(item => item.actorUserId)
+        const users = await prisma.user.findMany({
+            where: {
+                id: { in: userIds },
+            },
+            select: {
+                id: true,
+                email: true,
+            },
+        })
+
+        return result.map(item => {
+            const user = users.find(u => u.id === item.actorUserId)
+            return {
+                id: item.actorUserId,
+                email: user?.email || 'Unknown',
+                count: item._count,
+            }
+        })
+    }
+
     private static async getActivityByDay(period: string): Promise<Array<{ date: string; count: number }>> {
         // This would need to be implemented with proper date grouping
         return []
@@ -393,6 +434,22 @@ export class MetricsService {
                 status: 'unhealthy',
                 responseTime: Date.now() - start,
             }
+        }
+    }
+
+    private static getStartDate(period: string): Date {
+        const now = new Date()
+        switch (period) {
+            case '24h':
+                return new Date(now.getTime() - 24 * 60 * 60 * 1000)
+            case '7d':
+                return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            case '30d':
+                return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            case '90d':
+                return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+            default:
+                return new Date(now.getTime() - 24 * 60 * 60 * 1000)
         }
     }
 

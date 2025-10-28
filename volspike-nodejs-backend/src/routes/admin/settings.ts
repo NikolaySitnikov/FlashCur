@@ -2,9 +2,10 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { prisma } from '../../index'
 import { createLogger } from '../../lib/logger'
+import type { AppBindings, AppVariables } from '../../types/hono'
 
 const logger = createLogger()
-const adminSettingsRoutes = new Hono()
+const adminSettingsRoutes = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>()
 
 // Validation schemas
 const updateSettingsSchema = z.object({
@@ -61,15 +62,15 @@ adminSettingsRoutes.patch('/', async (c) => {
     try {
         const body = await c.req.json()
         const data = updateSettingsSchema.parse(body)
-        
+
         const adminUser = c.get('adminUser')
         logger.info(`Admin settings would be updated by ${adminUser?.email || 'unknown'}`)
-        
+
         // For now, just return the updated settings
         // In production, save to database or config file
-        return c.json({ 
+        return c.json({
             settings: data,
-            message: 'Settings update would be saved (not implemented yet)' 
+            message: 'Settings update would be saved (not implemented yet)'
         })
     } catch (error) {
         logger.error('Update admin settings error:', error)
@@ -107,7 +108,7 @@ adminSettingsRoutes.get('/security', async (c) => {
 adminSettingsRoutes.post('/2fa/setup', async (c) => {
     try {
         const user = c.get('adminUser')
-        
+
         // For now, return mock data
         // Implement actual 2FA setup with speakeasy/otplib later
         return c.json({
@@ -126,15 +127,15 @@ adminSettingsRoutes.post('/2fa/setup', async (c) => {
 adminSettingsRoutes.post('/2fa/verify', async (c) => {
     try {
         const body = await c.req.json()
-        
+
         // For now, just return success
         // Implement actual verification later
         const adminUser = c.get('adminUser')
         logger.info(`2FA verification attempted by ${adminUser?.email || 'unknown'}`)
-        
-        return c.json({ 
-            success: true, 
-            message: '2FA verification would be performed (not implemented yet)' 
+
+        return c.json({
+            success: true,
+            message: '2FA verification would be performed (not implemented yet)'
         })
     } catch (error) {
         logger.error('Verify 2FA error:', error)
@@ -146,7 +147,7 @@ adminSettingsRoutes.post('/2fa/verify', async (c) => {
 adminSettingsRoutes.delete('/2fa', async (c) => {
     try {
         const user = c.get('adminUser')
-        
+
         if (!user) {
             return c.json({ error: 'User not found' }, 404)
         }
@@ -173,15 +174,15 @@ adminSettingsRoutes.post('/password', async (c) => {
     try {
         const body = await c.req.json()
         const data = passwordChangeSchema.parse(body)
-        
+
         // For now, just return success
         // Implement actual password change later
         const adminUser = c.get('adminUser')
         logger.info(`Password change requested by ${adminUser?.email || 'unknown'}`)
 
-        return c.json({ 
-            success: true, 
-            message: 'Password change would be performed (not implemented yet)' 
+        return c.json({
+            success: true,
+            message: 'Password change would be performed (not implemented yet)'
         })
     } catch (error) {
         logger.error('Change password error:', error)
@@ -193,7 +194,7 @@ adminSettingsRoutes.post('/password', async (c) => {
 adminSettingsRoutes.get('/sessions', async (c) => {
     try {
         const user = c.get('adminUser')
-        
+
         if (!user) {
             return c.json({ error: 'User not found' }, 404)
         }
@@ -215,7 +216,7 @@ adminSettingsRoutes.delete('/sessions/:sessionId', async (c) => {
     try {
         const sessionId = c.req.param('sessionId')
         const user = c.get('adminUser')
-        
+
         if (!user) {
             return c.json({ error: 'User not found' }, 404)
         }

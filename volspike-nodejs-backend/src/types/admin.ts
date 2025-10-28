@@ -99,7 +99,7 @@ export interface UpdateUserRequest {
     role?: Role
     status?: UserStatus
     notes?: string
-    emailVerified?: boolean
+    emailVerified?: boolean | Date | null
 }
 
 // Audit log types

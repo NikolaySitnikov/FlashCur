@@ -1,7 +1,9 @@
 import { Context, Next } from 'hono'
+import { setCookie } from 'hono/cookie'
 import { createLogger } from '../lib/logger'
 import { CSRFToken, CSRFConfig } from '../types/admin'
-import { AuditAction, AuditTargetType, CreateAuditLogData } from '../types/audit'
+import { AuditAction, AuditTargetType } from '../types/audit-consts'
+import { CreateAuditLogData } from '../types/audit'
 
 const logger = createLogger()
 
@@ -126,7 +128,7 @@ export async function setCSRFToken(c: Context, next: Next) {
         const token = await generateCSRFToken(user.id)
 
         // Set token in cookie
-        c.cookie(CSRF_CONFIG.cookieName, token, {
+        setCookie(c, CSRF_CONFIG.cookieName, token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
@@ -146,7 +148,7 @@ async function logCSRFViolation(userId: string, reason: string) {
         const auditData: CreateAuditLogData = {
             actorUserId: userId,
             action: AuditAction.CSRF_VIOLATION,
-            targetType: 'SECURITY',
+            targetType: AuditTargetType.SECURITY,
             metadata: {
                 additionalContext: { reason },
             },

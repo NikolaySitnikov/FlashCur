@@ -1,7 +1,8 @@
 import { Context, Next } from 'hono'
 import { createLogger } from '../lib/logger'
 import { RateLimitConfig, RateLimitInfo } from '../types/admin'
-import { AuditAction, AuditTargetType, CreateAuditLogData } from '../types/audit'
+import { AuditAction, AuditTargetType } from '../types/audit-consts'
+import { CreateAuditLogData } from '../types/audit'
 
 const logger = createLogger()
 
@@ -191,7 +192,7 @@ async function logRateLimitViolation(
         const auditData: CreateAuditLogData = {
             actorUserId: userId,
             action: AuditAction.RATE_LIMIT_EXCEEDED,
-            targetType: 'SECURITY',
+            targetType: AuditTargetType.SECURITY,
             metadata: {
                 additionalContext: { rateLimitType, clientIP },
             },

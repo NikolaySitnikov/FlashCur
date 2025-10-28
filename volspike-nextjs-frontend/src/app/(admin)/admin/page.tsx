@@ -10,12 +10,12 @@ export const metadata: Metadata = {
 }
 
 export default async function AdminPage() {
-    const token = getServerAuthToken()
+    const token = await getServerAuthToken()
     const { ok, role } = await verifyAccessTokenAndRole(token)
 
     if (!ok || role !== 'admin') {
         // always redirect from the server – consistent tree
-        redirect('/auth?next=/admin')
+        redirect('/auth?next=/admin&mode=admin')
     }
 
     // Render admin as a stable tree; client components are loaded directly

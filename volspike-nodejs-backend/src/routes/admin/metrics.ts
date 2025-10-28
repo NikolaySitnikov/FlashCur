@@ -2,9 +2,10 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { prisma } from '../../index'
 import { createLogger } from '../../lib/logger'
+import type { AppBindings, AppVariables } from '../../types/hono'
 
 const logger = createLogger()
-const adminMetricsRoutes = new Hono()
+const adminMetricsRoutes = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>()
 
 // Validation schemas
 const metricsQuerySchema = z.object({
@@ -21,7 +22,7 @@ adminMetricsRoutes.get('/', async (c) => {
         // Calculate date range
         const now = new Date()
         const startDate = new Date()
-        
+
         switch (period) {
             case '7d':
                 startDate.setDate(now.getDate() - 7)
@@ -192,7 +193,7 @@ adminMetricsRoutes.get('/activity', async (c) => {
 adminMetricsRoutes.get('/health', async (c) => {
     try {
         const start = Date.now()
-        
+
         // Test database connection
         await prisma.user.count()
         const dbResponseTime = Date.now() - start
