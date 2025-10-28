@@ -188,6 +188,48 @@ VolSpike uses a modern **client-side WebSocket architecture** with the following
 - **Open Interest**: Large position changes
 - **Custom Alerts**: User-defined conditions
 
+### Admin Dashboard (Role-Based Access Control)
+
+#### Admin Authentication & Authorization
+- **Role-Based Access**: ADMIN vs USER roles with tier system (FREE, PRO, ELITE)
+- **Admin Routes**: `/admin/*` with server-side protection
+- **Session Policy**: Shorter session duration for admin accounts
+- **2FA Enforcement**: Mandatory two-factor authentication for admin access
+- **IP Allowlisting**: Optional IP restriction for admin access
+- **Audit Logging**: Complete activity tracking for all admin actions
+
+#### User Management
+- **User CRUD Operations**: Create, read, update, delete user accounts
+- **Status Control**: Manage user status (ACTIVE, SUSPENDED, BANNED)
+- **Account Security**: Monitor login attempts, lockout management
+- **User Analytics**: Track last login, IP addresses, user agents
+- **Bulk Operations**: Mass user management and status updates
+- **User Invitations**: Send invitation emails for new user accounts
+
+#### Subscription Oversight
+- **Stripe Integration Monitoring**: Real-time subscription status tracking
+- **Tier Management**: Upgrade/downgrade user subscription tiers
+- **Payment Monitoring**: Track failed payments, billing issues
+- **Revenue Analytics**: Monthly recurring revenue, churn analysis
+- **Subscription Sync**: Manual sync with Stripe for data consistency
+- **Billing Portal Access**: Admin access to user billing information
+
+#### System Health & Metrics
+- **Health Monitoring**: Database, API, WebSocket connection status
+- **User Growth Analytics**: Signup trends, retention metrics
+- **Performance Metrics**: Response times, error rates, uptime
+- **Resource Monitoring**: CPU, memory, storage usage
+- **Alert Management**: System alerts, notification delivery status
+- **Capacity Planning**: User growth projections, scaling requirements
+
+#### Security & Compliance
+- **Audit Logging**: Complete activity tracking with timestamps
+- **Security Monitoring**: Failed login attempts, suspicious activity
+- **Data Export**: Export audit logs for compliance reporting
+- **Access Control**: Granular permissions for different admin functions
+- **Session Management**: Admin session monitoring and termination
+- **Security Policies**: Configurable security settings and thresholds
+
 ---
 
 ## 📊 Market Data & Analytics
@@ -513,10 +555,49 @@ GET  /api/market/volume-spikes
 
 #### User Management
 ```typescript
-GET    /api/users/profile
-PUT    /api/users/profile
-GET    /api/users/subscription
-POST   /api/users/subscription/upgrade
+GET    /api/admin/users
+POST   /api/admin/users
+GET    /api/admin/users/:id
+PUT    /api/admin/users/:id
+DELETE /api/admin/users/:id
+POST   /api/admin/users/:id/suspend
+POST   /api/admin/users/:id/activate
+POST   /api/admin/users/invite
+```
+
+#### Subscription Management
+```typescript
+GET    /api/admin/subscriptions
+GET    /api/admin/subscriptions/:id
+PUT    /api/admin/subscriptions/:id/tier
+POST   /api/admin/subscriptions/sync-stripe
+GET    /api/admin/subscriptions/revenue
+```
+
+#### Audit & Security
+```typescript
+GET    /api/admin/audit/logs
+GET    /api/admin/audit/export
+GET    /api/admin/audit/security-events
+POST   /api/admin/audit/log-action
+```
+
+#### System Metrics
+```typescript
+GET    /api/admin/metrics/health
+GET    /api/admin/metrics/users
+GET    /api/admin/metrics/revenue
+GET    /api/admin/metrics/performance
+```
+
+#### Admin Settings
+```typescript
+GET    /api/admin/settings
+PUT    /api/admin/settings
+GET    /api/admin/settings/security
+PUT    /api/admin/settings/security
+POST   /api/admin/settings/2fa/setup
+POST   /api/admin/settings/2fa/verify
 ```
 
 #### Watchlists
@@ -642,6 +723,9 @@ When working with VolSpike, AI models should understand:
 - ✅ PostgreSQL + TimescaleDB database
 - ✅ Client-side WebSocket market data (no Redis)
 - ✅ Authentication and payments
+- ✅ Admin dashboard with role-based access control
+- ✅ User management and subscription oversight
+- ✅ Audit logging and security monitoring
 
 ### Phase 2: Advanced Features (In Progress)
 - 🔄 Advanced analytics and indicators
@@ -746,6 +830,8 @@ When working with VolSpike, AI models should understand:
 2. **Multi-Channel Alerts**: Email, SMS, Telegram, Discord integration
 3. **Web3 Integration**: Native wallet authentication and Web3 features
 4. **Tier-Based Access**: Flexible pricing with feature differentiation
+5. **Admin Dashboard**: Comprehensive user management and system oversight
+6. **Role-Based Security**: Granular access control with audit logging
 
 ### Business Advantages
 1. **Freemium Model**: Low barrier to entry with upgrade path

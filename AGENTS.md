@@ -267,6 +267,8 @@ VolSpike/
 - Implement proper authentication flows
 - **Client-side WebSocket** bypasses server-side IP blocking
 - **No server-side market data** reduces attack surface
+- **Admin security**: Role-based access control, audit logging, 2FA enforcement
+- **Admin session policy**: Shorter session duration for admin accounts
 
 ### Web3 Integration
 - Use RainbowKit for wallet connection
@@ -298,6 +300,8 @@ VolSpike/
 - Web3 wallet integration must work
 - Email notifications must be tested
 - Client-side Binance WebSocket connection should work in browser
+- Admin dashboard access control must be verified
+- Admin role-based permissions must be tested
 
 ## Safety Notes
 
@@ -307,6 +311,9 @@ VolSpike/
 - `node_modules/` - Node.js dependencies
 - `dist/` - Built TypeScript files
 - `volspike-nextjs-frontend/.next/` - Built Next.js app
+- `volspike-nextjs-frontend/src/app/(admin)/` - Admin dashboard routes
+- `volspike-nodejs-backend/src/routes/admin/` - Admin API routes
+- `volspike-nodejs-backend/src/middleware/admin-auth.ts` - Admin authentication
 
 ### Secrets Handling
 - Never commit `.env` files
@@ -451,6 +458,16 @@ railway deploy
 - Telegram notifications
 - Discord webhooks
 - In-app notifications
+
+### Admin Dashboard (Role-Based Access Control)
+- **Admin Authentication**: Role-based access with ADMIN/USER roles
+- **User Management**: CRUD operations, status control (ACTIVE/SUSPENDED/BANNED)
+- **Subscription Oversight**: Stripe integration monitoring, tier management
+- **Audit Logging**: Complete activity tracking, security monitoring
+- **System Metrics**: Health monitoring, user growth, revenue analytics
+- **Security Controls**: 2FA enforcement, IP allowlisting, session management
+- **Admin Settings**: Platform configuration, security policies
+- **Access Control**: `/admin/*` routes with server-side protection
 
 ## Troubleshooting
 
