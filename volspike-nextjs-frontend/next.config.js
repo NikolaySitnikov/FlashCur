@@ -23,7 +23,7 @@ const nextConfig = {
         return [
             {
                 // Scope narrowly to avoid breaking public/marketing pages
-                source: '/(dashboard|admin)(?:/.*)?',
+                source: '/(dashboard|admin)/:path*',
                 headers: [
                     { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
                     { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
