@@ -51,6 +51,7 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
     const [nextUpdate, setNextUpdate] = useState<number>(0);
 
     const wsRef = useRef<WebSocket | null>(null);
+    const onDataUpdateRef = useRef<typeof onDataUpdate>(onDataUpdate);
     const tickersRef = useRef<Map<string, any>>(new Map());
     const fundingRef = useRef<Map<string, any>>(new Map());
     const lastRenderRef = useRef<number>(0);
@@ -60,6 +61,11 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
 
     // Tier-based update intervals
     const CADENCE = tier === 'elite' ? 0 : (tier === 'pro' ? 300_000 : 900_000); // 0ms, 5min, 15min
+
+    // Keep callback stable via ref to avoid effect/deps churn
+    useEffect(() => {
+        onDataUpdateRef.current = onDataUpdate;
+    }, [onDataUpdate]);
 
     const buildSnapshot = useCallback((): MarketData[] => {
         const out: MarketData[] = [];
@@ -103,9 +109,15 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
             }));
         } catch { }
 
-        // Call callback if provided
-        onDataUpdate?.(snapshot);
-    }, [onDataUpdate]);
+        // Call latest callback if provided (stable via ref)
+        if (onDataUpdateRef.current) {
+            try {
+                onDataUpdateRef.current(snapshot);
+            } catch {
+                // swallow callback errors to not break render pipeline
+            }
+        }
+    }, []);
 
     const primeFundingSnapshot = useCallback(async () => {
         try {

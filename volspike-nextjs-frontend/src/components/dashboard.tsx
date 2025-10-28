@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSocket } from '@/hooks/use-socket'
 import { useClientOnlyMarketData } from '@/hooks/use-client-only-market-data'
@@ -21,6 +21,11 @@ export function Dashboard() {
     // Determine user tier
     const userTier = session?.user?.tier || 'free'
 
+    // Stable callback to avoid reconnect loops
+    const handleDataUpdate = useCallback((data: any[]) => {
+        console.log(`📊 Market data updated: ${data.length} symbols`)
+    }, [])
+
     // Use client-only market data (no API calls, no Redis)
     const {
         data: marketData,
@@ -32,9 +37,7 @@ export function Dashboard() {
         hasError
     } = useClientOnlyMarketData({
         tier: userTier as 'elite' | 'pro' | 'free',
-        onDataUpdate: (data) => {
-            console.log(`📊 Market data updated: ${data.length} symbols`)
-        }
+        onDataUpdate: handleDataUpdate
     })
 
     // Real-time countdown timer for next update (non-elite tiers)
