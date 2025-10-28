@@ -3,8 +3,6 @@ import { cors } from 'hono/cors'
 import { logger as honoLogger } from 'hono/logger'
 import { serve } from '@hono/node-server'
 import { Server as SocketIOServer } from 'socket.io'
-import { createAdapter } from '@socket.io/redis-adapter'
-import { createClient } from 'redis'
 import { PrismaClient } from '@prisma/client'
 import { createLogger } from './lib/logger'
 import { authMiddleware } from './middleware/auth'
@@ -170,43 +168,10 @@ io.on('connection', (socket) => {
 })
 
 // ============================================
-// REDIS ADAPTER
+// SOCKET.IO SETUP (IN-MEMORY ONLY)
 // ============================================
 
-if (process.env.REDIS_URL) {
-    try {
-        const pubClient = createClient({
-            url: process.env.REDIS_URL,
-            socket: process.env.REDIS_URL?.startsWith('rediss://') ? {
-                tls: true,
-                rejectUnauthorized: process.env.NODE_ENV === 'production' ? false : true
-            } : undefined
-        })
-        const subClient = pubClient.duplicate()
-
-        pubClient.on('error', (err) => {
-            logger.error('Redis pub error:', err)
-        })
-
-        subClient.on('error', (err) => {
-            logger.error('Redis sub error:', err)
-        })
-
-        Promise.all([
-            pubClient.connect(),
-            subClient.connect()
-        ]).then(() => {
-            io.adapter(createAdapter(pubClient, subClient))
-            logger.info('✅ Redis adapter initialized')
-        }).catch(err => {
-            logger.warn('⚠️  Redis adapter failed, using in-memory:', err.message)
-        })
-    } catch (error) {
-        logger.warn('⚠️  Redis setup error:', error)
-    }
-} else {
-    logger.info('ℹ️  No Redis URL, using in-memory adapter')
-}
+logger.info('ℹ️  Using in-memory Socket.IO adapter')
 
 // ============================================
 // ERROR HANDLERS

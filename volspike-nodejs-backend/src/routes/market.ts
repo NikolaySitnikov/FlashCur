@@ -5,7 +5,6 @@ import { createLogger } from '../lib/logger'
 import { User } from '../types'
 import { getUser, requireUser } from '../lib/hono-extensions'
 import { getMarketData } from '../services/binance-client'
-import { getCachedMarketData, redis } from '../services/redis-client'
 
 const logger = createLogger()
 
@@ -62,24 +61,21 @@ market.get('/data', async (c) => {
             }
         }
 
-        // Get cached market data from GitHub Actions ingestion
-        const marketData = await getCachedMarketData()
-        const lastUpdate = await redis.get('market:lastUpdate')
-        const heartbeat = await redis.get('ingestion:heartbeat')
-        const lastError = await redis.get('ingestion:last_error')
+        // Get market data directly from Binance API
+        const marketData = await getMarketData()
 
         if (!marketData || marketData.length === 0) {
             // Return empty data with stale indicator instead of 500
-            logger.warn('No cached market data available, returning empty response')
+            logger.warn('No market data available from Binance API')
             return c.json({
                 data: [],
                 stale: true,
-                message: 'Market data temporarily unavailable - GitHub Actions ingestion may be running',
-                lastUpdate: lastUpdate ? parseInt(lastUpdate) : null,
+                message: 'Market data temporarily unavailable - Binance API may be down',
+                lastUpdate: null,
                 ingestionStatus: {
                     hasData: false,
-                    lastHeartbeat: heartbeat ? parseInt(heartbeat) : null,
-                    lastError: lastError || null
+                    lastHeartbeat: null,
+                    lastError: null
                 }
             }, 200)
         }
@@ -105,12 +101,12 @@ market.get('/data', async (c) => {
         return c.json({
             data: filteredData,
             stale: false,
-            lastUpdate: lastUpdate ? parseInt(lastUpdate) : marketData[0]?.timestamp || Date.now(),
+            lastUpdate: marketData[0]?.timestamp || Date.now(),
             tier: tier,
             ingestionStatus: {
                 hasData: true,
-                lastHeartbeat: heartbeat ? parseInt(heartbeat) : null,
-                lastError: lastError || null
+                lastHeartbeat: null,
+                lastError: null
             }
         })
     } catch (error) {
@@ -139,8 +135,8 @@ market.get('/symbol/:symbol', async (c) => {
             }
         }
 
-        // Get symbol data from cache or database
-        const symbolData = await getCachedMarketData(symbol)
+        // Get symbol data directly from Binance API
+        const symbolData = await getMarketData(symbol)
 
         if (!symbolData) {
             return c.json({ error: 'Symbol not found' }, 404)
@@ -262,28 +258,21 @@ market.get('/spikes', async (c) => {
 
 market.get('/health', async (c) => {
     try {
-        // Check Redis connection
-        const redisStatus = redis.status === 'ready' ? 'connected' : 'disconnected'
-
-        // Check if we have cached market data
-        const marketData = await getCachedMarketData()
+        // Check if we can get market data from Binance API
+        const marketData = await getMarketData()
         const hasData = marketData && marketData.length > 0
-
-        // Get ingestion heartbeat
-        const heartbeat = await redis.get('ingestion:heartbeat')
-        const lastError = await redis.get('ingestion:last_error')
 
         const health = {
             status: 'ok',
             timestamp: Date.now(),
             redis: {
-                status: redisStatus,
-                connected: redisStatus === 'connected'
+                status: 'not_used',
+                connected: false
             },
             ingestion: {
                 hasData,
-                lastHeartbeat: heartbeat ? parseInt(heartbeat) : null,
-                lastError: lastError || null,
+                lastHeartbeat: null,
+                lastError: null,
                 dataAge: hasData && marketData[0]?.timestamp
                     ? Date.now() - marketData[0].timestamp
                     : null

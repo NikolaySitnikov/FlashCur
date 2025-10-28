@@ -1,7 +1,7 @@
 import { Server as SocketIOServer, Socket } from 'socket.io'
 import { PrismaClient } from '@prisma/client'
 import { createLogger } from '../lib/logger'
-import { getCachedMarketData, publishMarketUpdate } from '../services/redis-client'
+import { getMarketData } from '../services/binance-client'
 
 const logger = createLogger()
 
@@ -76,7 +76,7 @@ export function setupSocketHandlers(
                 logger.info(`User ${userId} subscribed to ${symbol}`)
 
                 // Send current data for the symbol
-                const symbolData = await getCachedMarketData(symbol)
+                const symbolData = await getMarketData(symbol)
                 if (symbolData) {
                     socket.emit('symbol-data', symbolData)
                 }
@@ -118,7 +118,7 @@ export function setupSocketHandlers(
 
                 // Send current data for all symbols in watchlist
                 for (const item of watchlist.items) {
-                    const symbolData = await getCachedMarketData(item.contract.symbol)
+                    const symbolData = await getMarketData(item.contract.symbol)
                     if (symbolData) {
                         socket.emit('symbol-data', symbolData)
                     }
@@ -152,7 +152,7 @@ export function setupSocketHandlers(
                 socket.emit('refresh-interval', { interval: refreshInterval })
 
                 // Send current market data
-                const marketData = await getCachedMarketData()
+                const marketData = await getMarketData()
                 if (marketData) {
                     socket.emit('market-update', marketData)
                 }
@@ -173,7 +173,7 @@ export function setupSocketHandlers(
         })
 
         // Send current market data
-        getCachedMarketData().then(data => {
+        getMarketData().then(data => {
             if (data) {
                 socket.emit('market-update', data)
             }
@@ -190,7 +190,7 @@ export function setupSocketHandlers(
     // Tier-aware market update broadcasting
     setInterval(async () => {
         try {
-            const marketData = await getCachedMarketData()
+            const marketData = await getMarketData()
             if (!marketData) return
 
             const now = Date.now()
@@ -224,9 +224,6 @@ export function setupSocketHandlers(
                 })
                 lastUpdateTimes.free = now
             }
-
-            // Publish to Redis for other services
-            await publishMarketUpdate(marketData)
         } catch (error) {
             logger.error('Error broadcasting market update:', error)
         }

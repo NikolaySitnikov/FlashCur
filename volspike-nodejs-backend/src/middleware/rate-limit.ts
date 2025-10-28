@@ -1,7 +1,7 @@
 import { Context, Next } from 'hono'
-import { Redis } from 'ioredis'
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
+// In-memory rate limit storage
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
 
 interface RateLimitConfig {
     windowMs: number
@@ -34,31 +34,36 @@ export async function rateLimitMiddleware(c: Context, next: Next) {
         const config = rateLimits[tier] || rateLimits.free
 
         const key = `rate_limit:${user.id}:${Math.floor(Date.now() / config.windowMs)}`
+        const now = Date.now()
 
-        const current = await redis.incr(key)
-
-        if (current === 1) {
-            await redis.expire(key, Math.ceil(config.windowMs / 1000))
+        // Get or create rate limit entry
+        let entry = rateLimitStore.get(key)
+        if (!entry || now > entry.resetTime) {
+            entry = { count: 0, resetTime: now + config.windowMs }
+            rateLimitStore.set(key, entry)
         }
+
+        // Increment count
+        entry.count++
 
         const maxRequests = config.maxRequests * config.tierMultiplier
 
-        if (current > maxRequests) {
+        if (entry.count > maxRequests) {
             return c.json({
                 error: 'Rate limit exceeded',
-                retryAfter: Math.ceil(config.windowMs / 1000)
+                retryAfter: Math.ceil((entry.resetTime - now) / 1000)
             }, 429)
         }
 
         // Add rate limit headers
         c.header('X-RateLimit-Limit', maxRequests.toString())
-        c.header('X-RateLimit-Remaining', Math.max(0, maxRequests - current).toString())
-        c.header('X-RateLimit-Reset', Math.ceil((Date.now() + config.windowMs) / 1000).toString())
+        c.header('X-RateLimit-Remaining', Math.max(0, maxRequests - entry.count).toString())
+        c.header('X-RateLimit-Reset', Math.ceil(entry.resetTime / 1000).toString())
 
         await next()
     } catch (error) {
         console.error('Rate limit middleware error:', error)
-        // Don't block requests if Redis is down
+        // Don't block requests on error
         await next()
     }
 }
