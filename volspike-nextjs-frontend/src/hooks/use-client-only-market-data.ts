@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 const parseFundingRate = (raw: any): number => {
     if (!raw) return 0;
@@ -145,7 +145,7 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
         }
     };
 
-    const connect = () => {
+    const connect = useCallback(() => {
         const WS_URL = 'wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr';
 
         try {
@@ -270,7 +270,7 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
             console.error('Failed to connect to WebSocket:', error);
             setStatus('error');
         }
-    };
+    }, [tier, CADENCE]);
 
     const geofenceFallback = () => {
         console.log('Region may be blocked, trying localStorage fallback');
@@ -298,7 +298,7 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                 wsRef.current.close();
             }
         };
-    }, [tier]);
+    }, [tier, connect]);
 
     // Update countdown timer
     useEffect(() => {
