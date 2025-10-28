@@ -95,8 +95,8 @@ app.route('/api/watchlist', watchlistRoutes)
 app.route('/api/alerts', alertRoutes)
 app.route('/api/payments', paymentRoutes)
 
-// Admin routes (protected with admin middleware) - temporarily disabled
-// app.route('/api/admin', adminRoutes)
+// Admin routes (protected with admin middleware)
+app.route('/api/admin', adminRoutes)
 
 // Protected routes (require authentication)
 app.use('/api/protected/*', authMiddleware)

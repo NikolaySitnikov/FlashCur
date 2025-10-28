@@ -73,7 +73,7 @@ export async function auditLog(c: Context, next: Next) {
                 targetId,
                 oldValues: oldValues ? oldValues : undefined,
                 newValues: requestBody ? requestBody : undefined,
-                metadata,
+                metadata: metadata as any,
             },
         })
 
@@ -105,7 +105,10 @@ export async function auditAction(
         }
 
         await prisma.auditLog.create({
-            data: auditData,
+            data: {
+                ...auditData,
+                metadata: auditData.metadata as any,
+            },
         })
 
         logger.info(`Audit action logged: ${action} on ${targetType}/${targetId}`)
@@ -129,14 +132,15 @@ export async function auditBulkAction(
             targetId: targetIds.join(','),
             metadata: {
                 ...metadata,
-                bulkAction: true,
-                targetCount: targetIds.length,
-                targetIds,
+                additionalContext: { bulkAction: true, targetCount: targetIds.length, targetIds },
             },
         }
 
         await prisma.auditLog.create({
-            data: auditData,
+            data: {
+                ...auditData,
+                metadata: auditData.metadata as any,
+            },
         })
 
         logger.info(`Bulk audit action logged: ${action} on ${targetIds.length} ${targetType} items`)
@@ -155,17 +159,18 @@ export async function auditSecurityEvent(
         const auditData: CreateAuditLogData = {
             actorUserId,
             action: AuditAction.SECURITY_EVENT,
-            targetType: AuditTargetType.SECURITY,
+            targetType: 'SECURITY',
             metadata: {
                 ...metadata,
-                securityEvent: event,
-                details,
-                timestamp: new Date().toISOString(),
+                additionalContext: { securityEvent: event, details },
             },
         }
 
         await prisma.auditLog.create({
-            data: auditData,
+            data: {
+                ...auditData,
+                metadata: auditData.metadata as any,
+            },
         })
 
         logger.warn(`Security event logged: ${event} for user ${actorUserId}`)
@@ -193,14 +198,14 @@ function determineAction(method: string, path: string): AuditAction {
     }
 }
 
-function extractTargetType(path: string): AuditTargetType {
+function extractTargetType(path: string): string {
     const segments = path.split('/').filter(Boolean)
-    if (segments.includes('users')) return AuditTargetType.USER
-    if (segments.includes('subscriptions')) return AuditTargetType.SUBSCRIPTION
-    if (segments.includes('settings')) return AuditTargetType.SETTINGS
-    if (segments.includes('audit')) return AuditTargetType.AUDIT
-    if (segments.includes('admin')) return AuditTargetType.ADMIN
-    return AuditTargetType.SYSTEM
+    if (segments.includes('users')) return 'USER'
+    if (segments.includes('subscriptions')) return 'SUBSCRIPTION'
+    if (segments.includes('settings')) return 'SETTINGS'
+    if (segments.includes('audit')) return 'AUDIT'
+    if (segments.includes('admin')) return 'ADMIN'
+    return 'SYSTEM'
 }
 
 function extractTargetId(path: string): string | null {
@@ -208,10 +213,10 @@ function extractTargetId(path: string): string | null {
     return match ? match[1] : null
 }
 
-async function captureOriginalState(type: AuditTargetType, id: string): Promise<any> {
+async function captureOriginalState(type: string, id: string): Promise<any> {
     try {
         switch (type) {
-            case AuditTargetType.USER:
+            case 'USER':
                 return await prisma.user.findUnique({
                     where: { id },
                     select: {
@@ -224,10 +229,10 @@ async function captureOriginalState(type: AuditTargetType, id: string): Promise<
                         twoFactorEnabled: true,
                     }
                 })
-            case AuditTargetType.SUBSCRIPTION:
+            case 'SUBSCRIPTION':
                 // Implement subscription lookup when subscription model is available
                 return null
-            case AuditTargetType.SETTINGS:
+            case 'SETTINGS':
                 // Implement settings lookup when settings model is available
                 return null
             default:

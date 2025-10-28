@@ -191,11 +191,9 @@ async function logRateLimitViolation(
         const auditData: CreateAuditLogData = {
             actorUserId: userId,
             action: AuditAction.RATE_LIMIT_EXCEEDED,
-            targetType: AuditTargetType.SECURITY,
+            targetType: 'SECURITY',
             metadata: {
-                rateLimitType,
-                clientIP,
-                timestamp: new Date().toISOString(),
+                additionalContext: { rateLimitType, clientIP },
             },
         }
 

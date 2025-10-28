@@ -5,7 +5,7 @@ import { prisma } from '../index'
 import { createLogger } from '../lib/logger'
 import { getUser, requireUser } from '../lib/hono-extensions'
 import EmailService from '../services/email'
-import bcrypt from 'bcryptjs'
+import * as bcrypt from 'bcryptjs'
 
 const logger = createLogger()
 const emailService = EmailService.getInstance()

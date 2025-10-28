@@ -32,7 +32,7 @@ export async function csrfProtection(c: Context, next: Next) {
 
     try {
         const token = c.req.header(CSRF_CONFIG.headerName)
-        const cookieToken = c.req.cookie(CSRF_CONFIG.cookieName)
+        const cookieToken = c.req.header('cookie')?.split(';').find(c => c.trim().startsWith(`${CSRF_CONFIG.cookieName}=`))?.split('=')[1]
 
         if (!token || !cookieToken) {
             logger.warn(`CSRF token missing for admin ${user.email}`)
@@ -146,10 +146,9 @@ async function logCSRFViolation(userId: string, reason: string) {
         const auditData: CreateAuditLogData = {
             actorUserId: userId,
             action: AuditAction.CSRF_VIOLATION,
-            targetType: AuditTargetType.SECURITY,
+            targetType: 'SECURITY',
             metadata: {
-                reason,
-                timestamp: new Date().toISOString(),
+                additionalContext: { reason },
             },
         }
 

@@ -17,7 +17,7 @@ import {
     BulkActionRequest
 } from '../../types/admin'
 import { AuditAction, AuditTargetType } from '../../types/audit'
-import bcrypt from 'bcryptjs'
+import * as bcrypt from 'bcryptjs'
 
 const logger = createLogger()
 const adminUsers = new Hono()

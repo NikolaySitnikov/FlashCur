@@ -1,6 +1,6 @@
-import sgMail from '@sendgrid/mail'
+import * as sgMail from '@sendgrid/mail'
 import { createLogger } from '../lib/logger'
-import crypto from 'crypto'
+import * as crypto from 'crypto'
 
 const logger = createLogger()
 

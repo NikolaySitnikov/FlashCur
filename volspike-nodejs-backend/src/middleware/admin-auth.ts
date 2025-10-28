@@ -47,7 +47,7 @@ export async function requireAdmin(c: Context, next: Next) {
 
         if (!user) {
             logger.warn(`Admin access attempt with invalid user ID: ${payload.sub}`)
-            await logSecurityEvent(payload.sub as string, 'UNAUTHORIZED_ADMIN_ACCESS')
+            await logSecurityEvent(payload.sub as string, AuditAction.UNAUTHORIZED_ACCESS)
             return c.json({ error: 'User not found' }, 401)
         }
 
@@ -55,14 +55,14 @@ export async function requireAdmin(c: Context, next: Next) {
         const sessionValidation = validateAdminSession(user.role, user.status)
         if (!sessionValidation.isValid) {
             logger.warn(`Admin session validation failed for ${user.email}: ${sessionValidation.reason}`)
-            await logSecurityEvent(user.id, 'INVALID_ADMIN_SESSION', sessionValidation.reason)
+            await logSecurityEvent(user.id, AuditAction.UNAUTHORIZED_ACCESS, sessionValidation.reason)
             return c.json({ error: sessionValidation.reason }, 403)
         }
 
         // Check if account is locked
         if (user.lockedUntil && user.lockedUntil > new Date()) {
             logger.warn(`Locked admin account ${user.email} attempted access`)
-            await logSecurityEvent(user.id, 'LOCKED_ACCOUNT_ACCESS')
+            await logSecurityEvent(user.id, AuditAction.UNAUTHORIZED_ACCESS)
             return c.json({ error: 'Account locked' }, 403)
         }
 
@@ -94,7 +94,7 @@ export async function require2FA(c: Context, next: Next) {
 
         if (!isValid) {
             logger.warn(`Invalid 2FA attempt for admin ${user.email}`)
-            await logSecurityEvent(user.id, 'INVALID_2FA_ATTEMPT')
+            await logSecurityEvent(user.id, AuditAction.ADMIN_2FA_FAILED)
             return c.json({ error: 'Invalid 2FA code' }, 403)
         }
     }
@@ -118,7 +118,7 @@ export async function requirePermission(permission: string) {
 
         if (!permissionCheck.allowed) {
             logger.warn(`Permission denied for ${user.email}: ${permissionCheck.reason}`)
-            await logSecurityEvent(user.id, 'PERMISSION_DENIED', permissionCheck.reason)
+            await logSecurityEvent(user.id, AuditAction.UNAUTHORIZED_ACCESS, permissionCheck.reason)
             return c.json({ error: permissionCheck.reason }, 403)
         }
 
@@ -143,7 +143,7 @@ export async function requireResourceAccess(resource: string, action: string) {
 
         if (!permissionCheck.allowed) {
             logger.warn(`Resource access denied for ${user.email}: ${resource}/${action}`)
-            await logSecurityEvent(user.id, 'RESOURCE_ACCESS_DENIED', `${resource}/${action}`)
+            await logSecurityEvent(user.id, AuditAction.UNAUTHORIZED_ACCESS, `${resource}/${action}`)
             return c.json({ error: permissionCheck.reason }, 403)
         }
 
@@ -151,7 +151,7 @@ export async function requireResourceAccess(resource: string, action: string) {
     }
 }
 
-export async function validateAdminSession(c: Context, next: Next) {
+export async function validateAdminSessionMiddleware(c: Context, next: Next) {
     const user = c.get('adminUser') as AdminUser
 
     if (!user) {
@@ -180,10 +180,9 @@ async function logSecurityEvent(
         const auditData: CreateAuditLogData = {
             actorUserId: userId,
             action,
-            targetType: AuditTargetType.SECURITY,
+            targetType: 'SECURITY',
             metadata: {
-                details,
-                timestamp: new Date().toISOString(),
+                additionalContext: { details },
             },
         }
 
@@ -269,7 +268,7 @@ export async function requireIPAllowlist(c: Context, next: Next) {
     if (!isAllowed) {
         const user = c.get('adminUser') as AdminUser
         logger.warn(`IP ${clientIP} not in allowlist for admin ${user?.email}`)
-        await logSecurityEvent(user?.id || 'unknown', 'IP_NOT_ALLOWED', clientIP)
+        await logSecurityEvent(user?.id || 'unknown', AuditAction.UNAUTHORIZED_ACCESS, clientIP)
         return c.json({ error: 'Access denied from this IP address' }, 403)
     }
 
