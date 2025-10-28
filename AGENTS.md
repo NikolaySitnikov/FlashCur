@@ -297,7 +297,7 @@ VolSpike/
 - Payment flows must be verified
 - Web3 wallet integration must work
 - Email notifications must be tested
-- Socket.io connections must work
+- Client-side Binance WebSocket connection should work in browser
 
 ## Safety Notes
 
@@ -326,9 +326,8 @@ VolSpike/
 - Use Docker Compose for production
 - Set `NODE_ENV=production`
 - Configure proper CORS for frontend
-- Use Redis for caching and job queues
 - Set up proper logging and monitoring
-- Use managed PostgreSQL and Redis services
+- Use managed PostgreSQL services
 
 ### Web3 Integration
 - Test wallet connections thoroughly

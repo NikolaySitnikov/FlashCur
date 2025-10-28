@@ -157,7 +157,7 @@ VolSpike uses a modern **client-side WebSocket architecture** with the following
 
 #### Security Features
 - **JWT Tokens**: Stateless, scalable authentication
-- **Rate Limiting**: Redis-backed, tier-based rate limiting
+- **Rate Limiting**: Frontend-based throttling for WebSocket updates by tier
 - **CORS Protection**: Configured for frontend domains
 - **Input Validation**: Zod schemas for all user inputs
 - **Row-Level Security**: User data isolation
@@ -461,13 +461,10 @@ npm test
 
 #### Integration Testing
 ```bash
-# Test database connections
+# Test database connections (auth/payments only)
 npm run test:db
 
-# Test Redis connections
-npm run test:redis
-
-# Test WebSocket connections
+# Test WebSocket connectivity (client-side)
 npm run test:websocket
 ```
 
@@ -589,9 +586,8 @@ socket.emit('volume-spike', {
 
 3. **Access the Application**
    - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
+   - Backend API: http://localhost:3001 (auth/payments only)
    - Database: localhost:5432
-   - Redis: localhost:6379
 
 ### For Users
 
@@ -605,12 +601,12 @@ socket.emit('volume-spike', {
 
 When working with VolSpike, AI models should understand:
 
-1. **Architecture**: TypeScript-first stack with Next.js frontend, Node.js backend, PostgreSQL database, and Redis cache
+1. **Architecture**: TypeScript-first stack with Next.js frontend, optional Node.js backend (auth/payments), PostgreSQL database, and client-only WebSocket market data
 2. **Authentication**: NextAuth.js v5 with email and Web3 wallet support
-3. **Real-Time**: Socket.io for WebSocket communication
+3. **Real-Time**: Direct Binance WebSocket in the browser (no Socket.io needed)
 4. **Payments**: Stripe integration for subscription management
-5. **Data Flow**: Binance WebSocket → Ingestion Service → Redis → Backend → Frontend
-6. **Tier System**: Free (15min), Pro (5min), Elite (30sec + WebSocket)
+5. **Data Flow**: Binance WebSocket → Browser (client-side processing)
+6. **Tier System**: Free (15min), Pro (5min), Elite (real-time)
 7. **Key Features**: Volume spike detection, multi-channel alerts, Web3 integration
 
 ---
@@ -643,8 +639,8 @@ When working with VolSpike, AI models should understand:
 - ✅ Next.js frontend with TypeScript
 - ✅ Node.js backend with Hono
 - ✅ PostgreSQL + TimescaleDB database
-- ✅ Redis caching and job queues
-- ✅ Basic authentication and payments
+- ✅ Client-side WebSocket market data (no Redis)
+- ✅ Authentication and payments
 
 ### Phase 2: Advanced Features (In Progress)
 - 🔄 Advanced analytics and indicators
@@ -741,8 +737,8 @@ When working with VolSpike, AI models should understand:
 ### Technical Advantages
 1. **Real-Time Performance**: Sub-second latency with WebSocket
 2. **TypeScript Stack**: Type safety and better developer experience
-3. **Modern Architecture**: Microservices with Docker containerization
-4. **Scalable Infrastructure**: Redis clustering and database optimization
+3. **Modern Architecture**: Client-only WebSocket + optional auth backend
+4. **Scalable Infrastructure**: Simplified infra without Redis/ingestion service
 
 ### Feature Advantages
 1. **Volume Spike Detection**: Proprietary algorithm for early signal detection
@@ -805,6 +801,6 @@ For more information, visit the [GitHub repository](https://github.com/NikolaySi
 
 ---
 
-*Last Updated: January 2024*
+*Last Updated: October 2025*
 *Version: 3.0.0 (Client-Only Architecture)*
 *Status: Production Ready*
