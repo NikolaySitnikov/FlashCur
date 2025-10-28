@@ -6,7 +6,6 @@ import {
     DollarSign,
     TrendingUp,
     Activity,
-    CreditCard,
     AlertTriangle,
     CheckCircle,
     Clock
@@ -17,14 +16,14 @@ interface MetricsCardsProps {
     metrics: {
         totalUsers: number
         activeUsers: number
+        usersByTier: {
+            tier: string
+            count: number
+        }[]
         totalRevenue: number
-        monthlyRevenue: number
-        totalSubscriptions: number
-        activeSubscriptions: number
-        averageSessionDuration: number
-        systemUptime: number
-        errorRate: number
-        responseTime: number
+        recentSignups: number
+        failedLogins: number
+        adminSessions: number
     }
 }
 
@@ -34,31 +33,6 @@ export function MetricsCards({ metrics }: MetricsCardsProps) {
             style: 'currency',
             currency: 'USD',
         }).format(amount)
-    }
-
-    const formatDuration = (minutes: number) => {
-        if (minutes < 60) {
-            return `${Math.round(minutes)}m`
-        }
-        const hours = Math.floor(minutes / 60)
-        const remainingMinutes = Math.round(minutes % 60)
-        return `${hours}h ${remainingMinutes}m`
-    }
-
-    const formatUptime = (percentage: number) => {
-        return `${percentage.toFixed(2)}%`
-    }
-
-    const getUptimeColor = (percentage: number) => {
-        if (percentage >= 99.9) return 'text-green-600'
-        if (percentage >= 99.0) return 'text-yellow-600'
-        return 'text-red-600'
-    }
-
-    const getErrorRateColor = (rate: number) => {
-        if (rate <= 0.1) return 'text-green-600'
-        if (rate <= 1.0) return 'text-yellow-600'
-        return 'text-red-600'
     }
 
     return (
@@ -72,7 +46,7 @@ export function MetricsCards({ metrics }: MetricsCardsProps) {
                 <CardContent>
                     <div className="text-2xl font-bold">{metrics.totalUsers.toLocaleString()}</div>
                     <p className="text-xs text-muted-foreground">
-                        {metrics.activeUsers.toLocaleString()} active (30d)
+                        {metrics.activeUsers.toLocaleString()} active users
                     </p>
                 </CardContent>
             </Card>
@@ -86,21 +60,21 @@ export function MetricsCards({ metrics }: MetricsCardsProps) {
                 <CardContent>
                     <div className="text-2xl font-bold">{formatCurrency(metrics.totalRevenue)}</div>
                     <p className="text-xs text-muted-foreground">
-                        {formatCurrency(metrics.monthlyRevenue)} this month
+                        Total revenue
                     </p>
                 </CardContent>
             </Card>
 
-            {/* Subscriptions */}
+            {/* Recent Signups */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Subscriptions</CardTitle>
-                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium">Recent Signups</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{metrics.totalSubscriptions}</div>
+                    <div className="text-2xl font-bold">{metrics.recentSignups}</div>
                     <p className="text-xs text-muted-foreground">
-                        {metrics.activeSubscriptions} active
+                        New users this period
                     </p>
                 </CardContent>
             </Card>
@@ -114,61 +88,44 @@ export function MetricsCards({ metrics }: MetricsCardsProps) {
                 <CardContent>
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm">Uptime</span>
-                            <span className={`text-sm font-medium ${getUptimeColor(metrics.systemUptime)}`}>
-                                {formatUptime(metrics.systemUptime)}
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm">Error Rate</span>
-                            <span className={`text-sm font-medium ${getErrorRateColor(metrics.errorRate)}`}>
-                                {metrics.errorRate.toFixed(2)}%
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm">Response Time</span>
+                            <span className="text-sm">Failed Logins</span>
                             <span className="text-sm font-medium">
-                                {metrics.responseTime.toFixed(0)}ms
+                                {metrics.failedLogins}
                             </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm">Admin Sessions</span>
+                            <span className="text-sm font-medium">
+                                {metrics.adminSessions}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm">Status</span>
+                            <Badge variant="outline" className="text-xs">
+                                Operational
+                            </Badge>
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Additional Metrics */}
+            {/* User Tiers */}
             <Card className="md:col-span-2 lg:col-span-4">
                 <CardHeader>
-                    <CardTitle className="text-sm font-medium">Additional Metrics</CardTitle>
+                    <CardTitle className="text-sm font-medium">Users by Tier</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-3">
-                        <div className="flex items-center space-x-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                                <p className="text-sm font-medium">Avg Session Duration</p>
-                                <p className="text-xs text-muted-foreground">
-                                    {formatDuration(metrics.averageSessionDuration)}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                                <p className="text-sm font-medium">Growth Rate</p>
-                                <p className="text-xs text-muted-foreground">
-                                    +12.5% this month
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                                <p className="text-sm font-medium">System Status</p>
-                                <Badge variant="outline" className="text-xs">
-                                    All Systems Operational
+                        {metrics.usersByTier.map((tier) => (
+                            <div key={tier.tier} className="flex items-center space-x-2">
+                                <Badge variant="outline" className="capitalize">
+                                    {tier.tier}
                                 </Badge>
+                                <div>
+                                    <p className="text-sm font-medium">{tier.count} users</p>
+                                </div>
                             </div>
-                        </div>
+                        ))}
                     </div>
                 </CardContent>
             </Card>

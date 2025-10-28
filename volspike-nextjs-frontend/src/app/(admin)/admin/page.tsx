@@ -13,43 +13,67 @@ export const metadata: Metadata = {
     description: 'Admin dashboard for managing VolSpike platform',
 }
 
-async function getAdminStats() {
-    // This would fetch from your API
-    // For now, return mock data
+const API_BASE_URL =
+    process.env.BACKEND_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:3001'
+
+async function fetchWithAuth<T>(path: string, token: string): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+    })
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to fetch ${path}: ${response.status} ${response.statusText}`,
+        )
+    }
+
+    return response.json()
+}
+
+async function getAdminStats(token: string) {
+    const data = await fetchWithAuth<{
+        totalUsers: number
+        activeUsers: number
+        totalRevenue: number
+        recentSignups: number
+        usersByTier: Array<{ tier: string; count: number }>
+    }>('/api/admin/metrics', token)
+
     return {
-        totalUsers: 1250,
-        activeUsers: 890,
-        totalRevenue: 45600,
-        recentSignups: 45,
-        usersByTier: [
-            { tier: 'free', count: 800 },
-            { tier: 'pro', count: 350 },
-            { tier: 'elite', count: 100 },
-        ],
+        totalUsers: data.totalUsers ?? 0,
+        activeUsers: data.activeUsers ?? 0,
+        totalRevenue: data.totalRevenue ?? 0,
+        recentSignups: data.recentSignups ?? 0,
+        usersByTier: data.usersByTier ?? [],
     }
 }
 
-async function getRecentActivity() {
-    // This would fetch from your API
-    // For now, return mock data
-    return [
-        {
-            id: '1',
-            action: 'USER_CREATED',
-            actor: { email: 'admin@volspike.com' },
-            targetType: 'USER',
-            targetId: 'user123',
-            createdAt: new Date(),
-        },
-        {
-            id: '2',
-            action: 'SUBSCRIPTION_UPDATED',
-            actor: { email: 'admin@volspike.com' },
-            targetType: 'SUBSCRIPTION',
-            targetId: 'sub456',
-            createdAt: new Date(),
-        },
-    ]
+async function getRecentActivity(token: string) {
+    const data = await fetchWithAuth<{
+        logs: Array<{
+            id: string
+            action: string
+            targetType: string
+            targetId?: string | null
+            createdAt: string
+            actor?: { email?: string | null }
+        }>
+    }>('/api/admin/audit?limit=5', token)
+
+    return data.logs.map((log) => ({
+        id: log.id,
+        action: log.action,
+        actor: { email: log.actor?.email ?? 'Unknown user' },
+        targetType: log.targetType ?? 'SYSTEM',
+        targetId: log.targetId ?? 'N/A',
+        createdAt: new Date(log.createdAt),
+    }))
 }
 
 export default async function AdminDashboard() {
@@ -60,9 +84,13 @@ export default async function AdminDashboard() {
         redirect('/auth')
     }
 
+    if (!session.accessToken) {
+        throw new Error('Missing admin access token')
+    }
+
     const [stats, recentActivity] = await Promise.all([
-        getAdminStats(),
-        getRecentActivity(),
+        getAdminStats(session.accessToken),
+        getRecentActivity(session.accessToken),
     ])
 
     return (
