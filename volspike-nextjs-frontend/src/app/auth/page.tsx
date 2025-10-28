@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -60,10 +60,7 @@ export default function AuthPage() {
     })
 
     const signupPasswordValue = signupForm.watch('password')
-    const pwStrength = useMemo(
-        () => passwordStrength(signupPasswordValue || ''),
-        [signupPasswordValue]
-    )
+    const pwStrength = passwordStrength(signupPasswordValue || '')
 
     const [tab, setTab] = useState<'signin' | 'signup'>(
         searchParams?.get('tab') === 'signup' ? 'signup' : 'signin'
