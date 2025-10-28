@@ -46,7 +46,7 @@ export async function getServerAuthToken(): Promise<string | undefined> {
     if (sessionToken) {
         return sessionToken
     }
-    
+
     // Fallback to custom auth token cookie
     return cookies.get('auth_token')?.value
 }

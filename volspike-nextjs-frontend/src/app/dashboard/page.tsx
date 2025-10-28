@@ -3,8 +3,8 @@ import { getServerAuthToken, verifyAccessTokenAndRole } from '@/lib/auth-server'
 import DebugFetchLogger from '@/components/debug-fetch-logger'
 
 export default async function DashboardPage() {
-  const token = await getServerAuthToken()
-  const { ok, role } = await verifyAccessTokenAndRole(token)
+    const token = await getServerAuthToken()
+    const { ok, role } = await verifyAccessTokenAndRole(token)
 
     if (!ok) {
         redirect('/auth')

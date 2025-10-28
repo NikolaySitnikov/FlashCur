@@ -30,18 +30,18 @@ interface SigninFormProps {
 
 export function SigninForm({ onSuccess, authError, setAuthError, showPassword, setShowPassword }: SigninFormProps) {
     const router = useRouter()
-    
+
     const methods = useForm<SigninFormValues>({
         resolver: zodResolver(signinSchema),
         defaultValues: { email: '', password: '', remember: true },
     })
-    
+
     const { handleSubmit, control, formState, watch } = methods
     const isSubmitting = formState.isSubmitting
 
     const onSubmit = async (data: SigninFormValues) => {
         setAuthError('')
-        
+
         try {
             const result = await signIn('credentials', {
                 email: data.email,
@@ -55,7 +55,7 @@ export function SigninForm({ onSuccess, authError, setAuthError, showPassword, s
                 router.refresh()
                 router.push('/dashboard')
             } else {
-                const message = result?.error === 'CredentialsSignin' 
+                const message = result?.error === 'CredentialsSignin'
                     ? 'Invalid email or password. Please try again.'
                     : 'An error occurred during sign in. Please try again.'
                 setAuthError(message)
@@ -89,7 +89,7 @@ export function SigninForm({ onSuccess, authError, setAuthError, showPassword, s
                         <p className="text-xs text-red-300">{formState.errors.email.message}</p>
                     )}
                 </div>
-                
+
                 <div className="space-y-2">
                     <Label htmlFor="signin-password" className="text-gray-300">Password</Label>
                     <div className="relative">
@@ -127,7 +127,7 @@ export function SigninForm({ onSuccess, authError, setAuthError, showPassword, s
                         <p className="text-xs text-red-300">{formState.errors.password.message}</p>
                     )}
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                     <Controller
                         name="remember"
@@ -144,13 +144,13 @@ export function SigninForm({ onSuccess, authError, setAuthError, showPassword, s
                         Remember me for 30 days
                     </Label>
                 </div>
-                
+
                 {authError && (
                     <div className="rounded-md bg-red-500/10 border border-red-500 px-3 py-2 text-sm text-red-400">
                         {authError}
                     </div>
                 )}
-                
+
                 <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.35)] hover:brightness-105"
