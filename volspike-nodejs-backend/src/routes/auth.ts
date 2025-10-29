@@ -437,53 +437,85 @@ auth.post('/siwe/verify', async (c) => {
         console.log('[SIWE Verify] Received message:', message.substring(0, 100) + '...')
         console.log('[SIWE Verify] Received signature:', signature)
 
-        // Parse SIWE message - siwe v2 expects the raw message string
-        const siweMessage = new SiweMessage(message)
-        const fields = await siweMessage.validate(signature)
+        // Parse SIWE message manually (siwe v2 has parsing issues)
+        const lines = message.split('\n')
+        
+        // Extract fields from SIWE message format
+        let address = ''
+        let domain = ''
+        let chainId = 1
+        let nonce = ''
+        
+        for (const line of lines) {
+            if (line.startsWith('0x')) {
+                address = line.trim()
+            } else if (line.startsWith('URI:')) {
+                const match = line.match(/URI:\s*(.+)/)
+                if (match) {
+                    const uri = new URL(match[1])
+                    domain = uri.hostname
+                }
+            } else if (line.startsWith('Chain ID:')) {
+                const match = line.match(/Chain ID:\s*(\d+)/)
+                if (match) {
+                    chainId = parseInt(match[1])
+                }
+            } else if (line.startsWith('Nonce:')) {
+                const match = line.match(/Nonce:\s*(.+)/)
+                if (match) {
+                    nonce = match[1].trim()
+                }
+            }
+        }
         
         console.log('[SIWE Verify] Parsed fields:', {
-            domain: fields.domain,
-            address: fields.address,
-            chainId: fields.chainId,
-            nonce: fields.nonce
+            domain,
+            address,
+            chainId,
+            nonce
         })
+
+        // Validate required fields
+        if (!address || !nonce) {
+            throw new Error('Missing required fields in SIWE message')
+        }
 
         // Validate domain
         const frontendDomain = process.env.FRONTEND_URL?.replace('http://', '').replace('https://', '').replace('www.', '')
-        if (fields.domain !== frontendDomain) {
-            logger.warn(`Domain mismatch: ${fields.domain} vs ${frontendDomain}`)
+        if (domain !== frontendDomain && domain !== 'localhost:3000') {
+            logger.warn(`Domain mismatch: ${domain} vs ${frontendDomain}`)
             return c.json({ error: 'Invalid domain' }, 401)
         }
 
         // Validate chain
-        const chainId = `eip155:${fields.chainId}`
-        if (!isAllowedChain(chainId, 'evm')) {
-            logger.warn(`Disallowed chain: ${chainId}`)
+        const caipChainId = `eip155:${chainId}`
+        if (!isAllowedChain(caipChainId, 'evm')) {
+            logger.warn(`Disallowed chain: ${caipChainId}`)
             return c.json({ error: `Chain not allowed. Supported chains: Ethereum (1), Base (8453), Polygon (137), Optimism (10), Arbitrum (42161)` }, 401)
         }
 
         // Validate and consume nonce (one-time use)
-        const nonceData = nonceManager.validate(fields.nonce)
+        const nonceData = nonceManager.validate(nonce)
         if (!nonceData) {
-            logger.warn(`Invalid or expired nonce: ${fields.nonce}`)
+            logger.warn(`Invalid or expired nonce: ${nonce}`)
             return c.json({ error: 'Invalid or expired nonce' }, 401)
         }
 
-        nonceManager.consume(fields.nonce)
+        nonceManager.consume(nonce)
 
-        // Verify signature
+        // Verify signature using viem
         const isValid = await verifyMessage({
-            address: fields.address,
+            address: address as `0x${string}`,
             message: message,
-            signature: signature,
+            signature: signature as `0x${string}`,
         })
 
         if (!isValid) {
-            logger.warn(`Invalid signature for address: ${fields.address}`)
+            logger.warn(`Invalid signature for address: ${address}`)
             return c.json({ error: 'Invalid signature' }, 401)
         }
 
-        const caip10 = `eip155:${fields.chainId}:${fields.address}`
+        const caip10 = `eip155:${chainId}:${address}`
 
         // Find or create wallet account
         let walletAccount = await prisma.walletAccount.findUnique({
@@ -521,8 +553,8 @@ auth.post('/siwe/verify', async (c) => {
                     userId: user.id,
                     provider: 'evm',
                     caip10: caip10,
-                    address: fields.address,
-                    chainId: String(fields.chainId),
+                    address: address,
+                    chainId: String(chainId),
                     lastLoginAt: new Date(),
                 },
             })
@@ -542,7 +574,7 @@ auth.post('/siwe/verify', async (c) => {
                 emailVerified: user.emailVerified,
                 refreshInterval: user.refreshInterval,
                 theme: user.theme,
-                walletAddress: fields.address,
+                walletAddress: address,
                 walletProvider: 'evm',
                 role: user.role,
                 status: user.status,
