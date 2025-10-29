@@ -15,6 +15,7 @@ VolSpike is a comprehensive Binance Perpetual Futures trading dashboard featurin
 - **Payments**: Stripe integration with webhooks
 - **Deployment**: Vercel (frontend) + Railway (backend for auth/payments)
 - **Status**: ✅ **Production Ready** - All authentication issues resolved
+ - **Email Verification**: SendGrid transactional emails with site-hosted assets and bulletproof CTA
 
 ## 🎯 Current Architecture Benefits
 
@@ -218,9 +219,7 @@ VolSpike/
 │   ├── package.json                    # Dependencies
 │   └── Dockerfile                      # Production image
 │
-└── scripts/                            # Utility scripts
-    ├── local-ingest-binance.js         # Local ingestion (deprecated)
-    └── test-redis.js                   # Redis testing (deprecated)
+└── scripts/                            # Utility scripts (kept lean; ingestion/redis removed)
 ```
 
 **Note**: The ingestion service and Redis dependencies have been removed. Market data is now handled entirely by the frontend via direct Binance WebSocket connections.
@@ -470,6 +469,7 @@ NODE_ENV=production
 
 ### Authentication
 - ✅ **Email/Password**: Fully working with proper password verification
+- ✅ **Email Verification**: SendGrid email confirmation with site-hosted PNG logo (`https://volspike.com/email/volspike-badge@2x.png`), hidden preheader, and bulletproof table CTA (VML fallback). Verify page routes users to `/auth` to sign in after successful verification. Resend available on `/auth` and `/auth/verify`.
 - ✅ **Web3 wallet authentication**: RainbowKit + Wagmi integration
 - ✅ **OAuth providers**: Google, GitHub integration
 - ✅ **Session management**: JWT tokens with proper error handling

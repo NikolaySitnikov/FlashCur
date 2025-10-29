@@ -46,6 +46,7 @@ VolSpike uses a modern **client-side WebSocket architecture** with the following
 - **ORM**: Prisma for type-safe database operations
 - **Payments**: Stripe integration with webhook handling
 - **Purpose**: User authentication and payment processing only
+ - **Email**: SendGrid for email verification and welcome emails
 
 #### Data Processing: Client-Side WebSocket
 - **Language**: TypeScript for consistency
@@ -151,6 +152,7 @@ VolSpike uses a modern **client-side WebSocket architecture** with the following
 
 #### Multi-Modal Authentication
 - ✅ **Email/Password**: Fully working with proper password verification and error handling
+- ✅ **Email Verification Flow**: SendGrid-powered verification with hidden preheader, site-hosted PNG logo (`/email/volspike-badge@2x.png`), and bulletproof table CTA (VML fallback for Outlook). After verification, users are taken to `/auth` to sign in. Resend available on `/auth` and error state of `/auth/verify`.
 - ✅ **Web3 Wallets**: MetaMask, WalletConnect, Coinbase Wallet via RainbowKit
 - ✅ **OAuth Providers**: Google, GitHub integration
 - ✅ **SIWE**: Sign-In with Ethereum for Web3 authentication
@@ -292,6 +294,7 @@ interface VolumeSpikeDetection {
 - PostgreSQL (or use Docker)
 - Stripe account (for payments)
 - SendGrid account (for email notifications)
+  - Domain Authentication enabled; from address `noreply@volspike.com`
 - **No Redis needed** (client-side WebSocket solution)
 
 #### Quick Start (Frontend Only)
@@ -373,6 +376,8 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 # Email (SendGrid)
 SENDGRID_API_KEY=SG.your-sendgrid-api-key
 SENDGRID_FROM_EMAIL=noreply@volspike.com
+SENDGRID_VERIFICATION_TEMPLATE_ID= # optional, we send our own HTML
+SENDGRID_WELCOME_TEMPLATE_ID=      # optional, we send our own HTML
 
 # SMS (Twilio - Elite tier)
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
@@ -922,3 +927,4 @@ For more information, visit the [GitHub repository](https://github.com/NikolaySi
 - ✅ **Test user** - test@volspike.com seeded in production for testing
 - ✅ **Build stability** - All Vercel build errors resolved (DYNAMIC_SERVER_USAGE fixed)
 - ✅ **Environment variables** - Production env vars properly configured for Vercel and Railway
+ - ✅ **Email Verification UX** - Gmail-safe preheader, bulletproof CTA, and site-hosted logo; verify success leads to sign-in
