@@ -415,13 +415,16 @@ auth.post('/verify-email', async (c) => {
 auth.get('/siwe/nonce', async (c) => {
     try {
         const address = c.req.header('X-Wallet-Address') || 'unknown'
+        logger.info(`Nonce request received for address: ${address}`)
+        
         const nonce = nonceManager.generate(address, 'evm')
         
-        logger.info(`Nonce issued for EVM address: ${address}`)
+        logger.info(`Nonce issued successfully for EVM address: ${address}`)
         
         return c.json({ nonce })
     } catch (error) {
         logger.error('Nonce issuance error:', error)
+        logger.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
         return c.json({ error: 'Failed to issue nonce' }, 500)
     }
 })

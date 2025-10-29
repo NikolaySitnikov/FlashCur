@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto'
-import { logger } from './logger'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger()
 
 interface NonceData {
   timestamp: number
