@@ -172,16 +172,18 @@ export function setupSocketHandlers(
             refreshInterval: getRefreshInterval(userTier),
         })
 
-        // Send current market data (do not crash on failure)
-        getMarketData()
-            .then(data => {
-                if (data) {
-                    socket.emit('market-update', data)
-                }
-            })
-            .catch(err => {
-                logger.warn('Skipping initial market-update due to fetch error', err)
-            })
+        // Optionally skip initial REST fetch in production
+        if (process.env.DISABLE_SERVER_MARKET_POLL !== 'true') {
+            getMarketData()
+                .then(data => {
+                    if (data) {
+                        socket.emit('market-update', data)
+                    }
+                })
+                .catch(err => {
+                    logger.warn('Skipping initial market-update due to fetch error', err)
+                })
+        }
     })
 
     // Track last update times per tier
