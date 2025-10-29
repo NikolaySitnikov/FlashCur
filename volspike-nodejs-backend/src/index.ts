@@ -64,7 +64,7 @@ app.use('*', cors({
     origin: getAllowedOrigins(),
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-Wallet-Address'],
     exposeHeaders: ['Content-Length', 'X-Total-Count', 'X-Page-Count'],
     maxAge: 86400, // 24 hours
 }))
