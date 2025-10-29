@@ -31,6 +31,8 @@ export function useWalletAuth(): UseWalletAuthResult {
         throw new Error('Please connect your wallet first')
       }
 
+      console.log('[useWalletAuth] Starting sign-in, address:', address, 'chainId:', chainId)
+
       setIsConnecting(true)
 
       // Step 2: Get nonce from backend
@@ -39,10 +41,13 @@ export function useWalletAuth(): UseWalletAuthResult {
       })
       
       if (!nonceRes.ok) {
+        const errorText = await nonceRes.text()
+        console.error('[useWalletAuth] Nonce request failed:', errorText)
         throw new Error('Failed to get authentication nonce')
       }
       
       const { nonce } = await nonceRes.json()
+      console.log('[useWalletAuth] Got nonce:', nonce)
 
       setIsConnecting(false)
       setIsSigning(true)
@@ -60,10 +65,14 @@ Chain ID: ${chainId}
 Nonce: ${nonce}
 Issued At: ${new Date().toISOString()}`
 
+      console.log('[useWalletAuth] Generated SIWE message:', messageString)
+
       // Step 4: Sign message with wallet
+      console.log('[useWalletAuth] Requesting signature from wallet...')
       const signature = await signMessageAsync({
         message: messageString,
       })
+      console.log('[useWalletAuth] Got signature:', signature)
 
       setIsSigning(false)
       setIsAuthenticating(true)
