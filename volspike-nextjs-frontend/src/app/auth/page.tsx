@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, Mail } from 'lucide-react'
@@ -31,6 +31,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 function AuthPageContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const pathname = usePathname()
 
     // Simple state management - no form hooks in parent
     const [tab, setTab] = useState<'signin' | 'signup'>(
@@ -41,6 +42,7 @@ function AuthPageContent() {
     const [verificationMessage, setVerificationMessage] = useState('')
     const [showVerificationAlert, setShowVerificationAlert] = useState(false)
     const [resendEmail, setResendEmail] = useState('')
+    const [initialAuthError, setInitialAuthError] = useState('')
 
     // Check if this is admin mode
     const isAdminMode = searchParams?.get('mode') === 'admin'
@@ -56,6 +58,28 @@ function AuthPageContent() {
             setTab('signin')
         }
     }, [searchParams, isAdminMode])
+
+    useEffect(() => {
+        if (!searchParams) {
+            return
+        }
+
+        const errorParam = searchParams.get('error')
+
+        if (errorParam) {
+            setTab('signin')
+            setInitialAuthError(errorParam)
+
+            if (pathname) {
+                const params = new URLSearchParams(searchParams.toString())
+                params.delete('error')
+                const nextQuery = params.toString()
+                router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false })
+            }
+        } else {
+            setInitialAuthError('')
+        }
+    }, [searchParams, router, pathname])
 
     async function handleGoogleSignIn() {
         setIsGoogleLoading(true)
@@ -174,6 +198,7 @@ function AuthPageContent() {
                                 }}
                                 isAdminMode={isAdminMode}
                                 nextUrl={nextUrl}
+                                initialError={initialAuthError}
                             />
                         ) : (
                             <SignupForm

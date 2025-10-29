@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const signinSchema = z.object({
     email: z.string().email('Invalid email address'),
@@ -24,9 +24,35 @@ interface SigninFormProps {
     onSuccess: (email: string) => void
     isAdminMode?: boolean
     nextUrl?: string
+    initialError?: string
 }
 
-export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboard' }: SigninFormProps) {
+const ERROR_MESSAGES: Record<string, string> = {
+    CredentialsSignin: 'Invalid email or password. Please check your credentials and try again.',
+    OAuthSignin: 'Error signing in with OAuth provider.',
+    OAuthCallback: 'Error during OAuth callback.',
+    OAuthCreateAccount: 'Could not create OAuth account.',
+    EmailCreateAccount: 'Could not create email account.',
+    Callback: 'Error during callback.',
+    OAuthAccountNotLinked: 'Account already exists with a different provider.',
+    EmailSignin: 'Error sending email verification.',
+    SessionRequired: 'Please sign in to access this page.',
+    Default: 'An error occurred during sign in. Please try again.',
+    'Authentication service unavailable': 'Unable to connect to authentication service. Please try again later.',
+    'Invalid credentials': 'Invalid email or password. Please check your credentials and try again.',
+    'Invalid email or password': 'Invalid email or password. Please check your credentials and try again.',
+    'Please verify your email address before signing in': 'Please verify your email address before signing in.',
+    'Please use OAuth login (Google) for this account': 'Please use Google login for this account.',
+}
+
+const mapErrorMessage = (code?: string | null) => {
+    if (!code) {
+        return ERROR_MESSAGES.Default
+    }
+    return ERROR_MESSAGES[code] ?? code
+}
+
+export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboard', initialError }: SigninFormProps) {
     const router = useRouter()
     const [showPassword, setShowPassword] = useState(false)
     const [authError, setAuthError] = useState('')
@@ -38,6 +64,17 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
 
     const { isSubmitting, errors } = formState
     const emailValue = watch('email')
+
+    useEffect(() => {
+        if (initialError === undefined) {
+            return
+        }
+        if (initialError) {
+            setAuthError(mapErrorMessage(initialError))
+        } else {
+            setAuthError('')
+        }
+    }, [initialError])
 
     const onSubmit = async (data: SigninFormValues) => {
         setAuthError('')
@@ -55,29 +92,13 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
                 router.refresh()
                 router.push(nextUrl)
             } else {
-                // Map NextAuth error codes to user-friendly messages
-                const errorMessages: Record<string, string> = {
-                    'CredentialsSignin': 'Invalid email or password. Please check your credentials and try again.',
-                    'OAuthSignin': 'Error signing in with OAuth provider.',
-                    'OAuthCallback': 'Error during OAuth callback.',
-                    'OAuthCreateAccount': 'Could not create OAuth account.',
-                    'EmailCreateAccount': 'Could not create email account.',
-                    'Callback': 'Error during callback.',
-                    'OAuthAccountNotLinked': 'Account already exists with different provider.',
-                    'EmailSignin': 'Error sending email verification.',
-                    'SessionRequired': 'Please sign in to access this page.',
-                    'Default': 'An error occurred during sign in. Please try again.',
-                }
-
-                const message = result?.error
-                    ? errorMessages[result.error] || errorMessages['Default']
-                    : errorMessages['Default']
-
+                const message = result?.error ? mapErrorMessage(result.error) : mapErrorMessage(null)
                 setAuthError(message)
             }
         } catch (error) {
             console.error('[SigninForm] Sign in error:', error)
-            setAuthError('Unable to connect to authentication service. Please try again later.')
+            const message = error instanceof Error ? mapErrorMessage(error.message) : mapErrorMessage('Authentication service unavailable')
+            setAuthError(message)
         }
     }
 
