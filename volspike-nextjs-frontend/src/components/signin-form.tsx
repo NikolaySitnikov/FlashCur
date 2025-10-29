@@ -42,6 +42,7 @@ const ERROR_MESSAGES: Record<string, string> = {
     'Authentication service unavailable': 'Unable to connect to authentication service. Please try again later.',
     'Invalid credentials': 'Invalid email or password. Please check your credentials and try again.',
     'Invalid email or password': 'Invalid email or password. Please check your credentials and try again.',
+  'Please use OAuth login (Google) for this account': 'This account is linked to Google. Please use “Continue with Google” to sign in.',
     'Please verify your email address before signing in': 'Please verify your email address before signing in.',
     'Please use OAuth login (Google) for this account': 'Please use Google login for this account.',
 }

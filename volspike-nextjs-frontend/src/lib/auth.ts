@@ -52,9 +52,12 @@ export const authConfig: NextAuthConfig = {
                             throw new Error(errorData.error || 'Please verify your email address before signing in')
                         }
 
-                        // For 401 (invalid credentials), throw generic error
+                        // For 401 (invalid credentials), prefer backend message
                         if (response.status === 401) {
-                            throw new Error('Invalid credentials')
+                            if (errorData?.oauthOnly) {
+                                throw new Error('Please use OAuth login (Google) for this account')
+                            }
+                            throw new Error(errorData?.error || 'Invalid credentials')
                         }
 
                         // For other errors, throw generic error
