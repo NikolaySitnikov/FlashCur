@@ -153,7 +153,9 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                 }
             }
         } catch (error) {
-            console.error('Failed to seed funding rates from REST:', error);
+            if (process.env.NODE_ENV === 'development') {
+                console.warn('Failed to seed funding rates from REST:', error);
+            }
         }
     }, [buildSnapshot, render, tier, CADENCE]);
 
@@ -267,17 +269,21 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                     }
 
                 } catch (error) {
-                    console.error('Error processing WebSocket message:', error);
+                    if (process.env.NODE_ENV === 'development') {
+                        console.warn('Error processing WebSocket message (non-fatal):', error);
+                    }
                 }
             };
 
             wsRef.current.onerror = (evt) => {
-                // Chrome often gives an empty object. Add context.
-                console.error('WebSocket error (likely handshake failure)', {
-                    url: WS_URL,
-                    readyState: wsRef.current?.readyState,
-                    event: evt
-                });
+                // Chrome often gives an empty object. Add context. Noise in dev.
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn('WebSocket warning (likely handshake or transient issue)', {
+                        url: WS_URL,
+                        readyState: wsRef.current?.readyState,
+                        event: evt
+                    });
+                }
                 setStatus('error');
             };
 
@@ -308,7 +314,9 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
             }, 5000);
 
         } catch (error) {
-            console.error('Failed to connect to WebSocket:', error);
+            if (process.env.NODE_ENV === 'development') {
+                console.warn('Failed to connect to WebSocket (will retry):', error);
+            }
             setStatus('error');
         }
     }, [tier, CADENCE, geofenceFallback, primeFundingSnapshot, render]);

@@ -10,6 +10,7 @@ const nextConfig = {
         NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
         NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
         NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
+        NEXT_PUBLIC_SOCKET_IO_URL: process.env.NEXT_PUBLIC_SOCKET_IO_URL,
     },
     webpack: (config) => {
         config.resolve.fallback = {
@@ -20,15 +21,24 @@ const nextConfig = {
         return config;
     },
     async headers() {
+        const isDev = process.env.NODE_ENV === 'development'
         return [
             {
                 // Scope narrowly to avoid breaking public/marketing pages
                 source: '/(dashboard|admin)/:path*',
-                headers: [
-                    { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-                    { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
-                    { key: 'Origin-Agent-Cluster', value: '?1' },
-                ],
+                headers: isDev
+                    ? [
+                        // Base Account SDK requires COOP not be 'same-origin'
+                        { key: 'Cross-Origin-Opener-Policy', value: 'unsafe-none' },
+                        // Disable COEP in dev to avoid cross-origin restrictions
+                        { key: 'Cross-Origin-Embedder-Policy', value: 'unsafe-none' },
+                        { key: 'Origin-Agent-Cluster', value: '?1' },
+                    ]
+                    : [
+                        { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+                        { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+                        { key: 'Origin-Agent-Cluster', value: '?1' },
+                    ],
             },
             {
                 // Helpful for your own static assets when using COEP

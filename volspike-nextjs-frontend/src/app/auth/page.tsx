@@ -192,9 +192,20 @@ function AuthPageContent() {
                         {/* Render the appropriate form component */}
                         {tab === 'signin' ? (
                             <SigninForm
-                                onSuccess={(email) => {
+                                onSuccess={async (email) => {
+                                    console.log('[AuthPage] onSuccess called with email:', email)
+                                    console.log('[AuthPage] nextUrl:', nextUrl)
                                     setResendEmail(email)
+
+                                    // Small delay to ensure session is properly set
+                                    await new Promise(resolve => setTimeout(resolve, 100))
+
+                                    console.log('[AuthPage] Calling router.refresh()')
+                                    router.refresh()
+
+                                    console.log('[AuthPage] Calling router.push with nextUrl:', nextUrl)
                                     router.push(nextUrl)
+                                    console.log('[AuthPage] Router.push completed')
                                 }}
                                 isAdminMode={isAdminMode}
                                 nextUrl={nextUrl}

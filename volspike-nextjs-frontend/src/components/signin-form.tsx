@@ -71,7 +71,8 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
             return
         }
         if (initialError) {
-            setAuthError(mapErrorMessage(initialError))
+            const msg = mapErrorMessage(initialError)
+            setAuthError(msg)
         } else {
             setAuthError('')
         }
@@ -82,7 +83,8 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
         const urlError = searchParams.get('error')
         if (urlError) {
             console.log('[SigninForm] URL error parameter:', urlError)
-            setAuthError(mapErrorMessage(urlError))
+            const msg = mapErrorMessage(urlError)
+            setAuthError(msg)
         }
     }, [searchParams])
 
@@ -101,11 +103,12 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
             console.log('[SigninForm] Sign in result:', JSON.stringify(result, null, 2))
             console.log('[SigninForm] Result.error:', result?.error)
 
-            if (result?.ok) {
+            // Treat any presence of result.error as a failure even if ok === true
+            if (result && !result.error) {
                 console.log('[SigninForm] Sign in successful')
+                console.log('[SigninForm] Calling onSuccess with email:', data.email)
                 onSuccess(data.email)
-                router.refresh()
-                router.push(nextUrl)
+                console.log('[SigninForm] onSuccess completed - letting parent handle redirect')
             } else {
                 console.log('[SigninForm] Sign in failed, error:', result?.error)
                 const errorMessage = result?.error || 'Authentication failed'

@@ -1,6 +1,7 @@
 import 'server-only'
 import { cookies } from 'next/headers'
 import { jwtVerify } from 'jose'
+import { auth } from './auth'
 
 type VerifyResult = {
     ok: boolean
@@ -39,15 +40,43 @@ export async function verifyAccessTokenAndRole(token?: string): Promise<VerifyRe
     }
 }
 
-export async function getServerAuthToken(): Promise<string | undefined> {
-    // Try to get token from NextAuth session cookie
-    const cookies = await import('next/headers').then(m => m.cookies())
-    const sessionToken = cookies.get('next-auth.session-token')?.value
-    if (sessionToken) {
-        return sessionToken
+// New function to get session from NextAuth
+export async function getNextAuthSession() {
+    try {
+        const session = await auth()
+        console.log('[AuthServer] NextAuth session:', session ? 'Found' : 'Not found')
+        if (session?.user) {
+            console.log('[AuthServer] Session user:', {
+                id: session.user.id,
+                email: session.user.email,
+                role: (session.user as any).role
+            })
+        }
+        return session
+    } catch (error) {
+        console.error('[AuthServer] Error getting NextAuth session:', error)
+        return null
     }
+}
 
-    // Fallback to custom auth token cookie
-    return cookies.get('auth_token')?.value
+export async function getServerAuthToken(): Promise<string | undefined> {
+    try {
+        // Try to get token from NextAuth session cookie
+        const cookies = await import('next/headers').then(m => m.cookies())
+        const sessionToken = cookies.get('next-auth.session-token')?.value
+        console.log('[AuthServer] NextAuth session token found:', !!sessionToken)
+
+        if (sessionToken) {
+            return sessionToken
+        }
+
+        // Fallback to custom auth token cookie
+        const authToken = cookies.get('auth_token')?.value
+        console.log('[AuthServer] Custom auth token found:', !!authToken)
+        return authToken
+    } catch (error) {
+        console.error('[AuthServer] Error getting auth token:', error)
+        return undefined
+    }
 }
 

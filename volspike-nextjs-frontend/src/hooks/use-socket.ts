@@ -19,7 +19,9 @@ export function useSocket() {
             ? `mock-token-${userEmail}-${Date.now()}`
             : userEmail
 
-        const socketInstance = io(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001', {
+        // Use dedicated Socket.IO URL; never point to Binance WS URL
+        const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_IO_URL || 'http://localhost:3001'
+        const socketInstance = io(SOCKET_URL, {
             auth: {
                 token: token,
             },
@@ -37,7 +39,9 @@ export function useSocket() {
         })
 
         socketInstance.on('connect_error', (error) => {
-            console.error('Socket connection error:', error)
+            if (process.env.NODE_ENV === 'development') {
+                console.warn('Socket connection warning (non-fatal):', error?.message || error)
+            }
         })
 
         setSocket(socketInstance)

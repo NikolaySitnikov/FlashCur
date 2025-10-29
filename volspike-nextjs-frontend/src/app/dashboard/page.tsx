@@ -1,42 +1,24 @@
 import { redirect } from 'next/navigation'
-import { getServerAuthToken, verifyAccessTokenAndRole } from '@/lib/auth-server'
-import DebugFetchLogger from '@/components/debug-fetch-logger'
+import { getNextAuthSession } from '@/lib/auth-server'
+import { Dashboard } from '@/components/dashboard'
+import { SessionProvider } from 'next-auth/react'
 
 export default async function DashboardPage() {
-    const token = await getServerAuthToken()
-    const { ok, role } = await verifyAccessTokenAndRole(token)
+    console.log('[Dashboard] Starting dashboard page load')
+    const session = await getNextAuthSession()
+    console.log('[Dashboard] NextAuth session:', session ? 'Found' : 'Not found')
 
-    if (!ok) {
+    if (!session?.user) {
+        console.log('[Dashboard] No session found, redirecting to /auth')
         redirect('/auth')
     }
 
+    const role = (session.user as any).role || 'user'
+    console.log('[Dashboard] Authentication successful, user role:', role)
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-            <DebugFetchLogger />
-            <div className="container mx-auto px-4 py-8">
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-white mb-4">VolSpike Dashboard</h1>
-                    <p className="text-gray-400">Welcome back! You&apos;re successfully logged in.</p>
-                    <p className="text-sm text-gray-500 mt-2">Role: {role}</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6 backdrop-blur-sm">
-                        <h2 className="text-xl font-semibold text-white mb-4">Market Data</h2>
-                        <p className="text-gray-400">Real-time Binance perpetual futures data will appear here.</p>
-                    </div>
-
-                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6 backdrop-blur-sm">
-                        <h2 className="text-xl font-semibold text-white mb-4">Volume Alerts</h2>
-                        <p className="text-gray-400">Configure your volume spike alerts and notifications.</p>
-                    </div>
-
-                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6 backdrop-blur-sm">
-                        <h2 className="text-xl font-semibold text-white mb-4">Account Settings</h2>
-                        <p className="text-gray-400">Manage your subscription and account preferences.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <SessionProvider session={session}>
+            <Dashboard />
+        </SessionProvider>
     )
 }

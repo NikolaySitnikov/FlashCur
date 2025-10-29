@@ -18,6 +18,17 @@ export function Dashboard() {
     const [alerts, setAlerts] = useState<any[]>([])
     const [countdownDisplay, setCountdownDisplay] = useState<string>('')
 
+    // Debug session status
+    console.log('[Dashboard] useSession status:', status)
+    console.log('[Dashboard] useSession data:', session ? 'Found' : 'Not found')
+    if (session?.user) {
+        console.log('[Dashboard] User details:', {
+            email: session.user.email,
+            tier: (session.user as any).tier,
+            role: (session.user as any).role
+        })
+    }
+
     // Determine user tier
     const userTier = session?.user?.tier || 'free'
 
