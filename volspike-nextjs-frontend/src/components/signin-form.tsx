@@ -29,6 +29,7 @@ interface SigninFormProps {
 
 const ERROR_MESSAGES: Record<string, string> = {
     CredentialsSignin: 'Invalid email or password. Please check your credentials and try again.',
+    'Please verify your email address': 'Please verify your email address before signing in. Check your inbox for the verification email, or click "Resend email" below.',
     OAuthSignin: 'Error signing in with OAuth provider.',
     OAuthCallback: 'Error during OAuth callback.',
     OAuthCreateAccount: 'Could not create OAuth account.',

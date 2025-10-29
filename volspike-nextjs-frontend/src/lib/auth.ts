@@ -47,15 +47,18 @@ export const authConfig: NextAuthConfig = {
                         const errorData = await response.json().catch(() => ({ error: 'Authentication failed' }))
                         console.error('[NextAuth] Backend error:', errorData)
 
-                        // Return null for invalid credentials - NextAuth will handle this properly
-                        if (response.status === 401) {
-                            return null
-                        } else if (response.status === 403) {
-                            return null
+                        // For 403 (email not verified), throw a specific error that NextAuth will pass through
+                        if (response.status === 403 && errorData?.requiresVerification) {
+                            throw new Error(errorData.error || 'Please verify your email address before signing in')
                         }
 
-                        // For other errors, still return null to let NextAuth handle it
-                        return null
+                        // For 401 (invalid credentials), throw generic error
+                        if (response.status === 401) {
+                            throw new Error('Invalid credentials')
+                        }
+
+                        // For other errors, throw generic error
+                        throw new Error(errorData?.error || 'Authentication failed')
                     }
 
                     const { user, token } = await response.json()

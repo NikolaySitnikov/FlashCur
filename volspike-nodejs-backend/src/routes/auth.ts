@@ -106,9 +106,11 @@ auth.post('/signin', async (c) => {
 
         // Check if email is verified (allow wallet users to bypass)
         if (!user.emailVerified && !user.walletAddress) {
+            logger.info(`Sign-in blocked for ${email}: email not verified`)
             return c.json({
-                error: 'Please verify your email address before signing in',
-                requiresVerification: true
+                error: 'Please verify your email address before signing in. Check your inbox for the verification email.',
+                requiresVerification: true,
+                email: user.email // Include email so frontend can show resend option
             }, 403)
         }
 
