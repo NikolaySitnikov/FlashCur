@@ -27,7 +27,7 @@ export const authConfig: NextAuthConfig = {
             },
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) {
-                    return null
+                    throw new Error('Email and password are required')
                 }
 
                 try {
@@ -44,17 +44,29 @@ export const authConfig: NextAuthConfig = {
 
                     if (!response.ok) {
                         console.error('[NextAuth] Backend signin failed', response.status)
-                        const errorData = await response.json().catch(() => ({}))
+                        const errorData = await response.json().catch(() => ({ error: 'Authentication failed' }))
                         console.error('[NextAuth] Backend error:', errorData)
-                        // Return null to trigger CredentialsSignin error
-                        return null
+
+                        // Throw specific error messages from backend
+                        if (errorData.error) {
+                            throw new Error(errorData.error)
+                        }
+
+                        // Fallback error based on status code
+                        if (response.status === 401) {
+                            throw new Error('Invalid email or password')
+                        } else if (response.status === 403) {
+                            throw new Error(errorData.error || 'Please verify your email address before signing in')
+                        }
+
+                        throw new Error('Authentication service unavailable')
                     }
 
                     const { user, token } = await response.json()
 
                     if (!user?.id || !token) {
                         console.error('[NextAuth] Backend response missing user or token')
-                        return null
+                        throw new Error('Invalid server response')
                     }
 
                     return {
@@ -69,9 +81,12 @@ export const authConfig: NextAuthConfig = {
                         accessToken: token,
                     }
                 } catch (error) {
-                    console.error('[NextAuth] Unable to reach backend auth service', error)
-                    // Return null to trigger CredentialsSignin error
-                    return null
+                    console.error('[NextAuth] Authorization error:', error)
+                    // Re-throw the error to be caught by NextAuth
+                    if (error instanceof Error) {
+                        throw error
+                    }
+                    throw new Error('Authentication service unavailable')
                 }
             }
         })
@@ -82,6 +97,7 @@ export const authConfig: NextAuthConfig = {
     },
     pages: {
         signIn: '/auth',
+        error: '/auth',
     },
     secret: process.env.NEXTAUTH_SECRET,
     callbacks: {

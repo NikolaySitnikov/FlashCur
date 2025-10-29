@@ -4,7 +4,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,7 @@ const mapErrorMessage = (code?: string | null) => {
 
 export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboard', initialError }: SigninFormProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const [showPassword, setShowPassword] = useState(false)
     const [authError, setAuthError] = useState('')
 
@@ -76,6 +77,15 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
         }
     }, [initialError])
 
+    // Handle URL error parameters
+    useEffect(() => {
+        const urlError = searchParams.get('error')
+        if (urlError) {
+            console.log('[SigninForm] URL error parameter:', urlError)
+            setAuthError(mapErrorMessage(urlError))
+        }
+    }, [searchParams])
+
     const onSubmit = async (data: SigninFormValues) => {
         setAuthError('')
         console.log('[SigninForm] Attempting sign in with:', data.email)
@@ -85,24 +95,29 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
                 email: data.email,
                 password: data.password,
                 redirect: false,
+                callbackUrl: nextUrl,
             })
 
-            console.log('[SigninForm] Sign in result:', result)
+            console.log('[SigninForm] Sign in result:', JSON.stringify(result, null, 2))
+            console.log('[SigninForm] Result.error:', result?.error)
 
             if (result?.ok) {
+                console.log('[SigninForm] Sign in successful')
                 onSuccess(data.email)
-                // Use router.refresh() to update server components
                 router.refresh()
                 router.push(nextUrl)
             } else {
                 console.log('[SigninForm] Sign in failed, error:', result?.error)
-                const message = result?.error ? mapErrorMessage(result.error) : mapErrorMessage(null)
-                console.log('[SigninForm] Mapped error message:', message)
-                setAuthError(message)
+                const errorMessage = result?.error || 'Authentication failed'
+                const mappedMessage = mapErrorMessage(errorMessage)
+                console.log('[SigninForm] Mapped error message:', mappedMessage)
+                setAuthError(mappedMessage)
             }
         } catch (error) {
-            console.error('[SigninForm] Sign in error:', error)
-            const message = error instanceof Error ? mapErrorMessage(error.message) : mapErrorMessage('Authentication service unavailable')
+            console.error('[SigninForm] Sign in exception:', error)
+            const message = error instanceof Error
+                ? mapErrorMessage(error.message)
+                : mapErrorMessage('Authentication service unavailable')
             setAuthError(message)
         }
     }
