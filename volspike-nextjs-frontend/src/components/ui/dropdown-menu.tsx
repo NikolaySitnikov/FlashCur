@@ -1,12 +1,67 @@
-import React from 'react'
+'use client'
+
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react'
 import { cn } from '@/lib/utils'
+
+interface DropdownMenuContextType {
+    open: boolean
+    setOpen: (open: boolean) => void
+}
+
+const DropdownMenuContext = createContext<DropdownMenuContextType | null>(null)
 
 interface DropdownMenuProps {
     children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
 }
 
-export function DropdownMenu({ children }: DropdownMenuProps) {
-    return <div className="relative inline-block text-left">{children}</div>
+export function DropdownMenu({ children, open: controlledOpen, onOpenChange }: DropdownMenuProps) {
+    const [internalOpen, setInternalOpen] = useState(false)
+    const containerRef = useRef<HTMLDivElement>(null)
+
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? controlledOpen : internalOpen
+
+    const setOpen = (value: boolean) => {
+        if (isControlled) {
+            onOpenChange?.(value)
+        } else {
+            setInternalOpen(value)
+        }
+    }
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setOpen(false)
+            }
+        }
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setOpen(false)
+            }
+        }
+
+        if (open) {
+            document.addEventListener('mousedown', handleClickOutside)
+            document.addEventListener('keydown', handleEscape)
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+            document.removeEventListener('keydown', handleEscape)
+        }
+    }, [open])
+
+    return (
+        <DropdownMenuContext.Provider value={{ open, setOpen }}>
+            <div ref={containerRef} className="relative inline-block text-left">
+                {children}
+            </div>
+        </DropdownMenuContext.Provider>
+    )
 }
 
 interface DropdownMenuTriggerProps {
@@ -15,10 +70,25 @@ interface DropdownMenuTriggerProps {
 }
 
 export function DropdownMenuTrigger({ asChild, children }: DropdownMenuTriggerProps) {
-    if (asChild) {
-        return <>{children}</>
+    const context = useContext(DropdownMenuContext)
+    if (!context) throw new Error('DropdownMenuTrigger must be used within DropdownMenu')
+
+    const handleClick = () => {
+        context.setOpen(!context.open)
     }
-    return <div className="inline-block">{children}</div>
+
+    if (asChild) {
+        return React.cloneElement(children as React.ReactElement, {
+            onClick: handleClick,
+            'aria-expanded': context.open,
+            'aria-haspopup': 'menu',
+        })
+    }
+    return (
+        <div onClick={handleClick} aria-expanded={context.open} aria-haspopup="menu" className="inline-block cursor-pointer">
+            {children}
+        </div>
+    )
 }
 
 interface DropdownMenuContentProps {
@@ -28,6 +98,11 @@ interface DropdownMenuContentProps {
 }
 
 export function DropdownMenuContent({ align = 'start', children, className }: DropdownMenuContentProps) {
+    const context = useContext(DropdownMenuContext)
+    if (!context) throw new Error('DropdownMenuContent must be used within DropdownMenu')
+
+    if (!context.open) return null
+
     return (
         <div
             className={cn(
@@ -35,6 +110,7 @@ export function DropdownMenuContent({ align = 'start', children, className }: Dr
                 align === 'end' ? 'right-0' : align === 'center' ? 'left-1/2 transform -translate-x-1/2' : 'left-0',
                 className
             )}
+            role="menu"
         >
             {children}
         </div>
@@ -47,6 +123,15 @@ interface DropdownMenuItemProps extends React.ButtonHTMLAttributes<HTMLButtonEle
 }
 
 export function DropdownMenuItem({ children, asChild, className, ...props }: DropdownMenuItemProps) {
+    const context = useContext(DropdownMenuContext)
+
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+        props.onClick?.(e)
+        if (!asChild) {
+            context?.setOpen(false)
+        }
+    }
+
     if (asChild) {
         return <>{children}</>
     }
@@ -57,6 +142,8 @@ export function DropdownMenuItem({ children, asChild, className, ...props }: Dro
                 className
             )}
             {...props}
+            onClick={handleClick}
+            role="menuitem"
         >
             {children}
         </button>

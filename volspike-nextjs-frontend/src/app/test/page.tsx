@@ -133,40 +133,11 @@ export default function TestPage() {
         }
     }
 
-    // Fallback to Cloudflare Worker if WebSocket fails
-    const fetchFromCloudflareWorker = async () => {
-        try {
-            console.log('🔄 Fallback: Fetching from Cloudflare Worker...')
-            const response = await fetch('https://volspike-binance-proxy.nsitnikov1.workers.dev/data')
-
-            if (response.ok) {
-                const data = await response.json()
-                if (data.data && data.data.length > 0) {
-                    setCurrentMarketData(data.data)
-                    setLastUpdate(data.lastUpdate || Date.now())
-                    setDataSource(data.source || 'Cloudflare Worker (Fallback)')
-                    setError(null)
-                }
-            }
-        } catch (err) {
-            console.error('❌ Cloudflare Worker fallback failed:', err)
-            setError('All data sources failed')
-        }
-    }
-
     useEffect(() => {
         setIsLoading(true)
 
-        // Try WebSocket first
+        // Connect to Binance WebSocket
         connectWebSocket()
-
-        // Set up fallback timer
-        const fallbackTimer = setTimeout(() => {
-            if (connectionStatus === 'connecting' || connectionStatus === 'disconnected') {
-                console.log('⚠️ WebSocket taking too long, trying Cloudflare Worker fallback...')
-                fetchFromCloudflareWorker()
-            }
-        }, 10000) // 10 second timeout
 
         // Countdown timer for non-elite tiers
         const countdownInterval = setInterval(() => {
@@ -186,7 +157,6 @@ export default function TestPage() {
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current)
             }
-            clearTimeout(fallbackTimer)
             clearInterval(countdownInterval)
         }
     }, [])
@@ -203,7 +173,7 @@ export default function TestPage() {
                             </span>
                         </CardTitle>
                         <CardDescription>
-                            Direct Binance WebSocket connection with Cloudflare Worker fallback
+                            Direct Binance WebSocket connection (client-side)
                             {lastUpdate > 0 ? (
                                 <span className="ml-2 text-green-500">
                                     ● Live Data (Updated {Math.floor((Date.now() - lastUpdate) / 1000)}s ago)
@@ -279,13 +249,11 @@ export default function TestPage() {
                                 <div>Binance WebSocket: <span className={connectionStatus === 'connected' ? 'text-green-500' : 'text-red-500'}>
                                     {connectionStatus === 'connected' ? '✅ Live' : '❌ Blocked/Error'}
                                 </span></div>
-                                <div>Cloudflare Worker: <span className="text-green-500">✅ Fallback Ready</span></div>
                                 <div>Backend API: <span className="text-gray-500">⏸️ Not Needed</span></div>
                                 <div>Redis: <span className="text-gray-500">⏸️ Not Needed</span></div>
                                 <div className="mt-2 pt-2 border-t">
                                     <div className="text-xs text-gray-500">
-                                        <strong>Plan A:</strong> Direct WebSocket bypasses all server-side blocking.
-                                        If WebSocket fails, falls back to Cloudflare Worker.
+                                        <strong>Client-Side Architecture:</strong> Direct WebSocket connection from browser bypasses all server-side blocking.
                                     </div>
                                 </div>
                             </div>

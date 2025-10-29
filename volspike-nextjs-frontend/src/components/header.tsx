@@ -2,11 +2,12 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useSession, signIn, signOut } from 'next-auth/react'
+import { useSession, signIn } from 'next-auth/react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Settings, User } from 'lucide-react'
+import { Settings } from 'lucide-react'
+import { UserMenu } from '@/components/user-menu'
 
 export function Header() {
     const { data: session, status } = useSession()
@@ -36,12 +37,12 @@ export function Header() {
                             <span className="hidden text-sm text-muted-foreground sm:inline">
                                 {session.user?.tier || 'free'} tier
                             </span>
-                            <Button variant="outline" size="sm">
-                                <Settings className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => signOut()}>
-                                <User className="h-4 w-4" />
-                            </Button>
+                            <Link href="/settings">
+                                <Button variant="outline" size="sm">
+                                    <Settings className="h-4 w-4" />
+                                </Button>
+                            </Link>
+                            <UserMenu />
                         </div>
                     ) : (
                         <div className="flex items-center space-x-2">
