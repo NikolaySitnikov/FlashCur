@@ -429,7 +429,7 @@ auth.get('/siwe/nonce', async (c) => {
     }
 })
 
-// Sign in with Ethereum (SIWE) - Signature verification
+// Sign in with Ethereum (SIWE) - Signature verification (siwe v3)
 auth.post('/siwe/verify', async (c) => {
     try {
         const { message, signature } = await c.req.json()
@@ -437,65 +437,28 @@ auth.post('/siwe/verify', async (c) => {
         console.log('[SIWE Verify] Received message:', message.substring(0, 100) + '...')
         console.log('[SIWE Verify] Received signature:', signature)
 
-        // Parse SIWE message manually (siwe v2 has parsing issues)
-        const lines = message.split('\n')
+        // Parse SIWE message using siwe v3
+        const siweMessage = new SiweMessage(message)
         
-        // Extract fields from SIWE message format
-        let address = ''
-        let domain = ''
-        let chainId = 1
-        let nonce = ''
+        // Get the nonce from the request header (where we sent it)
+        const expectedNonce = c.req.header('X-Wallet-Nonce')
         
-        for (const line of lines) {
-            if (line.startsWith('0x')) {
-                address = line.trim()
-            } else if (line.startsWith('URI:')) {
-                const match = line.match(/URI:\s*(.+)/)
-                if (match) {
-                    const uri = new URL(match[1])
-                    domain = uri.host // Include port if present (e.g., "localhost:3000")
-                }
-            } else if (line.includes('wants you to sign in')) {
-                // Extract domain from the first line of SIWE message
-                const match = line.match(/^(.+?)\s+wants you to sign in/)
-                if (match) {
-                    domain = match[1]
-                }
-            } else if (line.startsWith('Chain ID:')) {
-                const match = line.match(/Chain ID:\s*(\d+)/)
-                if (match) {
-                    chainId = parseInt(match[1])
-                }
-            } else if (line.startsWith('Nonce:')) {
-                const match = line.match(/Nonce:\s*(.+)/)
-                if (match) {
-                    nonce = match[1].trim()
-                }
-            }
-        }
-        
-        console.log('[SIWE Verify] Parsed fields:', {
-            domain,
-            address,
-            chainId,
-            nonce
+        // v3 verify API
+        const result = await siweMessage.verify({
+            signature,
+            domain: (c.req.header('host') || '').split(':')[0], // Remove port if present
+            nonce: expectedNonce,
+            time: new Date().toISOString(),
         })
 
-        // Validate required fields
-        if (!address || !nonce) {
-            throw new Error('Missing required fields in SIWE message')
+        if (!result.success) {
+            logger.warn(`SIWE verification failed: ${result.error?.type || 'unknown error'}`)
+            return c.json({ error: result.error?.type || 'SIWE verification failed' }, 401)
         }
 
-        // Validate domain
-        const frontendDomain = process.env.FRONTEND_URL?.replace('http://', '').replace('https://', '').replace('www.', '')
-        console.log('[SIWE Verify] Domain validation:', { domain, frontendDomain })
+        const { address, chainId } = siweMessage
         
-        // Allow both localhost and localhost:3000 for development
-        const allowedDomains = ['localhost', 'localhost:3000', frontendDomain].filter(Boolean)
-        if (!allowedDomains.includes(domain)) {
-            logger.warn(`Domain mismatch: ${domain} not in allowed domains: ${allowedDomains.join(', ')}`)
-            return c.json({ error: `Invalid domain: ${domain}` }, 401)
-        }
+        console.log('[SIWE Verify] Successfully verified:', { address, chainId })
 
         // Validate chain
         const caipChainId = `eip155:${chainId}`
@@ -504,26 +467,8 @@ auth.post('/siwe/verify', async (c) => {
             return c.json({ error: `Chain not allowed. Supported chains: Ethereum (1), Base (8453), Polygon (137), Optimism (10), Arbitrum (42161)` }, 401)
         }
 
-        // Validate and consume nonce (one-time use)
-        const nonceData = nonceManager.validate(nonce)
-        if (!nonceData) {
-            logger.warn(`Invalid or expired nonce: ${nonce}`)
-            return c.json({ error: 'Invalid or expired nonce' }, 401)
-        }
-
-        nonceManager.consume(nonce)
-
-        // Verify signature using viem
-        const isValid = await verifyMessage({
-            address: address as `0x${string}`,
-            message: message,
-            signature: signature as `0x${string}`,
-        })
-
-        if (!isValid) {
-            logger.warn(`Invalid signature for address: ${address}`)
-            return c.json({ error: 'Invalid signature' }, 401)
-        }
+        // Consume nonce (one-time use)
+        nonceManager.consume(expectedNonce || '')
 
         const caip10 = `eip155:${chainId}:${address}`
 

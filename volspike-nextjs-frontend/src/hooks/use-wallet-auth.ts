@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAccount, useSignMessage } from 'wagmi'
 import { signIn } from 'next-auth/react'
+import { SiweMessage } from 'siwe'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -38,6 +39,7 @@ export function useWalletAuth(): UseWalletAuthResult {
       // Step 2: Get nonce from backend
       const nonceRes = await fetch(`${API_URL}/api/auth/siwe/nonce`, {
         headers: { 'X-Wallet-Address': address },
+        credentials: 'include',
       })
       
       if (!nonceRes.ok) {
@@ -52,25 +54,25 @@ export function useWalletAuth(): UseWalletAuthResult {
       setIsConnecting(false)
       setIsSigning(true)
 
-      // Step 3: Generate SIWE message
-      // Build the SIWE message string manually for siwe v2
-      const messageString = `${window.location.host} wants you to sign in with your Ethereum account:
-${address}
+      // Step 3: Generate SIWE message using siwe v3
+      const msg = new SiweMessage({
+        domain: window.location.host,
+        address,
+        statement: 'Sign in with Ethereum to VolSpike.',
+        uri: window.location.origin,
+        version: '1',
+        chainId,
+        nonce,
+      })
 
-Sign in to VolSpike
-
-URI: ${window.location.origin}
-Version: 1
-Chain ID: ${chainId}
-Nonce: ${nonce}
-Issued At: ${new Date().toISOString()}`
-
-      console.log('[useWalletAuth] Generated SIWE message:', messageString)
+      // v3 uses prepareMessage()
+      const messageToSign = (msg as any).prepareMessage()
+      console.log('[useWalletAuth] Generated SIWE message:', messageToSign)
 
       // Step 4: Sign message with wallet
       console.log('[useWalletAuth] Requesting signature from wallet...')
       const signature = await signMessageAsync({
-        message: messageString,
+        message: messageToSign,
       })
       console.log('[useWalletAuth] Got signature:', signature)
 
@@ -80,8 +82,12 @@ Issued At: ${new Date().toISOString()}`
       // Step 5: Verify signature and get token
       const verifyRes = await fetch(`${API_URL}/api/auth/siwe/verify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: messageString, signature }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Wallet-Nonce': nonce,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ message: messageToSign, signature }),
       })
 
       if (!verifyRes.ok) {

@@ -25,6 +25,16 @@ const logger = createLogger()
 // Create Hono app
 const app = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>()
 
+// Global error handler
+app.onError((err, c) => {
+    logger.error('Unhandled error:', {
+        message: err.message,
+        stack: err.stack,
+        url: c.req.url,
+    })
+    return c.json({ error: 'Internal server error' }, 500)
+})
+
 // ============================================
 // CORS CONFIGURATION
 // ============================================
