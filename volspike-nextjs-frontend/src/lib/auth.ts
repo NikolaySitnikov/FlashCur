@@ -127,7 +127,9 @@ export const authConfig: NextAuthConfig = {
                             name: user.name,
                             image: user.image,
                             provider: 'google',
-                            providerId: user.id,
+                            // Use Google's stable subject identifier returned by NextAuth
+                            // to avoid creating duplicate account rows per sign-in
+                            providerId: account.providerAccountId,
                         }),
                     })
 
