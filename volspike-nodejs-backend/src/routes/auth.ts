@@ -453,7 +453,13 @@ auth.post('/siwe/verify', async (c) => {
                 const match = line.match(/URI:\s*(.+)/)
                 if (match) {
                     const uri = new URL(match[1])
-                    domain = uri.host // Include port if present
+                    domain = uri.host // Include port if present (e.g., "localhost:3000")
+                }
+            } else if (line.includes('wants you to sign in')) {
+                // Extract domain from the first line of SIWE message
+                const match = line.match(/^(.+?)\s+wants you to sign in/)
+                if (match) {
+                    domain = match[1]
                 }
             } else if (line.startsWith('Chain ID:')) {
                 const match = line.match(/Chain ID:\s*(\d+)/)
