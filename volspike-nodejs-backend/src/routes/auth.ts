@@ -434,9 +434,19 @@ auth.post('/siwe/verify', async (c) => {
     try {
         const { message, signature } = await c.req.json()
 
-        // Parse SIWE message
+        console.log('[SIWE Verify] Received message:', message.substring(0, 100) + '...')
+        console.log('[SIWE Verify] Received signature:', signature)
+
+        // Parse SIWE message - siwe v2 expects the raw message string
         const siweMessage = new SiweMessage(message)
         const fields = await siweMessage.validate(signature)
+        
+        console.log('[SIWE Verify] Parsed fields:', {
+            domain: fields.domain,
+            address: fields.address,
+            chainId: fields.chainId,
+            nonce: fields.nonce
+        })
 
         // Validate domain
         const frontendDomain = process.env.FRONTEND_URL?.replace('http://', '').replace('https://', '').replace('www.', '')
@@ -541,6 +551,7 @@ auth.post('/siwe/verify', async (c) => {
         })
     } catch (error: any) {
         logger.error('SIWE verification error:', error)
+        console.error('[SIWE Verify] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
         return c.json({ error: error.message || 'Verification failed' }, 401)
     }
 })
