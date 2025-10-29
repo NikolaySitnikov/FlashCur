@@ -382,6 +382,9 @@ TWILIO_PHONE_NUMBER=+1234567890
 # Frontend URL
 FRONTEND_URL=http://localhost:3000
 
+# Market Data Polling (set to true to disable backend market polling in production)
+DISABLE_SERVER_MARKET_POLL=false
+
 # Environment
 NODE_ENV=development
 LOG_LEVEL=info
@@ -396,6 +399,10 @@ NEXTAUTH_SECRET=your-nextauth-secret-key
 
 # API Configuration (for auth/payments only)
 NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_SOCKET_IO_URL=http://localhost:3001
+
+# Binance WebSocket (direct from browser)
+NEXT_PUBLIC_WS_URL=wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr
 
 # Stripe Configuration
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
@@ -733,6 +740,11 @@ When working with VolSpike, AI models should understand:
 - ✅ **Error handling implemented for all auth flows**
 - ✅ **Web3 wallet integration with RainbowKit**
 - ✅ **Production-ready authentication system**
+- ✅ **Dynamic routes configured** (dashboard, home, admin marked as force-dynamic)
+- ✅ **Backend resilience** - Binance REST failures no longer crash the server
+- ✅ **Production deployment** - Vercel frontend + Railway backend working
+- ✅ **Production database synced** - Neon schema updated with all required fields
+- ✅ **Build errors resolved** - All DYNAMIC_SERVER_USAGE errors fixed
 
 ### Phase 2: Advanced Features (In Progress)
 - 🔄 Advanced analytics and indicators
@@ -900,4 +912,13 @@ For more information, visit the [GitHub repository](https://github.com/NikolaySi
 
 *Last Updated: October 2025*
 *Version: 3.1.0 (Client-Only Architecture)*
-*Status: Production Ready - All Authentication Issues Resolved*
+*Status: Production Ready - All Authentication Issues Resolved, Production Deployment Successful*
+
+### Recent Production Updates (October 2025)
+- ✅ **Dynamic route fixes** - Dashboard, home, and admin routes marked as force-dynamic to prevent build errors
+- ✅ **Backend resilience** - Binance REST failures gracefully handled (return empty arrays instead of crashing)
+- ✅ **Production environment** - DISABLE_SERVER_MARKET_POLL=true set in Railway to disable backend market polling
+- ✅ **Database sync** - Production Neon database schema synced with passwordHash field
+- ✅ **Test user** - test@volspike.com seeded in production for testing
+- ✅ **Build stability** - All Vercel build errors resolved (DYNAMIC_SERVER_USAGE fixed)
+- ✅ **Environment variables** - Production env vars properly configured for Vercel and Railway

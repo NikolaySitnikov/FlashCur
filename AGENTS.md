@@ -239,6 +239,8 @@ VolSpike/
 - **Automatic reconnection** with exponential backoff
 - **localStorage fallback** for region-blocked users
 - Follow Web3 wallet integration patterns (RainbowKit, Wagmi)
+- **Dynamic routes** - Mark routes using cookies/headers as `export const dynamic = 'force-dynamic'` (dashboard, home, admin)
+- **SessionProvider** - Wrap client components using `useSession` with `<SessionProvider>`
 
 ### Node.js Backend (Auth/Payments Only)
 - Use Hono framework for lightweight, edge-compatible API
@@ -249,6 +251,8 @@ VolSpike/
 - Implement proper logging with Pino
 - Use TypeScript for type safety
 - **No market data processing** (handled by frontend)
+- **Resilience** - Binance REST failures should return empty arrays, not crash the server
+- **DISABLE_SERVER_MARKET_POLL** - Set to `true` in production to disable backend market polling entirely
 
 ### Database (User Data Only)
 - Use Prisma migrations for schema changes
@@ -372,6 +376,9 @@ TWILIO_PHONE_NUMBER=+1234567890
 # Frontend URL
 FRONTEND_URL=http://localhost:3000
 
+# Market Data Polling (set to true to disable backend market polling in production)
+DISABLE_SERVER_MARKET_POLL=false
+
 # Environment
 NODE_ENV=development
 LOG_LEVEL=info
@@ -386,6 +393,10 @@ NEXTAUTH_SECRET=your-nextauth-secret-key
 
 # API Configuration (for auth/payments only)
 NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_SOCKET_IO_URL=http://localhost:3001
+
+# Binance WebSocket (direct from browser)
+NEXT_PUBLIC_WS_URL=wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr
 
 # Stripe Configuration
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
@@ -424,6 +435,31 @@ railway deploy
 - **Database**: Use managed PostgreSQL (Neon, Supabase)
 - **No Redis needed** (client-side WebSocket solution)
 - **No ingestion service needed** (direct Binance connection)
+
+### Production Environment Variables
+
+#### Frontend (Vercel Production)
+```bash
+NEXTAUTH_URL=https://volspike.com
+NEXT_PUBLIC_API_URL=https://volspike-production.up.railway.app
+NEXT_PUBLIC_SOCKET_IO_URL=https://volspike-production.up.railway.app
+NEXT_PUBLIC_WS_URL=wss://fstream.binance.com/stream?streams=!ticker@arr/!markPrice@arr
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-walletconnect-project-id
+```
+
+#### Backend (Railway Production)
+```bash
+DATABASE_URL=postgresql://neondb_owner:password@ep-snowy-sunset-ahlodmvx-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+JWT_SECRET=your-production-jwt-secret
+FRONTEND_URL=https://volspike.com
+DISABLE_SERVER_MARKET_POLL=true  # Disable backend market polling (frontend handles Binance WebSocket)
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+SENDGRID_API_KEY=SG.your-sendgrid-api-key
+SENDGRID_FROM_EMAIL=noreply@volspike.com
+NODE_ENV=production
+```
 
 ## Key Features
 
@@ -588,5 +624,14 @@ npm install && npm run dev
 - ✅ **All authentication flows working** end-to-end
 - ✅ **Error handling implemented** throughout the system
 - ✅ **Security vulnerabilities patched** and tested
+- ✅ **Dynamic routes properly configured** (dashboard, home, admin marked as force-dynamic)
+- ✅ **Backend resilience** - Binance REST failures no longer crash the server
+- ✅ **Production database synced** - Neon production schema updated with passwordHash
+- ✅ **Test user seeded** - test@volspike.com available in production
+
+### Production Configuration
+- **Frontend (Vercel)**: Set `NEXTAUTH_URL` to production domain (e.g., `https://volspike.com`)
+- **Backend (Railway)**: Set `DISABLE_SERVER_MARKET_POLL=true` to disable backend market polling (frontend handles Binance WebSocket directly)
+- **Database (Neon)**: Production schema synced, test user available
 
 **Note**: This is the new client-only architecture with zero Redis dependency, replacing the previous server-side data ingestion for better performance, scalability, and developer experience.
