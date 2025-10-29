@@ -12,6 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 const signinSchema = z.object({
     email: z.string().email('Invalid email address'),
     password: z.string().min(1, 'Password is required'),
