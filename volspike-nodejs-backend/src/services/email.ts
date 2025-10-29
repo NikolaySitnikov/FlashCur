@@ -234,10 +234,20 @@ export class EmailService {
                         <td align="center" style="padding: 40px 40px 20px 40px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px 12px 0 0;">
                             <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                                 <tr>
-                                    <td align="center" class="logo-container">
-                                        <div style="width: 80px; height: 80px; background-color: rgba(255, 255, 255, 0.2); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; backdrop-filter: blur(10px);">
-                                            <span style="font-size: 40px; color: #ffffff;">⚡</span>
-                                        </div>
+                                    <td align="center" class="logo-container" style="text-align: center;">
+                                        <!-- Centered inline SVG to avoid emoji misalignment across clients -->
+                                        <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td align="center">
+                                                    <div style="width: 80px; height: 80px; border-radius: 50%; background-color: rgba(255,255,255,0.2); margin: 0 auto 16px auto;">
+                                                        <svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" style="display:block; margin:0 auto;">
+                                                            <circle cx="40" cy="40" r="40" fill="transparent" />
+                                                            <path d="M44 12 L24 44 H38 L34 68 L56 36 H42 L44 12 Z" fill="#ffffff" opacity="0.95"/>
+                                                        </svg>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </table>
                                         <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; line-height: 1.2;">Welcome to VolSpike!</h1>
                                         <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 16px; line-height: 1.5;">Professional Crypto Market Analysis</p>
                                     </td>

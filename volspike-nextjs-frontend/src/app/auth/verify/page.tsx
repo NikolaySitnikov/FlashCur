@@ -138,10 +138,10 @@ function EmailVerificationContent() {
                                 Your email has been successfully verified. You can now access all features of VolSpike.
                             </p>
                             <Button
-                                onClick={() => router.push('/')}
+                                onClick={() => router.push('/auth')}
                                 className="w-full"
                             >
-                                Go to Dashboard
+                                Continue to Sign In
                             </Button>
                         </div>
                     )}
