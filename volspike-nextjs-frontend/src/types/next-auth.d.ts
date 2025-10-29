@@ -5,6 +5,7 @@ declare module 'next-auth' {
     id: string
     email: string
     name?: string
+    image?: string
     tier?: 'free' | 'pro' | 'elite'
     role?: 'USER' | 'ADMIN'
     status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED'
@@ -17,6 +18,7 @@ declare module 'next-auth' {
       id: string
       email: string
       name?: string
+      image?: string
       tier?: 'free' | 'pro' | 'elite'
       role?: 'USER' | 'ADMIN'
       status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED'
