@@ -27,7 +27,7 @@ export const authConfig: NextAuthConfig = {
             },
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) {
-                    throw new Error('Email and password are required')
+                    return null
                 }
 
                 try {
@@ -47,26 +47,22 @@ export const authConfig: NextAuthConfig = {
                         const errorData = await response.json().catch(() => ({ error: 'Authentication failed' }))
                         console.error('[NextAuth] Backend error:', errorData)
 
-                        // Throw specific error messages from backend
-                        if (errorData.error) {
-                            throw new Error(errorData.error)
-                        }
-
-                        // Fallback error based on status code
+                        // Return null for invalid credentials - NextAuth will handle this properly
                         if (response.status === 401) {
-                            throw new Error('Invalid email or password')
+                            return null
                         } else if (response.status === 403) {
-                            throw new Error(errorData.error || 'Please verify your email address before signing in')
+                            return null
                         }
 
-                        throw new Error('Authentication service unavailable')
+                        // For other errors, still return null to let NextAuth handle it
+                        return null
                     }
 
                     const { user, token } = await response.json()
 
                     if (!user?.id || !token) {
                         console.error('[NextAuth] Backend response missing user or token')
-                        throw new Error('Invalid server response')
+                        return null
                     }
 
                     return {
@@ -82,11 +78,8 @@ export const authConfig: NextAuthConfig = {
                     }
                 } catch (error) {
                     console.error('[NextAuth] Authorization error:', error)
-                    // Re-throw the error to be caught by NextAuth
-                    if (error instanceof Error) {
-                        throw error
-                    }
-                    throw new Error('Authentication service unavailable')
+                    // Return null for any errors - NextAuth will handle this properly
+                    return null
                 }
             }
         })
