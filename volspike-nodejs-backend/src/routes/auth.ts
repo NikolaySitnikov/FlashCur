@@ -453,7 +453,7 @@ auth.post('/siwe/verify', async (c) => {
                 const match = line.match(/URI:\s*(.+)/)
                 if (match) {
                     const uri = new URL(match[1])
-                    domain = uri.hostname
+                    domain = uri.host // Include port if present
                 }
             } else if (line.startsWith('Chain ID:')) {
                 const match = line.match(/Chain ID:\s*(\d+)/)
@@ -482,9 +482,13 @@ auth.post('/siwe/verify', async (c) => {
 
         // Validate domain
         const frontendDomain = process.env.FRONTEND_URL?.replace('http://', '').replace('https://', '').replace('www.', '')
-        if (domain !== frontendDomain && domain !== 'localhost:3000') {
-            logger.warn(`Domain mismatch: ${domain} vs ${frontendDomain}`)
-            return c.json({ error: 'Invalid domain' }, 401)
+        console.log('[SIWE Verify] Domain validation:', { domain, frontendDomain })
+        
+        // Allow both localhost and localhost:3000 for development
+        const allowedDomains = ['localhost', 'localhost:3000', frontendDomain].filter(Boolean)
+        if (!allowedDomains.includes(domain)) {
+            logger.warn(`Domain mismatch: ${domain} not in allowed domains: ${allowedDomains.join(', ')}`)
+            return c.json({ error: `Invalid domain: ${domain}` }, 401)
         }
 
         // Validate chain
