@@ -4,8 +4,18 @@ import * as crypto from 'crypto'
 
 const logger = createLogger()
 
-// Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
+// Initialize SendGrid with CJS/ESM interop and safety for missing keys
+const mail: any = (sgMail as any)?.default ?? (sgMail as any)
+try {
+    if (process.env.SENDGRID_API_KEY) {
+        if (typeof mail.setApiKey === 'function') {
+            mail.setApiKey(process.env.SENDGRID_API_KEY)
+        }
+    }
+} catch (err) {
+    // Don't crash on startup if SendGrid init fails; log only
+    createLogger().warn('SendGrid initialization warning:', err)
+}
 
 interface EmailVerificationData {
     email: string
@@ -70,7 +80,7 @@ export class EmailService {
                 text: this.getVerificationEmailText(data)
             }
 
-            await sgMail.send(msg)
+            await mail.send(msg)
             logger.info(`Verification email sent to ${data.email}`)
             return true
         } catch (error) {
@@ -103,7 +113,7 @@ export class EmailService {
                 text: this.getWelcomeEmailText(data)
             }
 
-            await sgMail.send(msg)
+            await mail.send(msg)
             logger.info(`Welcome email sent to ${data.email}`)
             return true
         } catch (error) {
