@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useUserIdentity } from '@/hooks/use-user-identity'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -99,11 +100,16 @@ export function UserMenu() {
                     <div className="h-9 w-9 rounded-full p-[2px] bg-gradient-to-br from-primary/20 via-primary/50 to-primary/20">
                         <div className="h-full w-full rounded-full overflow-hidden flex items-center justify-center bg-primary text-primary-foreground shadow-sm">
                             {identity.image ? (
-                                <img
-                                    src={identity.image}
-                                    alt={identity.displayName}
-                                    className="h-full w-full object-cover"
-                                />
+                                <div className="relative h-full w-full">
+                                    <Image
+                                        src={identity.image}
+                                        alt={identity.displayName}
+                                        fill
+                                        sizes="36px"
+                                        className="object-cover"
+                                        priority
+                                    />
+                                </div>
                             ) : (
                                 <span className="text-[11px] font-bold leading-none select-none">
                                     {initials}
@@ -121,11 +127,15 @@ export function UserMenu() {
                             <div className="h-8 w-8 rounded-full p-[2px] bg-gradient-to-br from-primary/20 via-primary/50 to-primary/20">
                                 <div className="h-full w-full rounded-full overflow-hidden flex items-center justify-center bg-primary text-primary-foreground">
                                     {identity.image ? (
-                                        <img
-                                            src={identity.image}
-                                            alt={identity.displayName}
-                                            className="h-full w-full object-cover"
-                                        />
+                                        <div className="relative h-full w-full">
+                                            <Image
+                                                src={identity.image}
+                                                alt={identity.displayName}
+                                                fill
+                                                sizes="32px"
+                                                className="object-cover"
+                                            />
+                                        </div>
                                     ) : (
                                         <span className="text-[10px] font-bold leading-none select-none">
                                             {initials}

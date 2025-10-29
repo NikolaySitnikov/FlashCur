@@ -2,7 +2,7 @@
 const nextConfig = {
     outputFileTracingRoot: __dirname,
     images: {
-        domains: ['localhost'],
+        domains: ['localhost', 'lh3.googleusercontent.com', 'avatars.githubusercontent.com'],
     },
     env: {
         NEXTAUTH_URL: process.env.NEXTAUTH_URL,

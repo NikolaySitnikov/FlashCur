@@ -112,10 +112,26 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
                 console.log('[SigninForm] onSuccess completed - letting parent handle redirect')
             } else {
                 console.log('[SigninForm] Sign in failed, error:', result?.error)
-                const errorMessage = result?.error || 'Authentication failed'
-                const mappedMessage = mapErrorMessage(errorMessage)
-                console.log('[SigninForm] Mapped error message:', mappedMessage)
-                setAuthError(mappedMessage)
+                // Fallback: query backend for precise reason (e.g., oauthOnly)
+                try {
+                    const resp = await fetch(`${API_URL}/api/auth/signin`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: data.email, password: data.password }),
+                    })
+                    const body = await resp.json().catch(() => ({}))
+                    if (resp.status === 401 && body?.oauthOnly) {
+                        setAuthError(mapErrorMessage('Please use OAuth login (Google) for this account'))
+                    } else if (resp.status === 403 && body?.requiresVerification) {
+                        setAuthError(mapErrorMessage('Please verify your email address before signing in'))
+                    } else {
+                        const errorMessage = result?.error || body?.error || 'Authentication failed'
+                        setAuthError(mapErrorMessage(errorMessage))
+                    }
+                } catch (e) {
+                    const errorMessage = result?.error || 'Authentication failed'
+                    setAuthError(mapErrorMessage(errorMessage))
+                }
             }
         } catch (error) {
             console.error('[SigninForm] Sign in exception:', error)
