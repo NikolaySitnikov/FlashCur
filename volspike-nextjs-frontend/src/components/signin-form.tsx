@@ -78,6 +78,7 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
 
     const onSubmit = async (data: SigninFormValues) => {
         setAuthError('')
+        console.log('[SigninForm] Attempting sign in with:', data.email)
 
         try {
             const result = await signIn('credentials', {
@@ -86,13 +87,17 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
                 redirect: false,
             })
 
+            console.log('[SigninForm] Sign in result:', result)
+
             if (result?.ok) {
                 onSuccess(data.email)
                 // Use router.refresh() to update server components
                 router.refresh()
                 router.push(nextUrl)
             } else {
+                console.log('[SigninForm] Sign in failed, error:', result?.error)
                 const message = result?.error ? mapErrorMessage(result.error) : mapErrorMessage(null)
+                console.log('[SigninForm] Mapped error message:', message)
                 setAuthError(message)
             }
         } catch (error) {

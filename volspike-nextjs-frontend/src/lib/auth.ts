@@ -45,7 +45,9 @@ export const authConfig: NextAuthConfig = {
                     if (!response.ok) {
                         console.error('[NextAuth] Backend signin failed', response.status)
                         const errorData = await response.json().catch(() => ({}))
-                        throw new Error(errorData.error || 'Invalid credentials')
+                        console.error('[NextAuth] Backend error:', errorData)
+                        // Return null to trigger CredentialsSignin error
+                        return null
                     }
 
                     const { user, token } = await response.json()
@@ -68,7 +70,8 @@ export const authConfig: NextAuthConfig = {
                     }
                 } catch (error) {
                     console.error('[NextAuth] Unable to reach backend auth service', error)
-                    throw new Error('Authentication service unavailable')
+                    // Return null to trigger CredentialsSignin error
+                    return null
                 }
             }
         })
