@@ -118,8 +118,10 @@ export async function getMarketData(symbol?: string): Promise<MarketData[] | Mar
         return marketData
 
     } catch (error) {
+        // Do not crash the process on upstream failures; log and return an empty list
         logger.error('Error fetching market data from Binance:', error)
-        throw new Error('Failed to fetch market data from Binance')
+        logger.warn('Returning empty market data due to Binance REST failure')
+        return []
     }
 }
 

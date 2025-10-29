@@ -172,12 +172,16 @@ export function setupSocketHandlers(
             refreshInterval: getRefreshInterval(userTier),
         })
 
-        // Send current market data
-        getMarketData().then(data => {
-            if (data) {
-                socket.emit('market-update', data)
-            }
-        })
+        // Send current market data (do not crash on failure)
+        getMarketData()
+            .then(data => {
+                if (data) {
+                    socket.emit('market-update', data)
+                }
+            })
+            .catch(err => {
+                logger.warn('Skipping initial market-update due to fetch error', err)
+            })
     })
 
     // Track last update times per tier
@@ -189,6 +193,9 @@ export function setupSocketHandlers(
 
     // Tier-aware market update broadcasting
     setInterval(async () => {
+        if (process.env.DISABLE_SERVER_MARKET_POLL === 'true') {
+            return
+        }
         try {
             const marketData = await getMarketData()
             if (!marketData) return
@@ -225,7 +232,7 @@ export function setupSocketHandlers(
                 lastUpdateTimes.free = now
             }
         } catch (error) {
-            logger.error('Error broadcasting market update:', error)
+            logger.warn('Error broadcasting market update (non-fatal):', error)
         }
     }, 10000) // Check every 10 seconds
 
