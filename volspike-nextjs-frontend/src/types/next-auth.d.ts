@@ -11,6 +11,8 @@ declare module 'next-auth' {
     status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED'
     twoFactorEnabled?: boolean
     accessToken?: string
+    walletAddress?: string
+    walletProvider?: 'evm' | 'solana' | null
   }
 
   interface Session {
@@ -23,6 +25,8 @@ declare module 'next-auth' {
       role?: 'USER' | 'ADMIN'
       status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED'
       twoFactorEnabled?: boolean
+      walletAddress?: string
+      walletProvider?: 'evm' | 'solana' | null
     }
     accessToken?: string
   }
@@ -37,5 +41,7 @@ declare module 'next-auth/jwt' {
     status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED'
     twoFactorEnabled?: boolean
     accessToken?: string
+    walletAddress?: string
+    walletProvider?: 'evm' | 'solana' | null
   }
 }

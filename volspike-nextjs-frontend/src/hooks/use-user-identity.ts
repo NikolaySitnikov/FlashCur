@@ -21,18 +21,18 @@ export function useUserIdentity(): UserIdentity {
 
     const identity = useMemo(() => {
         const email = session?.user?.email || null
-        // Wallet address would come from session if stored there, or from a separate hook
-        // For now, we'll use email-only identity to avoid WagmiProvider dependency issues
-        const walletAddress = null // TODO: Add wallet address from session or separate hook
+        const walletAddress = session?.user?.walletAddress || null
+        const walletProvider = session?.user?.walletProvider || null
         const ens = null // TODO: Add ENS name when wallet address is available
 
-        // Determine display name priority: name > email
+        // Determine display name priority: name > email > wallet address
         let displayName = 'User'
         if (session?.user?.name) {
             displayName = session.user.name
         } else if (email) {
-            // Show full email for better UX
             displayName = email
+        } else if (walletAddress) {
+            displayName = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
         }
 
         return {

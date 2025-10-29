@@ -88,6 +88,48 @@ export const authConfig: NextAuthConfig = {
                     return null
                 }
             }
+        }),
+        CredentialsProvider({
+            name: 'siwe',
+            credentials: {
+                token: { label: 'Token', type: 'text' },
+                walletAddress: { label: 'Wallet Address', type: 'text' },
+            },
+            async authorize(credentials) {
+                if (!credentials?.token) {
+                    return null
+                }
+
+                try {
+                    // Verify token with backend
+                    const res = await fetch(`${BACKEND_API_URL}/api/auth/me`, {
+                        headers: { 'Authorization': `Bearer ${credentials.token}` },
+                    })
+
+                    if (!res.ok) {
+                        console.error('[NextAuth] SIWE backend verification failed:', res.status)
+                        return null
+                    }
+
+                    const user = await res.json()
+
+                    return {
+                        id: user.id,
+                        email: user.email,
+                        name: user.walletAddress || user.email,
+                        walletAddress: user.walletAddress,
+                        walletProvider: user.walletProvider,
+                        tier: user.tier,
+                        emailVerified: user.emailVerified,
+                        role: user.role,
+                        status: user.status,
+                        accessToken: credentials.token,
+                    }
+                } catch (error) {
+                    console.error('[NextAuth] SIWE authorization error:', error)
+                    return null
+                }
+            },
         })
     ],
     session: {
@@ -110,6 +152,8 @@ export const authConfig: NextAuthConfig = {
                 token.status = user.status
                 token.twoFactorEnabled = user.twoFactorEnabled
                 token.accessToken = user.accessToken
+                token.walletAddress = user.walletAddress
+                token.walletProvider = user.walletProvider
                 console.log(`[Auth] JWT callback - User logged in: ${user.email}`)
             }
 
@@ -160,6 +204,8 @@ export const authConfig: NextAuthConfig = {
                 session.user.role = token.role
                 session.user.status = token.status
                 session.user.twoFactorEnabled = token.twoFactorEnabled
+                session.user.walletAddress = token.walletAddress
+                session.user.walletProvider = token.walletProvider
                 session.accessToken = token.accessToken
                 console.log(`[Auth] Session callback - User: ${token.email}, AccessToken set to JWT`)
             }

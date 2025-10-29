@@ -58,8 +58,25 @@ model User {
   verificationTokens VerificationToken[]
   auditLogs         AuditLog[]    @relation("AuditActor")
   adminSessions     AdminSession[]
+  walletAccounts    WalletAccount[]
   
   @@map("users")
+}
+
+model WalletAccount {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider    String   // 'evm' | 'solana'
+  caip10      String   // EIP-4361 compliant identifier: 'eip155:1:0x...' or 'solana:101:...'
+  address     String   // Wallet address
+  chainId     String?  // Network ID for chain allowlist
+  lastLoginAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  
+  @@unique([provider, caip10])
+  @@index([userId])
+  @@map("wallet_accounts")
 }
 
 model Account {

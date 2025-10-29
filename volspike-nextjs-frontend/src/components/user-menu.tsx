@@ -158,6 +158,15 @@ export function UserMenu() {
                                 })()}
                             </div>
                         </div>
+                        {/* Show wallet address if available */}
+                        {identity.address && (
+                            <div className="flex items-center gap-2 px-2 py-1">
+                                <Wallet className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs font-mono text-muted-foreground">
+                                    {identity.address.slice(0, 6)}...{identity.address.slice(-4)}
+                                </span>
+                            </div>
+                        )}
                         <div className="flex items-center gap-2">
                             {identity.tier && (
                                 <Badge

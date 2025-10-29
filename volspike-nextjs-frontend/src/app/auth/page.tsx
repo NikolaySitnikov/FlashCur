@@ -9,6 +9,8 @@ import { Loader2, Mail } from 'lucide-react'
 import { SigninForm } from '@/components/signin-form'
 import { SignupForm } from '@/components/signup-form'
 import dynamic from 'next/dynamic'
+import { useWalletAuth } from '@/hooks/use-wallet-auth'
+import { useAccount } from 'wagmi'
 
 // Dynamically import ConnectButton to handle hydration safely
 const DynamicConnectButton = dynamic(
@@ -47,6 +49,10 @@ function AuthPageContent() {
     // Check if this is admin mode
     const isAdminMode = searchParams?.get('mode') === 'admin'
     const nextUrl = searchParams?.get('next') || (isAdminMode ? '/admin' : '/dashboard')
+
+    // Wallet authentication hooks
+    const { isSigning, isAuthenticating, error: walletError, signInWithWallet } = useWalletAuth()
+    const { isConnected } = useAccount()
 
     useEffect(() => {
         const tabParam = searchParams.get('tab')
@@ -269,6 +275,34 @@ function AuthPageContent() {
 
                                 <div className="space-y-3">
                                     <DynamicConnectButton />
+                                    
+                                    {/* Show authenticate button after wallet connects */}
+                                    {isConnected && (
+                                        <Button
+                                            onClick={signInWithWallet}
+                                            disabled={isSigning || isAuthenticating}
+                                            className="w-full bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 text-white hover:from-green-600 hover:via-emerald-500 hover:to-green-600"
+                                        >
+                                            {isAuthenticating ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Authenticating...
+                                                </>
+                                            ) : isSigning ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Sign message in wallet...
+                                                </>
+                                            ) : (
+                                                'Sign In with Wallet'
+                                            )}
+                                        </Button>
+                                    )}
+                                    
+                                    {/* Show wallet error if any */}
+                                    {walletError && (
+                                        <p className="text-xs text-red-400 text-center">{walletError}</p>
+                                    )}
                                 </div>
                             </>
                         )}

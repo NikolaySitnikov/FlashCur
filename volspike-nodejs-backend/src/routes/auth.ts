@@ -6,6 +6,10 @@ import { createLogger } from '../lib/logger'
 import { getUser, requireUser } from '../lib/hono-extensions'
 import EmailService from '../services/email'
 import * as bcrypt from 'bcryptjs'
+import { SiweMessage } from 'siwe'
+import { verifyMessage } from 'viem'
+import { nonceManager } from '../services/nonce-manager'
+import { isAllowedChain } from '../config/chains'
 
 const logger = createLogger()
 const emailService = EmailService.getInstance()
@@ -407,34 +411,114 @@ auth.post('/verify-email', async (c) => {
     }
 })
 
-// Sign in with Ethereum (SIWE)
-auth.post('/siwe', async (c) => {
+// Nonce issuance for SIWE authentication
+auth.get('/siwe/nonce', async (c) => {
     try {
-        const body = await c.req.json()
-        const { message, signature, address } = siweSchema.parse(body)
+        const address = c.req.header('X-Wallet-Address') || 'unknown'
+        const nonce = nonceManager.generate(address, 'evm')
+        
+        logger.info(`Nonce issued for EVM address: ${address}`)
+        
+        return c.json({ nonce })
+    } catch (error) {
+        logger.error('Nonce issuance error:', error)
+        return c.json({ error: 'Failed to issue nonce' }, 500)
+    }
+})
 
-        // In a real app, you'd verify the signature here
-        // For now, we'll assume signature verification is handled elsewhere
+// Sign in with Ethereum (SIWE) - Signature verification
+auth.post('/siwe/verify', async (c) => {
+    try {
+        const { message, signature } = await c.req.json()
 
-        // Find or create user by wallet address
-        let user = await prisma.user.findUnique({
-            where: { walletAddress: address },
-        })
+        // Parse SIWE message
+        const siweMessage = new SiweMessage(message)
+        const fields = await siweMessage.validate(signature)
 
-        if (!user) {
-            user = await prisma.user.create({
-                data: {
-                    walletAddress: address,
-                    email: `${address}@volspike.local`, // Temporary email
-                    tier: 'free',
-                    emailVerified: new Date(), // Wallet users are considered verified
-                },
-            })
+        // Validate domain
+        const frontendDomain = process.env.FRONTEND_URL?.replace('http://', '').replace('https://', '').replace('www.', '')
+        if (fields.domain !== frontendDomain) {
+            logger.warn(`Domain mismatch: ${fields.domain} vs ${frontendDomain}`)
+            return c.json({ error: 'Invalid domain' }, 401)
         }
 
-        const token = await generateToken(user.id)
+        // Validate chain
+        const chainId = `eip155:${fields.chainId}`
+        if (!isAllowedChain(chainId, 'evm')) {
+            logger.warn(`Disallowed chain: ${chainId}`)
+            return c.json({ error: `Chain not allowed. Supported chains: Ethereum (1), Base (8453), Polygon (137), Optimism (10), Arbitrum (42161)` }, 401)
+        }
 
-        logger.info(`User ${address} signed in with wallet`)
+        // Validate and consume nonce (one-time use)
+        const nonceData = nonceManager.validate(fields.nonce)
+        if (!nonceData) {
+            logger.warn(`Invalid or expired nonce: ${fields.nonce}`)
+            return c.json({ error: 'Invalid or expired nonce' }, 401)
+        }
+
+        nonceManager.consume(fields.nonce)
+
+        // Verify signature
+        const isValid = await verifyMessage({
+            address: fields.address,
+            message: message,
+            signature: signature,
+        })
+
+        if (!isValid) {
+            logger.warn(`Invalid signature for address: ${fields.address}`)
+            return c.json({ error: 'Invalid signature' }, 401)
+        }
+
+        const caip10 = `eip155:${fields.chainId}:${fields.address}`
+
+        // Find or create wallet account
+        let walletAccount = await prisma.walletAccount.findUnique({
+            where: {
+                provider_caip10: {
+                    provider: 'evm',
+                    caip10: caip10,
+                },
+            },
+            include: { user: true },
+        })
+
+        let user
+
+        if (walletAccount) {
+            // Existing wallet, sign in to associated user
+            user = walletAccount.user
+            await prisma.walletAccount.update({
+                where: { id: walletAccount.id },
+                data: { lastLoginAt: new Date() },
+            })
+            logger.info(`Existing wallet signed in: ${caip10}`)
+        } else {
+            // New wallet, create user
+            user = await prisma.user.create({
+                data: {
+                    email: `${fields.address}@volspike.wallet`,
+                    tier: 'free',
+                    emailVerified: new Date(),
+                },
+            })
+
+            await prisma.walletAccount.create({
+                data: {
+                    userId: user.id,
+                    provider: 'evm',
+                    caip10: caip10,
+                    address: fields.address,
+                    chainId: String(fields.chainId),
+                    lastLoginAt: new Date(),
+                },
+            })
+            
+            logger.info(`New wallet created and linked: ${caip10}`)
+        }
+
+        // Generate token
+        const token = await generateToken(user.id)
 
         return c.json({
             token,
@@ -445,15 +529,16 @@ auth.post('/siwe', async (c) => {
                 emailVerified: user.emailVerified,
                 refreshInterval: user.refreshInterval,
                 theme: user.theme,
-                walletAddress: user.walletAddress,
+                walletAddress: fields.address,
+                walletProvider: 'evm',
                 role: user.role,
                 status: user.status,
                 twoFactorEnabled: user.twoFactorEnabled,
             },
         })
-    } catch (error) {
-        logger.error('SIWE error:', error)
-        return c.json({ error: 'Invalid signature' }, 401)
+    } catch (error: any) {
+        logger.error('SIWE verification error:', error)
+        return c.json({ error: error.message || 'Verification failed' }, 401)
     }
 })
 
