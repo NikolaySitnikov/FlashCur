@@ -173,144 +173,81 @@ export class EmailService {
         // Escape HTML to prevent XSS
         const safeName = (data.name || 'there').replace(/[<>]/g, '')
         const safeUrl = data.verificationUrl.replace(/"/g, '&quot;')
-        
+
         return `
-<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<!doctype html>
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="x-apple-disable-message-reformatting">
-    <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
-    <meta name="color-scheme" content="light dark">
-    <meta name="supported-color-schemes" content="light dark">
-    <title>Verify Your Email - VolSpike</title>
-    <!--[if mso]>
-    <style type="text/css">
-        table {border-collapse:collapse;border-spacing:0;margin:0;}
-        div, td {padding:0;}
-        div {margin:0 !important;}
-    </style>
-    <noscript>
-        <xml>
-            <o:OfficeDocumentSettings>
-                <o:PixelsPerInch>96</o:PixelsPerInch>
-            </o:OfficeDocumentSettings>
-        </xml>
-    </noscript>
-    <![endif]-->
-    <style>
-        /* Reset styles */
-        body, table, td, p, a, li, blockquote {-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;}
-        table, td {mso-table-lspace: 0pt; mso-table-rspace: 0pt;}
-        img {-ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none;}
-        
-        /* Mobile styles */
-        @media only screen and (max-width: 600px) {
-            .email-container { width: 100% !important; margin: 0 !important; }
-            .email-body { padding: 20px !important; }
-            .button { padding: 14px 28px !important; font-size: 16px !important; }
-            .logo-container { margin-bottom: 20px !important; }
-        }
-        
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-            .email-body { background-color: #1e293b !important; }
-            .text-primary { color: #e2e8f0 !important; }
-            .text-secondary { color: #94a3b8 !important; }
-        }
-    </style>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
-    <!-- Outer table for email clients -->
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f1f5f9;">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <title>Verify your VolSpike email</title>
+  <style>
+    img { -ms-interpolation-mode:bicubic; }
+    @media only screen and (max-width:600px){ .container{ width:100% !important; } }
+  </style>
+  <!--[if mso]>
+  <style type="text/css"> body, table, td {font-family: Arial, sans-serif !important;} </style>
+  <![endif]-->
+  </head>
+  <body style="margin:0;padding:0;background:#f1f5f9;">
+  <div style="display:none;font-size:1px;color:#fff;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    Verify your email to start using VolSpike. Link expires in 24 hours.
+  </div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5f9;">
+    <tr><td align="center" style="padding:24px;">
+      <table role="presentation" width="600" class="container" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:12px;">
         <tr>
-            <td align="center" style="padding: 40px 20px;">
-                <!-- Main container -->
-                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" class="email-container" style="max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                    <!-- Header -->
-                    <tr>
-                        <td align="center" style="padding: 40px 40px 20px 40px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px 12px 0 0;">
-                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                                <tr>
-                                    <td align="center" class="logo-container" style="text-align: center;">
-                                        <!-- Centered inline SVG to avoid emoji misalignment across clients -->
-                                        <table role="presentation" border="0" cellpadding="0" cellspacing="0">
-                                            <tr>
-                                                <td align="center">
-                                                    <div style="width: 80px; height: 80px; border-radius: 50%; background-color: rgba(255,255,255,0.2); margin: 0 auto 16px auto;">
-                                                        <svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" style="display:block; margin:0 auto;">
-                                                            <circle cx="40" cy="40" r="40" fill="transparent" />
-                                                            <path d="M44 12 L24 44 H38 L34 68 L56 36 H42 L44 12 Z" fill="#ffffff" opacity="0.95"/>
-                                                        </svg>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; line-height: 1.2;">Welcome to VolSpike!</h1>
-                                        <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 16px; line-height: 1.5;">Professional Crypto Market Analysis</p>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    
-                    <!-- Content -->
-                    <tr>
-                        <td class="email-body" style="padding: 40px; background-color: #ffffff;">
-                            <h2 style="margin: 0 0 16px 0; color: #1e293b; font-size: 24px; font-weight: 600; line-height: 1.3;">Verify Your Email Address</h2>
-                            <p style="margin: 0 0 16px 0; color: #475569; font-size: 16px; line-height: 1.6;">Hi ${safeName},</p>
-                            <p style="margin: 0 0 24px 0; color: #475569; font-size: 16px; line-height: 1.6;">Thank you for signing up for VolSpike! To complete your registration and start tracking volume spikes on Binance Perpetual Futures, please verify your email address by clicking the button below.</p>
-                            
-                            <!-- CTA Button -->
-                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 32px 0;">
-                                <tr>
-                                    <td align="center">
-                                        <a href="${safeUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; line-height: 1.5; text-align: center; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); -webkit-text-size-adjust: none; mso-hide: all;">Verify Email Address</a>
-                                    </td>
-                                </tr>
-                            </table>
-                            
-                            <!-- Fallback link -->
-                            <p style="margin: 24px 0 16px 0; color: #64748b; font-size: 14px; line-height: 1.5;">If the button doesn't work, copy and paste this link into your browser:</p>
-                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 0 0 24px 0;">
-                                <tr>
-                                    <td style="background-color: #f1f5f9; border-radius: 6px; padding: 12px; word-break: break-all;">
-                                        <p style="margin: 0; color: #475569; font-size: 12px; font-family: 'Courier New', Courier, monospace; line-height: 1.6;">${data.verificationUrl}</p>
-                                    </td>
-                                </tr>
-                            </table>
-                            
-                            <!-- Security notice -->
-                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 24px 0; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
-                                <tr>
-                                    <td style="padding: 16px;">
-                                        <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5;"><strong>⏰ Important:</strong> This verification link will expire in <strong>24 hours</strong> for security reasons. If you didn't request this email, you can safely ignore it.</p>
-                                    </td>
-                                </tr>
-                            </table>
-                            
-                            <p style="margin: 24px 0 0 0; color: #64748b; font-size: 14px; line-height: 1.6;">If you didn't create an account with VolSpike, you can safely ignore this email.</p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Footer -->
-                    <tr>
-                        <td align="center" style="padding: 32px 40px; background-color: #f8fafc; border-radius: 0 0 12px 12px; border-top: 1px solid #e2e8f0;">
-                            <p style="margin: 0 0 8px 0; color: #64748b; font-size: 14px; line-height: 1.5;">© ${new Date().getFullYear()} VolSpike. All rights reserved.</p>
-                            <p style="margin: 0; color: #64748b; font-size: 14px; line-height: 1.5;">
-                                Need help? Contact us at 
-                                <a href="mailto:support@volspike.com" style="color: #10b981; text-decoration: none; font-weight: 500;">support@volspike.com</a>
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
+          <td align="center" style="padding:32px;background:#0ea371;border-radius:12px 12px 0 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="padding-bottom:12px;">
+                  <img src="https://cdn.volspike.com/email/volspike-badge@2x.png" width="80" height="80" alt="VolSpike" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;height:80px;width:80px;line-height:100%;-ms-interpolation-mode:bicubic;">
+                </td>
+              </tr>
+            </table>
+            <div style="font:700 24px/1.2 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#fff;">Welcome to VolSpike!</div>
+          </td>
         </tr>
-    </table>
-</body>
-</html>
+        <tr>
+          <td style="padding:32px;font:400 16px/1.6 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#334155;">
+            <div style="font:600 20px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;margin:0 0 12px;">Verify your email</div>
+            <p style="margin:0 0 20px;">Hi ${safeName},</p>
+            <p style="margin:0 0 24px;">Click the button below to confirm your email. This link expires in 24 hours.</p>
+            <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:24px auto;">
+              <tr><td align="center">
+                <!--[if mso]>
+                <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${safeUrl}"
+                  style="height:48px;v-text-anchor:middle;width:280px;" arcsize="10%" stroke="f" fillcolor="#059669">
+                  <w:anchorlock/>
+                  <center style="color:#ffffff;font-family:Arial, sans-serif;font-size:16px;font-weight:bold;">
+                    Verify Email Address
+                  </center>
+                </v:roundrect>
+                <![endif]-->
+                <!--[if !mso]><!-- -->
+                <a href="${safeUrl}" target="_blank" style="display:block;background-color:#059669;color:#ffffff;text-decoration:none;padding:16px 32px;border-radius:8px;font-weight:600;font-size:16px;line-height:20px;text-align:center;">
+                  Verify Email Address
+                </a>
+                <!--<![endif]-->
+              </td></tr>
+            </table>
+            <p style="margin:24px 0 8px;">Or copy and paste this link:</p>
+            <p style="margin:0;word-break:break-all;font:14px/1.6 SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;">${data.verificationUrl}</p>
+            <p style="margin:24px 0 0;color:#64748b;font-size:14px;">Didn’t request this? You can ignore this email.</p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:20px;background:#f8fafc;border-top:1px solid #e2e8f0;border-radius:0 0 12px 12px;">
+            <div style="font:14px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#64748b;">© ${new Date().getFullYear()} VolSpike • Need help? <a href="mailto:support@volspike.com" style="color:#059669;text-decoration:none;">support@volspike.com</a></div>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+  </body>
+  </html>
         `
     }
 
@@ -318,23 +255,7 @@ export class EmailService {
      * Fallback text template for verification email
      */
     private getVerificationEmailText(data: EmailVerificationData): string {
-        return `
-Welcome to VolSpike!
-
-Hi ${data.name || 'there'},
-
-Thank you for signing up for VolSpike! To complete your registration and start tracking volume spikes on Binance Perpetual Futures, please verify your email address.
-
-Click this link to verify: ${data.verificationUrl}
-
-This verification link will expire in 24 hours for security reasons.
-
-If you didn't create an account with VolSpike, you can safely ignore this email.
-
-Need help? Contact us at support@volspike.com
-
-© 2024 VolSpike. All rights reserved.
-        `
+        return `Verify your email for VolSpike: ${data.verificationUrl}`
     }
 
     /**
