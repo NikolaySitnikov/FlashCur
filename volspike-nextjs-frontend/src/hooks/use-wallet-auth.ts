@@ -49,18 +49,17 @@ export function useWalletAuth(): UseWalletAuthResult {
       setIsSigning(true)
 
       // Step 3: Generate SIWE message
-      const message = new SiweMessage({
-        domain: window.location.host,
-        address,
-        statement: 'Sign in to VolSpike',
-        uri: window.location.origin,
-        version: '1',
-        chainId,
-        nonce,
-        issuedAt: new Date().toISOString(),
-      })
+      // Build the SIWE message string manually for siwe v2
+      const messageString = `${window.location.host} wants you to sign in with your Ethereum account:
+${address}
 
-      const messageString = message.prepareMessage()
+Sign in to VolSpike
+
+URI: ${window.location.origin}
+Version: 1
+Chain ID: ${chainId}
+Nonce: ${nonce}
+Issued At: ${new Date().toISOString()}`
 
       // Step 4: Sign message with wallet
       const signature = await signMessageAsync({
