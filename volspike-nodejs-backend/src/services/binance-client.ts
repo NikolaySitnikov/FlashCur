@@ -39,7 +39,44 @@ interface MarketData {
 
 const BINANCE_BASE_URL = 'https://fapi.binance.com'
 
-export async function getMarketData(): Promise<MarketData[]> {
+export async function getMarketData(symbol?: string): Promise<MarketData[] | MarketData | null> {
+    if (symbol) {
+        // Fetch single symbol data
+        try {
+            const response = await axios.get(`${BINANCE_BASE_URL}/fapi/v1/ticker/24hr`, {
+                params: { symbol },
+                timeout: 10000
+            })
+
+            if (!response.data) {
+                logger.warn(`No data returned for symbol ${symbol}`)
+                return null
+            }
+
+            const ticker: BinanceTicker = response.data
+            const price = parseFloat(ticker.lastPrice)
+            const volume24h = parseFloat(ticker.quoteVolume)
+
+            if (volume24h < 1000000) {
+                return null // Filter out low volume pairs
+            }
+
+            return {
+                symbol: ticker.symbol,
+                price,
+                volume24h,
+                volumeChange: calculateVolumeChange(ticker),
+                fundingRate: 0, // Would need separate API call
+                openInterest: 0,
+                timestamp: Date.now(),
+            }
+        } catch (error) {
+            logger.error(`Error fetching data for ${symbol}:`, error)
+            return null
+        }
+    }
+
+    // Fetch all symbols data (existing implementation)
     try {
         // Fetch ticker data and funding rates in parallel
         const [tickerResponse, fundingResponse] = await Promise.all([

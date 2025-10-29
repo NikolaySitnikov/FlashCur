@@ -6,6 +6,17 @@ import { User } from '../types'
 import { getUser, requireUser } from '../lib/hono-extensions'
 import { getMarketData } from '../services/binance-client'
 
+// Define MarketData type locally to match binance-client
+interface MarketData {
+    symbol: string
+    price: number
+    volume24h: number
+    volumeChange: number
+    fundingRate: number
+    openInterest: number
+    timestamp: number
+}
+
 const logger = createLogger()
 
 const market = new Hono()
@@ -62,7 +73,7 @@ market.get('/data', async (c) => {
         }
 
         // Get market data directly from Binance API
-        const marketData = await getMarketData()
+        const marketData = await getMarketData() as MarketData[]
 
         if (!marketData || marketData.length === 0) {
             // Return empty data with stale indicator instead of 500
@@ -259,7 +270,7 @@ market.get('/spikes', async (c) => {
 market.get('/health', async (c) => {
     try {
         // Check if we can get market data from Binance API
-        const marketData = await getMarketData()
+        const marketData = await getMarketData() as MarketData[]
         const hasData = marketData && marketData.length > 0
 
         const health = {

@@ -1,15 +1,15 @@
 'use client'
 
-import { useForm, Controller, FormProvider } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
+import { useState } from 'react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -33,38 +33,48 @@ function passwordStrength(pw: string): number {
     return score
 }
 
+function getPasswordStrengthLabel(score: number): { text: string; color: string } {
+    switch (score) {
+        case 0:
+        case 1:
+            return { text: 'Weak', color: 'text-red-400' }
+        case 2:
+            return { text: 'Fair', color: 'text-yellow-400' }
+        case 3:
+            return { text: 'Good', color: 'text-blue-400' }
+        case 4:
+            return { text: 'Strong', color: 'text-green-400' }
+        default:
+            return { text: '', color: '' }
+    }
+}
+
 interface SignupFormProps {
-    onSuccess: () => void
-    authError: string
-    setAuthError: (error: string) => void
-    showPassword: boolean
-    setShowPassword: (show: boolean) => void
+    onSuccess: (email: string) => void
     setVerificationMessage: (message: string) => void
     setShowVerificationAlert: (show: boolean) => void
 }
 
-export function SignupForm({ 
-    onSuccess, 
-    authError, 
-    setAuthError, 
-    showPassword, 
-    setShowPassword,
+export function SignupForm({
+    onSuccess,
     setVerificationMessage,
     setShowVerificationAlert
 }: SignupFormProps) {
     const router = useRouter()
-    
-    const methods = useForm<SignupFormValues>({
+    const [showPassword, setShowPassword] = useState(false)
+    const [authError, setAuthError] = useState('')
+
+    const { handleSubmit, control, formState, watch, reset } = useForm<SignupFormValues>({
         resolver: zodResolver(signupSchema),
         defaultValues: { email: '', password: '' },
     })
-    
-    const { handleSubmit, control, formState, watch } = methods
-    const isSubmitting = formState.isSubmitting
-    
+
+    const { isSubmitting, errors } = formState
+
     // Safe to call watch after useForm - always same order
     const passwordValue = watch('password')
     const pwStrength = passwordStrength(passwordValue || '')
+    const pwStrengthLabel = getPasswordStrengthLabel(pwStrength)
 
     const onSubmit = async (data: SignupFormValues) => {
         setAuthError('')
@@ -75,13 +85,17 @@ export function SignupForm({
             const response = await fetch(`${API_URL}/api/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: data.email, password: data.password, tier: 'free' }),
+                body: JSON.stringify({
+                    email: data.email,
+                    password: data.password,
+                    tier: 'free'
+                }),
             })
 
             const payload = await response.json().catch(() => ({}))
 
             if (!response.ok) {
-                const message = payload?.error || 'Could not create account'
+                const message = payload?.error || 'Could not create account. Please try again.'
                 setAuthError(message)
                 return
             }
@@ -90,11 +104,12 @@ export function SignupForm({
                 const message = payload.message || 'Please check your email to verify your account.'
                 setVerificationMessage(message)
                 setShowVerificationAlert(true)
-                methods.reset()
-                onSuccess()
+                reset()
+                onSuccess(data.email)
                 return
             }
 
+            // Auto-signin after successful signup if no verification needed
             const signinResult = await signIn('credentials', {
                 email: data.email,
                 password: data.password,
@@ -102,110 +117,153 @@ export function SignupForm({
             })
 
             if (signinResult?.ok) {
-                router.push('/')
+                router.push('/dashboard')
             } else {
                 const message = 'Account created. Please verify your email, then sign in.'
                 setVerificationMessage(message)
                 setShowVerificationAlert(true)
+                reset()
+                onSuccess(data.email)
             }
         } catch (error) {
-            setAuthError('Network error. Please try again.')
+            console.error('[SignupForm] Signup error:', error)
+            setAuthError('Network error. Please check your connection and try again.')
         }
     }
 
     return (
-        <FormProvider {...methods}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-gray-300">Email Address</Label>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="signup-email" className="text-gray-300">Email Address</Label>
+                <Controller
+                    name="email"
+                    control={control}
+                    render={({ field }) => (
+                        <Input
+                            id="signup-email"
+                            type="email"
+                            placeholder="you@example.com"
+                            className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
+                            autoComplete="email"
+                            {...field}
+                        />
+                    )}
+                />
+                {errors.email && (
+                    <p className="text-xs text-red-400 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.email.message}
+                    </p>
+                )}
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="signup-password" className="text-gray-300">Password</Label>
+                <div className="relative">
                     <Controller
-                        name="email"
+                        name="password"
                         control={control}
                         render={({ field }) => (
                             <Input
-                                id="signup-email"
-                                type="email"
-                                placeholder="you@example.com"
-                                className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400"
+                                id="signup-password"
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="Create a secure password"
+                                className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400 pr-10"
+                                autoComplete="new-password"
                                 {...field}
                             />
                         )}
                     />
-                    {formState.errors.email && (
-                        <p className="text-xs text-red-300">{formState.errors.email.message}</p>
-                    )}
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                        {showPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                        ) : (
+                            <Eye className="w-5 h-5" />
+                        )}
+                    </button>
                 </div>
-                
-                <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-gray-300">Password</Label>
-                    <div className="relative">
-                        <Controller
-                            name="password"
-                            control={control}
-                            render={({ field }) => (
-                                <Input
-                                    id="signup-password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    placeholder="Create a secure password"
-                                    className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400 pr-10"
-                                    {...field}
-                                />
-                            )}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                        >
-                            {showPassword ? (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                                </svg>
-                            ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                            )}
-                        </button>
-                    </div>
-                    <div className="mt-2 flex gap-1" aria-hidden>
+
+                {/* Password strength indicator */}
+                <div className="space-y-1">
+                    <div className="flex gap-1" aria-hidden="true">
                         {[0, 1, 2, 3].map((i) => (
                             <div
                                 key={i}
-                                className={`h-1.5 flex-1 rounded-full ${pwStrength > i ? 'bg-green-400' : 'bg-gray-600'}`}
+                                className={`h-1.5 flex-1 rounded-full transition-colors ${pwStrength > i
+                                        ? i === 0 ? 'bg-red-400'
+                                            : i === 1 ? 'bg-yellow-400'
+                                                : i === 2 ? 'bg-blue-400'
+                                                    : 'bg-green-400'
+                                        : 'bg-gray-600'
+                                    }`}
                             />
                         ))}
                     </div>
-                    <p className="text-xs text-gray-400">
-                        Minimum 12 characters with uppercase, number and symbol
-                    </p>
-                    {formState.errors.password && (
-                        <p className="text-xs text-red-300">{formState.errors.password.message}</p>
+                    {passwordValue && (
+                        <p className={`text-xs font-medium ${pwStrengthLabel.color}`}>
+                            Password strength: {pwStrengthLabel.text}
+                        </p>
                     )}
                 </div>
-                
-                {authError && (
-                    <div className="rounded-md bg-red-500/10 border border-red-500 px-3 py-2 text-sm text-red-400">
-                        {authError}
-                    </div>
+
+                <div className="text-xs text-gray-400 space-y-1">
+                    <p className="font-medium">Password must contain:</p>
+                    <ul className="space-y-0.5 ml-4">
+                        <li className={passwordValue?.length >= 12 ? 'text-green-400' : ''}>
+                            ✓ At least 12 characters
+                        </li>
+                        <li className={/[A-Z]/.test(passwordValue || '') ? 'text-green-400' : ''}>
+                            ✓ One uppercase letter
+                        </li>
+                        <li className={/[0-9]/.test(passwordValue || '') ? 'text-green-400' : ''}>
+                            ✓ One number
+                        </li>
+                        <li className={/[^A-Za-z0-9]/.test(passwordValue || '') ? 'text-green-400' : ''}>
+                            ✓ One special character
+                        </li>
+                    </ul>
+                </div>
+
+                {errors.password && (
+                    <p className="text-xs text-red-400 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.password.message}
+                    </p>
                 )}
-                
-                <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.35)] hover:brightness-105"
-                    disabled={isSubmitting || !formState.isValid}
-                >
-                    {isSubmitting ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating account...
-                        </>
-                    ) : (
-                        'Create account'
-                    )}
-                </Button>
-            </form>
-        </FormProvider>
+            </div>
+
+            {authError && (
+                <div className="rounded-md bg-red-500/10 border border-red-500/50 px-4 py-3 text-sm text-red-300 flex items-start gap-2">
+                    <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    <span>{authError}</span>
+                </div>
+            )}
+
+            <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 text-white shadow-[0_20px_60px_rgba(16,185,129,0.35)] hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSubmitting || !formState.isValid}
+            >
+                {isSubmitting ? (
+                    <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating account...
+                    </>
+                ) : (
+                    'Create account'
+                )}
+            </Button>
+        </form>
     )
 }

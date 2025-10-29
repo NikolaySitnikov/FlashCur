@@ -112,12 +112,20 @@ auth.post('/signin', async (c) => {
             }, 403)
         }
 
-        // Verify password (in production, compare with hashed password)
-        // For now, we'll skip password verification as it's not implemented
-        // const isValidPassword = await verifyPassword(password, user.passwordHash)
-        // if (!isValidPassword) {
-        //     return c.json({ error: 'Invalid credentials' }, 401)
-        // }
+        // Verify password
+        if (!user.passwordHash) {
+            logger.error(`User ${email} has no password hash - may be OAuth-only user`)
+            return c.json({
+                error: 'Please use OAuth login (Google) for this account',
+                oauthOnly: true
+            }, 401)
+        }
+
+        const isValidPassword = await verifyPassword(password, user.passwordHash)
+        if (!isValidPassword) {
+            logger.warn(`Invalid password attempt for ${email}`)
+            return c.json({ error: 'Invalid email or password' }, 401)
+        }
 
         const token = await generateToken(user.id)
 
@@ -161,12 +169,13 @@ auth.post('/signup', async (c) => {
         // Hash password
         const passwordHash = await hashPassword(password)
 
-        // Create new user
+        // Create new user with hashed password
         const user = await prisma.user.create({
             data: {
                 email,
                 tier,
-                // passwordHash, // Uncomment when implementing password storage
+                passwordHash,
+                emailVerified: null, // Will be set after email verification
             },
         })
 

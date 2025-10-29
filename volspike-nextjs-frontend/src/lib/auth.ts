@@ -44,7 +44,8 @@ export const authConfig: NextAuthConfig = {
 
                     if (!response.ok) {
                         console.error('[NextAuth] Backend signin failed', response.status)
-                        return null
+                        const errorData = await response.json().catch(() => ({}))
+                        throw new Error(errorData.error || 'Invalid credentials')
                     }
 
                     const { user, token } = await response.json()

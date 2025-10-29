@@ -1,50 +1,53 @@
 'use client'
 
-import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { RainbowKitProvider, getDefaultConfig, darkTheme } from '@rainbow-me/rainbowkit'
 import { WagmiProvider } from 'wagmi'
-import { mainnet, polygon, arbitrum, optimism } from 'wagmi/chains'
-import { http } from 'viem'
-import { useEffect, useState } from 'react'
+import { mainnet, polygon, optimism, arbitrum, base } from 'wagmi/chains'
+import { http } from 'wagmi'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useState } from 'react'
 
-// RainbowKit configuration for Wagmi v2
+// Configure Wagmi with RainbowKit
 const config = getDefaultConfig({
     appName: 'VolSpike',
-    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'your-walletconnect-project-id',
-    chains: [mainnet, polygon, arbitrum, optimism],
+    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'abcb0dcbc07f7524c16a4e3df252d18e',
+    chains: [mainnet, polygon, optimism, arbitrum, base],
     transports: {
         [mainnet.id]: http(),
         [polygon.id]: http(),
-        [arbitrum.id]: http(),
         [optimism.id]: http(),
+        [arbitrum.id]: http(),
+        [base.id]: http(),
     },
-    // Key additions to fix hydration issues
-    ssr: true, // Enable SSR support
-    multiInjectedProviderDiscovery: false, // Prevent multiple discovery attempts
-    batch: {
-        multicall: true,
-    },
+    ssr: true, // Enable server-side rendering support
 })
 
 export default function Web3Providers({ children }: { children: React.ReactNode }) {
-    const [mounted, setMounted] = useState(false)
+    const [queryClient] = useState(() => new QueryClient({
+        defaultOptions: {
+            queries: {
+                refetchOnWindowFocus: false,
+                retry: 1,
+                staleTime: 5 * 60 * 1000, // 5 minutes
+            },
+        },
+    }))
 
-    // Only render Web3 providers after hydration is complete
-    useEffect(() => {
-        setMounted(true)
-    }, [])
-
-    // Always render providers, use suppressHydrationWarning for hydration phase
     return (
         <WagmiProvider config={config}>
-            <RainbowKitProvider>
-                {mounted ? (
-                    children
-                ) : (
-                    <div suppressHydrationWarning>
-                        {children}
-                    </div>
-                )}
-            </RainbowKitProvider>
+            <QueryClientProvider client={queryClient}>
+                <RainbowKitProvider
+                    theme={darkTheme({
+                        accentColor: '#10b981', // Green-500 to match VolSpike branding
+                        accentColorForeground: 'white',
+                        borderRadius: 'medium',
+                    })}
+                    modalSize="compact"
+                    showRecentTransactions={true}
+                >
+                    {children}
+                </RainbowKitProvider>
+            </QueryClientProvider>
         </WagmiProvider>
     )
 }

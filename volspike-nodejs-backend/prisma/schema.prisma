@@ -25,6 +25,7 @@ enum UserStatus {
 model User {
   id                String    @id @default(cuid())
   email             String    @unique
+  passwordHash      String?   // For email/password authentication
   walletAddress     String?   @unique
   tier              String    @default("free") // free, pro, elite
   refreshInterval   Int       @default(900)    // seconds

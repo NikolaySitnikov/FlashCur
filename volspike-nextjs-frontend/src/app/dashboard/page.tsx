@@ -16,7 +16,7 @@ export default async function DashboardPage() {
             <div className="container mx-auto px-4 py-8">
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-white mb-4">VolSpike Dashboard</h1>
-                    <p className="text-gray-400">Welcome back! You're successfully logged in.</p>
+                    <p className="text-gray-400">Welcome back! You&apos;re successfully logged in.</p>
                     <p className="text-sm text-gray-500 mt-2">Role: {role}</p>
                 </div>
 

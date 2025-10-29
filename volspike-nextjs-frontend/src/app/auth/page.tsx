@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, Mail } from 'lucide-react'
@@ -30,20 +30,21 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 function AuthPageContent() {
     const searchParams = useSearchParams()
+    const router = useRouter()
 
     // Simple state management - no form hooks in parent
     const [tab, setTab] = useState<'signin' | 'signup'>(
         searchParams?.get('tab') === 'signup' ? 'signup' : 'signin'
     )
-    const [showPassword, setShowPassword] = useState(false)
     const [isGoogleLoading, setIsGoogleLoading] = useState(false)
     const [isResending, setIsResending] = useState(false)
-    const [authError, setAuthError] = useState('')
     const [verificationMessage, setVerificationMessage] = useState('')
     const [showVerificationAlert, setShowVerificationAlert] = useState(false)
+    const [resendEmail, setResendEmail] = useState('')
 
     // Check if this is admin mode
     const isAdminMode = searchParams?.get('mode') === 'admin'
+    const nextUrl = searchParams?.get('next') || (isAdminMode ? '/admin' : '/dashboard')
 
     useEffect(() => {
         const tabParam = searchParams.get('tab')
@@ -56,31 +57,30 @@ function AuthPageContent() {
         }
     }, [searchParams, isAdminMode])
 
-    useEffect(() => {
-        setAuthError('')
-    }, [tab])
-
     async function handleGoogleSignIn() {
         setIsGoogleLoading(true)
-        setAuthError('')
 
         try {
-            await signIn('google', { callbackUrl: '/' })
+            const callbackUrl = isAdminMode ? '/admin' : '/'
+            await signIn('google', { callbackUrl })
         } catch (error) {
-            setAuthError('Google sign in failed. Please try again.')
             setIsGoogleLoading(false)
         }
     }
 
     async function resendVerification() {
-        // Get email from current form state - we'll need to pass this down
-        // For now, we'll handle this in the form components
+        if (!resendEmail) {
+            setVerificationMessage('Please enter your email address first.')
+            setShowVerificationAlert(true)
+            return
+        }
+
         setIsResending(true)
         try {
             const response = await fetch(`${API_URL}/api/auth/request-verification`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: '' }), // This will be handled by form components
+                body: JSON.stringify({ email: resendEmail }),
             })
 
             const data = await response.json().catch(() => ({}))
@@ -168,21 +168,19 @@ function AuthPageContent() {
                         {/* Render the appropriate form component */}
                         {tab === 'signin' ? (
                             <SigninForm
-                                onSuccess={() => {
-                                    // Handle successful signin
+                                onSuccess={(email) => {
+                                    setResendEmail(email)
+                                    router.push(nextUrl)
                                 }}
-                                authError={authError}
-                                setAuthError={setAuthError}
-                                showPassword={showPassword}
-                                setShowPassword={setShowPassword}
+                                isAdminMode={isAdminMode}
+                                nextUrl={nextUrl}
                             />
                         ) : (
                             <SignupForm
-                                onSuccess={() => setTab('signin')}
-                                authError={authError}
-                                setAuthError={setAuthError}
-                                showPassword={showPassword}
-                                setShowPassword={setShowPassword}
+                                onSuccess={(email) => {
+                                    setResendEmail(email)
+                                    setTab('signin')
+                                }}
                                 setVerificationMessage={setVerificationMessage}
                                 setShowVerificationAlert={setShowVerificationAlert}
                             />
