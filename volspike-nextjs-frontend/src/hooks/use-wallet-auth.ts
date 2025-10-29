@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useAccount, useSignMessage } from 'wagmi'
 import { signIn } from 'next-auth/react'
-import { SiweMessage } from 'siwe'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
