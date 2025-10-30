@@ -12,7 +12,7 @@ import dynamic from 'next/dynamic'
 import { useWalletAuth } from '@/hooks/use-wallet-auth'
 import { useAccount } from 'wagmi'
 import { SolanaProvider } from '@/components/solana-providers'
-import { useSolanaAuth } from '@/hooks/use-solana-auth'
+import { PhantomSignInSection } from '@/components/phantom-signin-section'
 import { WalletConnectButton } from '@/components/wallet-connect-button'
 
 // Dynamically import ConnectButton to handle hydration safely
@@ -57,7 +57,6 @@ function AuthPageContent() {
     const { isSigning, isAuthenticating, error: walletError, signInWithWallet } = useWalletAuth()
     const { isConnected } = useAccount()
     const enableSolana = process.env.NEXT_PUBLIC_ENABLE_SOLANA === '1'
-    const { isConnecting: isSolConnecting, isSigning: isSolSigning, isAuthenticating: isSolAuth, error: solError, signInWithSolana } = useSolanaAuth()
 
     useEffect(() => {
         const tabParam = searchParams.get('tab')
@@ -312,26 +311,7 @@ function AuthPageContent() {
 
                                 {enableSolana && (
                                     <SolanaProvider>
-                                        <div className="space-y-2 mt-2">
-                                            <Button
-                                                onClick={signInWithSolana}
-                                                disabled={isSolConnecting || isSolSigning || isSolAuth}
-                                                className="w-full border border-purple-400/60 bg-transparent text-purple-300 hover:bg-purple-500/15"
-                                                variant="outline"
-                                            >
-                                                {isSolAuth || isSolSigning || isSolConnecting ? (
-                                                    <>
-                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                        {isSolConnecting ? 'Connecting Phantom...' : isSolSigning ? 'Sign message in Phantom...' : 'Authenticating...'}
-                                                    </>
-                                                ) : (
-                                                    'Sign In with Phantom'
-                                                )}
-                                            </Button>
-                                            {solError && (
-                                                <p className="text-xs text-red-400 text-center">{solError}</p>
-                                            )}
-                                        </div>
+                                        <PhantomSignInSection />
                                     </SolanaProvider>
                                 )}
                             </>
