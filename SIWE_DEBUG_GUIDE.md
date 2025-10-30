@@ -1,3 +1,44 @@
+# SIWE Sign-in Debug Guide (VolSpike)
+
+This guide helps isolate the last-mile issue when SIWE verify succeeds but the app redirects back to `/auth`.
+
+## Quick Checklist
+
+1) Providers endpoint shows `siwe`:
+   - Visit `/api/auth/providers` and confirm there is an id `siwe`.
+2) Callback visible in Network:
+   - After clicking "Sign In with Wallet", you should see `POST /api/auth/callback/siwe`.
+3) Cookie written:
+   - After the callback, DevTools → Application → Cookies → `http://localhost:3000` should show `next-auth.session-token`.
+4) Session endpoint returns a user:
+   - Visit `/api/auth/session` in the same tab. Expect a JSON with a user object (not `null`).
+
+## Expected Console Logs (from use-wallet-auth)
+- `[useWalletAuth] Verify response: { ok: true, hasToken: true, user: {...} }`
+- `[useWalletAuth] signIn result: { ok, error, status, url }`
+- `[useWalletAuth] document.cookie snapshot: ...`
+- `[useWalletAuth] Session after signIn: {...} | null`
+
+## If Callback is Missing
+- `signIn('siwe')` likely returned an error before posting. Inspect the logged `signIn result` and surface `result.error`.
+- Ensure Credentials provider id is exactly `siwe` and the route handler is `src/app/api/auth/[...nextauth]/route.ts` with `export const runtime = 'nodejs'`.
+
+## If Cookie Not Set
+- Confirm `NEXTAUTH_URL=http://localhost:3000` and `NEXTAUTH_SECRET` are present.
+- Ensure route uses Node runtime (not edge) and there is no middleware removing cookies.
+
+## If `authorize` Returns Null
+- Verify the frontend and backend share the same `SIWE_JWT_SECRET` used to create and verify the token.
+- As fallback, `authorize` can call backend `/api/auth/me` with `Authorization: Bearer <token>` and return a user object.
+
+## Env Vars (dev)
+- Frontend: `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `SIWE_JWT_SECRET`, `NEXT_PUBLIC_API_URL`
+- Backend: `FRONTEND_URL`, `SIWE_JWT_SECRET`, `SESSION_SECRET`
+
+## Notes
+- Do not use `runtime = 'edge'` for the NextAuth route.
+- When using `redirect: false`, always check `result.ok` before navigating; log `result.error` if present.
+
 # SIWE Debug Guide (NextAuth + Wallet)
 
 This guide helps verify each step of the wallet sign-in flow and quickly isolate where a failure occurs.

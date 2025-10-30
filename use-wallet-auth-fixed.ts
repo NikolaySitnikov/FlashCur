@@ -1,3 +1,8 @@
+// Reference version of the SIWE sign-in hook with enhanced logging and guardrails
+// This mirrors src/hooks/use-wallet-auth.ts after fixes
+
+export const note = `See src/hooks/use-wallet-auth.ts for the active implementation. This file exists as a reference.`
+
 'use client'
 
 import { useState } from 'react'
