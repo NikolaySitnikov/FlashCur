@@ -90,7 +90,8 @@ export const authConfig: NextAuthConfig = {
             }
         }),
         CredentialsProvider({
-            name: 'siwe',
+            id: 'siwe',
+            name: 'SIWE',
             credentials: {
                 token: { label: 'Token', type: 'text' },
                 walletAddress: { label: 'Wallet Address', type: 'text' },
