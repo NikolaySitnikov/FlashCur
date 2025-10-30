@@ -103,55 +103,35 @@ export const authConfig: NextAuthConfig = {
                     return null
                 }
 
-                // First, try to verify using shared SIWE_JWT_SECRET
-                try {
-                    const jwtModule = await import('jsonwebtoken')
-                    const payload: any = jwtModule.default.verify(
-                        credentials.token,
-                        process.env.SIWE_JWT_SECRET as string
-                    )
+                // Verify the backend-issued token locally. The backend signs SIWE tokens
+                // with HS256 using JWT_SECRET (or NEXTAUTH_SECRET). Try a few candidates.
+                const candidateSecrets = [
+                    process.env.SIWE_JWT_SECRET,
+                    process.env.JWT_SECRET,
+                    process.env.NEXTAUTH_SECRET,
+                ].filter(Boolean) as string[]
 
-                    return {
-                        id: payload.sub || payload.address,
-                        name: payload.address,
-                        email: undefined,
-                        walletAddress: payload.address,
-                        walletProvider: 'evm',
-                        role: payload.role || 'USER',
-                        accessToken: credentials.token,
-                    } as any
-                } catch (e) {
-                    console.warn('[NextAuth] SIWE JWT local verify failed, falling back to backend /me:', e)
+                for (const secret of candidateSecrets) {
+                    try {
+                        const jwtModule = await import('jsonwebtoken')
+                        const payload: any = jwtModule.default.verify(credentials.token, secret)
+
+                        return {
+                            id: payload.sub || payload.userId || payload.address,
+                            name: payload.address || payload.sub || 'Wallet User',
+                            email: undefined,
+                            walletAddress: payload.address,
+                            walletProvider: 'evm',
+                            role: payload.role || 'USER',
+                            accessToken: credentials.token,
+                        } as any
+                    } catch (_) {
+                        // try next secret
+                    }
                 }
 
-                // Fallback to backend verification if local verify fails
-                try {
-                    const res = await fetch(`${BACKEND_API_URL}/api/auth/me`, {
-                        headers: { 'Authorization': `Bearer ${credentials.token}` },
-                    })
-
-                    if (!res.ok) {
-                        console.error('[NextAuth] SIWE backend verification failed:', res.status)
-                        return null
-                    }
-
-                    const user = await res.json()
-                    return {
-                        id: user.id,
-                        email: user.email,
-                        name: user.walletAddress || user.email,
-                        walletAddress: user.walletAddress,
-                        walletProvider: user.walletProvider,
-                        tier: user.tier,
-                        emailVerified: user.emailVerified,
-                        role: user.role,
-                        status: user.status,
-                        accessToken: credentials.token,
-                    }
-                } catch (error) {
-                    console.error('[NextAuth] SIWE authorization error:', error)
-                    return null
-                }
+                console.error('[NextAuth] SIWE authorize: JWT local verification failed with all candidate secrets')
+                return null
             },
         })
     ],
