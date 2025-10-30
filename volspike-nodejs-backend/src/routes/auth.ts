@@ -549,14 +549,18 @@ auth.post('/siwe/verify', async (c) => {
             })
             logger.info(`Existing wallet signed in: ${caip10}`)
         } else {
-            // New wallet, create user
-            user = await prisma.user.create({
-                data: {
-                    email: `${address}@volspike.wallet`,
-                    tier: 'free',
-                    emailVerified: new Date(),
-                },
-            })
+            // New wallet account. If a user already exists with the wallet email, link to it; otherwise create.
+            const walletEmail = `${address}@volspike.wallet`
+            user = await prisma.user.findUnique({ where: { email: walletEmail } })
+            if (!user) {
+                user = await prisma.user.create({
+                    data: {
+                        email: walletEmail,
+                        tier: 'free',
+                        emailVerified: new Date(),
+                    },
+                })
+            }
 
             await prisma.walletAccount.create({
                 data: {
