@@ -10,6 +10,8 @@ import { SiweMessage, generateNonce } from 'siwe'
 import { verifyMessage } from 'viem'
 import { nonceManager } from '../services/nonce-manager'
 import { isAllowedChain } from '../config/chains'
+import nacl from 'tweetnacl'
+import bs58 from 'bs58'
 
 const logger = createLogger()
 const emailService = EmailService.getInstance()
@@ -600,6 +602,132 @@ auth.post('/siwe/verify', async (c) => {
         logger.error('SIWE verification error:', error)
         console.error('[SIWE Verify] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
         return c.json({ error: error.message || 'Verification failed' }, 401)
+    }
+})
+
+// =============================
+// Solana (Phantom) Authentication
+// =============================
+
+// Issue nonce for Solana
+auth.post('/solana/nonce', async (c) => {
+    try {
+        const { address } = await c.req.json()
+        if (!address) return c.json({ error: 'address required' }, 400)
+        const nonce = nonceManager.generate(address, 'solana')
+        return c.json({ nonce })
+    } catch (e) {
+        return c.json({ error: 'Failed to issue nonce' }, 500)
+    }
+})
+
+// Prepare message for Solana signing
+auth.get('/solana/prepare', async (c) => {
+    const address = c.req.query('address')
+    const chainId = c.req.query('chainId') || '101' // mainnet-beta
+    const providedNonce = c.req.query('nonce')
+    if (!address || !providedNonce) return c.json({ error: 'address and nonce required' }, 400)
+
+    const nonce = typeof providedNonce === 'string' ? providedNonce : ''
+    const nonceData = nonceManager.validate(nonce)
+    if (!nonceData) return c.json({ error: 'No valid nonce. Call /solana/nonce first.' }, 400)
+
+    const expectedDomain = new URL(process.env.FRONTEND_URL || 'http://localhost:3000').hostname
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+
+    // Simple SIWS message
+    const issuedAt = new Date().toISOString()
+    const message = `Sign in with Solana to VolSpike\n\nDomain: ${expectedDomain}\nAddress: ${address}\nURI: ${frontendUrl}\nVersion: 1\nChain ID: ${chainId}\nNonce: ${nonce}\nIssued At: ${issuedAt}`
+
+    return c.json({ message })
+})
+
+// Verify Solana signature and create session
+auth.post('/solana/verify', async (c) => {
+    try {
+        const { message, signature, address, chainId } = await c.req.json()
+        if (!message || !signature || !address) return c.json({ error: 'Invalid payload' }, 400)
+
+        const expectedNonceMatch = message.match(/Nonce: (.*)/)
+        const expectedNonce = expectedNonceMatch ? expectedNonceMatch[1]?.trim() : ''
+        const nonceData = nonceManager.validate(expectedNonce || '')
+        if (!nonceData) return c.json({ error: 'Invalid nonce' }, 401)
+
+        // Verify signature
+        const pubkey = bs58.decode(address)
+        const sig = bs58.decode(signature)
+        const msgBytes = new TextEncoder().encode(message)
+        const ok = nacl.sign.detached.verify(msgBytes, sig, pubkey)
+        if (!ok) return c.json({ error: 'Invalid signature' }, 401)
+
+        // Consume nonce
+        nonceManager.consume(expectedNonce || '')
+
+        // Allowlist chain
+        const caipChainId = `solana:${chainId || '101'}`
+        if (!isAllowedChain(caipChainId, 'solana')) {
+            return c.json({ error: 'Chain not allowed' }, 401)
+        }
+
+        const caip10 = `${caipChainId}:${address}`
+
+        // Find/create wallet account and user
+        let walletAccount = await prisma.walletAccount.findUnique({
+            where: { provider_caip10: { provider: 'solana', caip10 } },
+            include: { user: true },
+        })
+
+        let user
+        if (walletAccount) {
+            user = walletAccount.user
+            await prisma.walletAccount.update({ where: { id: walletAccount.id }, data: { lastLoginAt: new Date() } })
+        } else {
+            user = await prisma.user.create({
+                data: {
+                    email: `${address}@volspike.wallet`,
+                    tier: 'free',
+                    emailVerified: new Date(),
+                },
+            })
+            await prisma.walletAccount.create({
+                data: {
+                    userId: user.id,
+                    provider: 'solana',
+                    caip10,
+                    address,
+                    chainId: String(chainId || '101'),
+                    lastLoginAt: new Date(),
+                },
+            })
+        }
+
+        const token = await generateToken(user.id, {
+            address,
+            provider: 'solana',
+            chainId: chainId || '101',
+            tier: user.tier,
+            role: user.role,
+        })
+
+        return c.json({
+            ok: true,
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                tier: user.tier,
+                emailVerified: user.emailVerified ? user.emailVerified.toISOString() : null,
+                refreshInterval: user.refreshInterval,
+                theme: user.theme,
+                walletAddress: address,
+                walletProvider: 'solana',
+                role: user.role,
+                status: user.status,
+                twoFactorEnabled: user.twoFactorEnabled,
+            },
+        })
+    } catch (e: any) {
+        return c.json({ error: e?.message || 'Verification failed' }, 401)
     }
 })
 
