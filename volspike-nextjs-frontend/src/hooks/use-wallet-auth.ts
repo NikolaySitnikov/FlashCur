@@ -56,18 +56,38 @@ export function useWalletAuth(): UseWalletAuthResult {
 
       // Step 3: Generate SIWE message using siwe v3
       const msg = new SiweMessage({
-        domain: window.location.host,
+        domain: window.location.hostname,        // ✅ hostname only (NO port like :3000)
         address,
-        statement: 'Sign in with Ethereum to VolSpike.',
+        statement: 'Sign in with Ethereum to VolSpike.',  // ✅ single-line (no \n)
         uri: window.location.origin,
         version: '1',
-        chainId,
-        nonce,
+        chainId: Number(chainId),                // ✅ ensure number
+        nonce: String(nonce).trim(),             // ✅ strip stray CR/LF
       })
 
-      // v3 uses prepareMessage()
-      const messageToSign = (msg as any).prepareMessage()
+      // Safety guard while debugging
+      if (/\r|\n/.test(msg.statement ?? '')) {
+        throw new Error('SIWE statement must be single-line (no newlines).')
+      }
+
+      const messageToSign = msg.prepareMessage() // v3 ✅ (no casts)
+      
       console.log('[useWalletAuth] Generated SIWE message:', messageToSign)
+      
+      // Debug: confirm line count
+      console.debug('[SIWE fields]', {
+        domain: msg.domain,
+        address: msg.address,
+        uri: msg.uri,
+        version: msg.version,
+        chainId: msg.chainId,
+        nonce: msg.nonce,
+        statement: msg.statement,
+      })
+      
+      console.debug('[SIWE string lines]',
+        messageToSign.split('\n').map((l, i) => `${i + 1}: ${l}`)
+      )
 
       // Step 4: Sign message with wallet
       console.log('[useWalletAuth] Requesting signature from wallet...')

@@ -443,12 +443,12 @@ auth.post('/siwe/verify', async (c) => {
         // Get the nonce from the request header (where we sent it)
         const expectedNonce = c.req.header('X-Wallet-Nonce')
         
-        // v3 verify API
+        // v3 verify API - ✅ exact domain, no port
         const result = await siweMessage.verify({
             signature,
             domain: (c.req.header('host') || '').split(':')[0], // Remove port if present
             nonce: expectedNonce,
-            time: new Date().toISOString(),
+            time: new Date(),
         })
 
         if (!result.success) {
