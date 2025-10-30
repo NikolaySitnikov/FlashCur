@@ -113,8 +113,9 @@ export const authConfig: NextAuthConfig = {
 
                 for (const secret of candidateSecrets) {
                     try {
-                        const jwtModule = await import('jsonwebtoken')
-                        const payload: any = jwtModule.default.verify(credentials.token, secret)
+                        // jsonwebtoken typings export named verify; use it to satisfy TS
+                        const { verify } = await import('jsonwebtoken')
+                        const payload: any = verify(credentials.token as string, secret as string)
 
                         return {
                             id: payload.sub || payload.userId || payload.address,
