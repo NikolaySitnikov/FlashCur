@@ -111,6 +111,9 @@ export function useWalletAuth(): UseWalletAuthResult {
 
       // Check session immediately
       try {
+        // Wait a tick to allow cookie write
+        await new Promise(r => setTimeout(r, 200))
+        console.log('[useWalletAuth] document.cookie snapshot:', typeof document !== 'undefined' ? document.cookie : 'no-doc')
         const sessionRes = await fetch('/api/auth/session', { credentials: 'include' })
         const sessionJson = await sessionRes.json().catch(() => null)
         console.log('[useWalletAuth] Session after signIn:', sessionJson)
