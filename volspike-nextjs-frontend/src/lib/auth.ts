@@ -32,7 +32,7 @@ export const authConfig: NextAuthConfig = {
                 }
 
                 try {
-                    const response = await fetch(`${BACKEND_API_URL}/api/auth/signin`, {
+                    const response = await fetch(`${BACKEND_API_URL}/auth/signin`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -166,7 +166,7 @@ export const authConfig: NextAuthConfig = {
             if (account?.provider === 'google' && user?.email) {
                 try {
                     // Check if user exists in our database
-                    const response = await fetch(`${BACKEND_API_URL}/api/auth/oauth-link`, {
+                    const response = await fetch(`${BACKEND_API_URL}/auth/oauth-link`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
