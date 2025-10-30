@@ -11,6 +11,7 @@ import { SignupForm } from '@/components/signup-form'
 import dynamic from 'next/dynamic'
 import { useWalletAuth } from '@/hooks/use-wallet-auth'
 import { useAccount } from 'wagmi'
+import { WalletConnectButton } from '@/components/wallet-connect-button'
 
 // Dynamically import ConnectButton to handle hydration safely
 const DynamicConnectButton = dynamic(
@@ -274,7 +275,7 @@ function AuthPageContent() {
                                 </Button>
 
                                 <div className="space-y-3">
-                                    <DynamicConnectButton />
+                                    <WalletConnectButton />
                                     
                                     {/* Show authenticate button after wallet connects */}
                                     {isConnected && (
