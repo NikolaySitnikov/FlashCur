@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { generateNonce } from 'siwe'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger()
@@ -7,6 +7,7 @@ interface NonceData {
   timestamp: number
   address: string
   provider: 'evm' | 'solana'
+  nonce: string
 }
 
 /**
@@ -27,13 +28,15 @@ class NonceManager {
 
   /**
    * Generate a new nonce for the given address and provider
+   * Uses siwe's generateNonce() for EIP-4361 compliant alphanumeric nonce
    */
   generate(address: string, provider: 'evm' | 'solana'): string {
-    const nonce = randomUUID()
+    const nonce = generateNonce() // ✅ EIP-4361 compliant alphanumeric
     this.store.set(nonce, {
       timestamp: Date.now(),
       address: address.toLowerCase(),
       provider,
+      nonce,
     })
     
     logger.info(`Nonce issued: ${nonce.substring(0, 8)}... for ${provider} address ${address.substring(0, 6)}...`)

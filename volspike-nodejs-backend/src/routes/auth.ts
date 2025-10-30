@@ -6,7 +6,7 @@ import { createLogger } from '../lib/logger'
 import { getUser, requireUser } from '../lib/hono-extensions'
 import EmailService from '../services/email'
 import * as bcrypt from 'bcryptjs'
-import { SiweMessage } from 'siwe'
+import { SiweMessage, generateNonce } from 'siwe'
 import { verifyMessage } from 'viem'
 import { nonceManager } from '../services/nonce-manager'
 import { isAllowedChain } from '../config/chains'
@@ -411,12 +411,13 @@ auth.post('/verify-email', async (c) => {
     }
 })
 
-// Nonce issuance for SIWE authentication
+// Nonce issuance for SIWE authentication - use generateNonce() for EIP-4361 compliance
 auth.get('/siwe/nonce', async (c) => {
     try {
         const address = c.req.header('X-Wallet-Address') || 'unknown'
         logger.info(`Nonce request received for address: ${address}`)
         
+        // ✅ Use nonceManager which uses generateNonce() internally for spec-compliant nonce
         const nonce = nonceManager.generate(address, 'evm')
         
         logger.info(`Nonce issued successfully for EVM address: ${address}`)
@@ -426,6 +427,44 @@ auth.get('/siwe/nonce', async (c) => {
         logger.error('Nonce issuance error:', error)
         logger.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
         return c.json({ error: 'Failed to issue nonce' }, 500)
+    }
+})
+
+// Server-prepared SIWE message (best practice - eliminates client-side constructor issues)
+auth.get('/siwe/prepare', async (c) => {
+    try {
+        const address = c.req.query('address')
+        const chainId = c.req.query('chainId')
+        
+        if (!address || !chainId) {
+            return c.json({ error: 'address and chainId required' }, 400)
+        }
+        
+        // Generate nonce from nonceManager (EIP-4361 compliant)
+        const nonce = nonceManager.generate(address, 'evm')
+        
+        const domain = (c.req.header('host') || '').split(':')[0]
+        const frontendUrl = process.env.FRONTEND_URL || `http://${domain}`
+        
+        const msg = new SiweMessage({
+            domain,
+            address,
+            statement: 'Sign in with Ethereum to VolSpike.',
+            uri: frontendUrl,
+            version: '1',
+            chainId: Number(chainId),
+            nonce,
+        })
+        
+        // v3 prepareMessage()
+        const message = msg.prepareMessage()
+        
+        logger.info(`SIWE message prepared for ${address} on chain ${chainId}`)
+        
+        return c.json({ message })
+    } catch (error) {
+        logger.error('SIWE prepare error:', error)
+        return c.json({ error: 'Failed to prepare SIWE message' }, 500)
     }
 })
 
