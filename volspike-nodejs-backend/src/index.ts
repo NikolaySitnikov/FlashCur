@@ -88,7 +88,8 @@ app.use('*', cors({
 }))
 
 // Explicit OPTIONS handler for extra safety
-app.options('*', (c) => c.text('', 204))
+// Use body(null, 204) since 204 is not a ContentfulStatusCode for c.text()
+app.options('*', (c) => c.body(null, 204))
 
 // ============================================
 // ROUTES

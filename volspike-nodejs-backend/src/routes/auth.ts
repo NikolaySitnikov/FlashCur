@@ -586,7 +586,7 @@ auth.post('/siwe/verify', async (c) => {
                 id: user.id,
                 email: user.email,
                 tier: user.tier,
-                emailVerified: user.emailVerified,
+                emailVerified: user.emailVerified ? user.emailVerified.toISOString() : null,
                 refreshInterval: user.refreshInterval,
                 theme: user.theme,
                 walletAddress: address,
