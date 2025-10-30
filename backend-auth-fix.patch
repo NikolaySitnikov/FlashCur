@@ -1,0 +1,20 @@
+// Fix for volspike-nodejs-backend/src/routes/auth.ts
+// Line ~414 - In the SIWE verify endpoint
+
+// WRONG (current code has a bug):
+user = await prisma.user.create({
+    data: {
+        email: `${fields.address}@volspike.wallet`,  // ❌ BUG: 'fields' is undefined
+        tier: 'free',
+        emailVerified: new Date(),
+    },
+})
+
+// CORRECT (should be):
+user = await prisma.user.create({
+    data: {
+        email: `${address}@volspike.wallet`,  // ✅ FIX: Use 'address' variable directly
+        tier: 'free',
+        emailVerified: new Date(),
+    },
+})
