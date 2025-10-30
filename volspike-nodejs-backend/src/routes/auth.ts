@@ -570,6 +570,7 @@ auth.post('/siwe/verify', async (c) => {
         const token = await generateToken(user.id)
 
         return c.json({
+            ok: true,
             token,
             user: {
                 id: user.id,
