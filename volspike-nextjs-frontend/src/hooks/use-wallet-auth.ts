@@ -56,7 +56,7 @@ export function useWalletAuth(): UseWalletAuthResult {
       // Step 3: Get server-prepared SIWE message (best practice - avoids client-side constructor issues)
       console.log('[useWalletAuth] Requesting server-prepared SIWE message...')
       
-      const prepRes = await fetch(`${API_URL}/api/auth/siwe/prepare?address=${address}&chainId=${chainId}`, {
+      const prepRes = await fetch(`${API_URL}/api/auth/siwe/prepare?address=${address}&chainId=${chainId}&nonce=${nonce}`, {
         credentials: 'include',
       })
       
@@ -83,7 +83,6 @@ export function useWalletAuth(): UseWalletAuthResult {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'X-Wallet-Nonce': nonce,
         },
         credentials: 'include',
         body: JSON.stringify({ message: messageToSign, signature }),

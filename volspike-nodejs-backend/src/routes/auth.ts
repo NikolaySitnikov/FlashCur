@@ -435,19 +435,24 @@ auth.get('/siwe/prepare', async (c) => {
     try {
         const address = c.req.query('address')
         const chainId = c.req.query('chainId')
+        const providedNonce = c.req.query('nonce')
         
         if (!address || !chainId) {
             return c.json({ error: 'address and chainId required' }, 400)
         }
         
-        // Generate nonce from nonceManager (EIP-4361 compliant)
-        const nonce = nonceManager.generate(address, 'evm')
+        // Reuse the previously issued nonce - do not generate a new one here
+        const nonce = typeof providedNonce === 'string' ? providedNonce : ''
+        const nonceData = nonceManager.validate(nonce)
+        if (!nonceData) {
+            return c.json({ error: 'No valid nonce. Call /siwe/nonce first.' }, 400)
+        }
         
-        const domain = (c.req.header('host') || '').split(':')[0]
-        const frontendUrl = process.env.FRONTEND_URL || `http://${domain}`
+        const expectedDomain = new URL(process.env.FRONTEND_URL || 'http://localhost:3000').hostname
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
         
         const msg = new SiweMessage({
-            domain,
+            domain: expectedDomain,
             address,
             statement: 'Sign in with Ethereum to VolSpike.',
             uri: frontendUrl,
@@ -479,13 +484,18 @@ auth.post('/siwe/verify', async (c) => {
         // Parse SIWE message using siwe v3
         const siweMessage = new SiweMessage(message)
         
-        // Get the nonce from the request header (where we sent it)
-        const expectedNonce = c.req.header('X-Wallet-Nonce')
+        // Extract nonce from the SIWE message and validate against server store
+        const expectedNonce = siweMessage.nonce
+        const nonceData = nonceManager.validate(expectedNonce || '')
+        if (!nonceData) {
+            logger.warn('SIWE verification failed: invalid or missing nonce')
+            return c.json({ error: 'Invalid nonce' }, 401)
+        }
         
         // v3 verify API - ✅ exact domain, no port
         const result = await siweMessage.verify({
             signature,
-            domain: (c.req.header('host') || '').split(':')[0], // Remove port if present
+            domain: new URL(process.env.FRONTEND_URL || 'http://localhost:3000').hostname,
             nonce: expectedNonce,
             time: new Date(),
         })
@@ -536,7 +546,7 @@ auth.post('/siwe/verify', async (c) => {
             // New wallet, create user
             user = await prisma.user.create({
                 data: {
-                    email: `${fields.address}@volspike.wallet`,
+                    email: `${address}@volspike.wallet`,
                     tier: 'free',
                     emailVerified: new Date(),
                 },
