@@ -74,10 +74,21 @@ app.use('*', cors({
     origin: getAllowedOrigins(),
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-Wallet-Address'],
+    allowHeaders: [
+        'Content-Type',
+        'Authorization',
+        'Accept',
+        'Origin',
+        'X-Requested-With',
+        'X-Wallet-Address',
+        'X-Wallet-Nonce'  // ✅ Add custom header for SIWE nonce
+    ],
     exposeHeaders: ['Content-Length', 'X-Total-Count', 'X-Page-Count'],
     maxAge: 86400, // 24 hours
 }))
+
+// Explicit OPTIONS handler for extra safety
+app.options('*', (c) => c.text('', 204))
 
 // ============================================
 // ROUTES
