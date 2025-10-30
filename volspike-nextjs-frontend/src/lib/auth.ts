@@ -6,6 +6,7 @@ import type { NextAuthConfig } from 'next-auth'
 const BACKEND_API_URL = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 export const authConfig: NextAuthConfig = {
+    debug: process.env.NODE_ENV === 'development',
     providers: [
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -98,11 +99,33 @@ export const authConfig: NextAuthConfig = {
             },
             async authorize(credentials) {
                 if (!credentials?.token) {
+                    console.error('[NextAuth] SIWE authorize: missing token')
                     return null
                 }
 
+                // First, try to verify using shared SIWE_JWT_SECRET
                 try {
-                    // Verify token with backend
+                    const jwtModule = await import('jsonwebtoken')
+                    const payload: any = jwtModule.default.verify(
+                        credentials.token,
+                        process.env.SIWE_JWT_SECRET as string
+                    )
+
+                    return {
+                        id: payload.sub || payload.address,
+                        name: payload.address,
+                        email: undefined,
+                        walletAddress: payload.address,
+                        walletProvider: 'evm',
+                        role: payload.role || 'USER',
+                        accessToken: credentials.token,
+                    } as any
+                } catch (e) {
+                    console.warn('[NextAuth] SIWE JWT local verify failed, falling back to backend /me:', e)
+                }
+
+                // Fallback to backend verification if local verify fails
+                try {
                     const res = await fetch(`${BACKEND_API_URL}/api/auth/me`, {
                         headers: { 'Authorization': `Bearer ${credentials.token}` },
                     })
@@ -113,7 +136,6 @@ export const authConfig: NextAuthConfig = {
                     }
 
                     const user = await res.json()
-
                     return {
                         id: user.id,
                         email: user.email,

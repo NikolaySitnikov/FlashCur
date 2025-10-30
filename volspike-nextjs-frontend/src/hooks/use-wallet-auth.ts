@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAccount, useSignMessage } from 'wagmi'
 import { signIn } from 'next-auth/react'
 
@@ -17,6 +18,7 @@ interface UseWalletAuthResult {
 export function useWalletAuth(): UseWalletAuthResult {
   const { address, chainId, isConnected } = useAccount()
   const { signMessageAsync } = useSignMessage()
+  const router = useRouter()
   const [isConnecting, setIsConnecting] = useState(false)
   const [isSigning, setIsSigning] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
@@ -93,17 +95,35 @@ export function useWalletAuth(): UseWalletAuthResult {
         throw new Error(errorData.error || 'Authentication failed')
       }
 
-      const { token, user } = await verifyRes.json()
+      const { ok, token, user } = await verifyRes.json()
+      console.log('[useWalletAuth] Verify response:', { ok: !!ok, hasToken: !!token, user })
+      if (!ok || !token) {
+        throw new Error('SIWE verify missing token')
+      }
 
       // Step 6: Create NextAuth session
-      await signIn('siwe', {
+      const signInResult = await signIn('siwe', {
         redirect: false,
         token,
         walletAddress: user.walletAddress,
       })
+      console.log('[useWalletAuth] signIn result:', signInResult)
+
+      // Check session immediately
+      try {
+        const sessionRes = await fetch('/api/auth/session', { credentials: 'include' })
+        const sessionJson = await sessionRes.json().catch(() => null)
+        console.log('[useWalletAuth] Session after signIn:', sessionJson)
+      } catch (e) {
+        console.warn('[useWalletAuth] Could not fetch session:', e)
+      }
 
       // Step 7: Redirect to dashboard
-      window.location.href = '/dashboard'
+      if ((signInResult as any)?.ok) {
+        router.push('/dashboard')
+      } else {
+        throw new Error((signInResult as any)?.error || 'NextAuth signIn failed')
+      }
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to authenticate with wallet'
       setError(errorMessage)
