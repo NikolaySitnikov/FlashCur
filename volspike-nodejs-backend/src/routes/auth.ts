@@ -501,7 +501,7 @@ auth.post('/siwe/verify', async (c) => {
             signature,
             domain: new URL(process.env.FRONTEND_URL || 'http://localhost:3000').hostname,
             nonce: expectedNonce,
-            time: new Date(),
+            time: new Date().toISOString(),
         })
 
         if (!result.success) {
