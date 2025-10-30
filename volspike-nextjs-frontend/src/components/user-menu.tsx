@@ -145,7 +145,11 @@ export function UserMenu() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 {(() => {
-                                    const primary = identity.displayName || identity.email || 'User'
+                                    const cuidLike = (s: string) => /^c[a-z0-9]{20,}$/i.test(s)
+                                    const shortAddr = identity.address ? `${identity.address.slice(0, 6)}...${identity.address.slice(-4)}` : null
+                                    // Prefer wallet short address; else email; avoid showing internal IDs
+                                    const primaryCandidate = shortAddr || identity.email || identity.displayName || 'User'
+                                    const primary = cuidLike(primaryCandidate) ? (shortAddr || identity.email || 'User') : primaryCandidate
                                     const secondary = identity.email && identity.email !== primary ? identity.email : null
                                     return (
                                         <>

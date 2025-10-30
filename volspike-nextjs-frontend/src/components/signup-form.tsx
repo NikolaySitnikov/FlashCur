@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { useState } from 'react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/backend'
 
 const signupSchema = z.object({
     email: z.string().email('Invalid email address'),
@@ -82,7 +82,7 @@ export function SignupForm({
         setShowVerificationAlert(false)
 
         try {
-            const response = await fetch(`${API_URL}/api/auth/signup`, {
+            const response = await fetch(`${API_URL}/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

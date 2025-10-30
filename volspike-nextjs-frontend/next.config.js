@@ -50,19 +50,15 @@ const nextConfig = {
         ];
     },
     async rewrites() {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-        return [
-            {
-                source: '/api/((?!auth).*)/:path*',
-                destination: `${apiUrl}/api/$1/:path*`,
-            },
-            // Common probe endpoints for Cross-Origin-Opener-Policy checks
-            { source: '/coop', destination: '/api/security/coop' },
-            { source: '/coep', destination: '/api/security/coop' },
-            { source: '/.well-known/coop', destination: '/api/security/coop' },
-            { source: '/.well-known/coep', destination: '/api/security/coop' },
-            { source: '/__coop-check', destination: '/api/security/coop' },
-        ];
+        const isDev = process.env.NODE_ENV === 'development'
+        const backendUrl = 'http://localhost:3001'
+        if (isDev) {
+            return [
+                // Proxy ONLY the backend under /backend to avoid touching NextAuth's /api/auth/*
+                { source: '/backend/:path*', destination: `${backendUrl}/api/:path*` },
+            ]
+        }
+        return []
     },
 };
 

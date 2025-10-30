@@ -73,11 +73,15 @@ function rateLimit(identifier: string, maxRequests: number = 5, windowMs: number
     return true
 }
 
-// Generate JWT token
-async function generateToken(userId: string): Promise<string> {
+// Generate JWT token. Optional payload lets callers include extra SIWE fields
+// such as wallet address/provider without affecting email/password tokens.
+async function generateToken(userId: string, extraPayload?: Record<string, unknown>): Promise<string> {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key')
 
-    return await new SignJWT({ sub: userId })
+    const base: Record<string, unknown> = { sub: userId }
+    const claims = extraPayload ? { ...base, ...extraPayload } : base
+
+    return await new SignJWT(claims)
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('24h')
@@ -566,8 +570,14 @@ auth.post('/siwe/verify', async (c) => {
             logger.info(`New wallet created and linked: ${caip10}`)
         }
 
-        // Generate token
-        const token = await generateToken(user.id)
+        // Generate token with SIWE context so NextAuth can surface wallet data
+        const token = await generateToken(user.id, {
+            address,
+            provider: 'evm',
+            chainId,
+            tier: user.tier,
+            role: user.role,
+        })
 
         return c.json({
             ok: true,

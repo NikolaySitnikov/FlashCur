@@ -25,14 +25,15 @@ export function useUserIdentity(): UserIdentity {
         const walletProvider = session?.user?.walletProvider || null
         const ens = null // TODO: Add ENS name when wallet address is available
 
-        // Determine display name priority: name > email > wallet address
+        // Display name policy: if a wallet is connected, prefer short address
+        // over generic names (e.g., "Wallet User"). Otherwise show email, then fallback.
         let displayName = 'User'
-        if (session?.user?.name) {
-            displayName = session.user.name
+        if (walletAddress) {
+            displayName = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
         } else if (email) {
             displayName = email
-        } else if (walletAddress) {
-            displayName = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+        } else if (session?.user?.name) {
+            displayName = session.user.name
         }
 
         return {

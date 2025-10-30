@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/backend'
 
 const signinSchema = z.object({
     email: z.string().email('Invalid email address'),
@@ -116,7 +116,7 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
                 console.log('[SigninForm] Sign in failed, error:', result?.error)
                 // Fallback: query backend for precise reason (e.g., oauthOnly)
                 try {
-                    const resp = await fetch(`${API_URL}/api/auth/signin`, {
+                    const resp = await fetch(`${API_URL}/auth/signin`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email: data.email, password: data.password }),

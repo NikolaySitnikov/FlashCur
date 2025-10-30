@@ -123,6 +123,7 @@ export const authConfig: NextAuthConfig = {
                             walletAddress: payload.address,
                             walletProvider: 'evm',
                             role: payload.role || 'USER',
+                            tier: payload.tier || 'free',
                             accessToken: credentials.token,
                         } as any
                     } catch (_) {
