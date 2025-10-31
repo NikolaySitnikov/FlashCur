@@ -26,13 +26,6 @@ export const SolanaProvider: FC<PropsWithChildren> = ({ children }) => {
             description: 'VolSpike Auth',
             url: publicUrl,
             icons: ['https://volspike.com/favicon.ico']
-          },
-          // Narrow modal to Phantom on mobile to avoid generic explorer and ensure deep link
-          qrModalOptions: {
-            themeMode: 'dark',
-            explorerRecommendedWalletIds: ['phantom'],
-            explorerExcludedWalletIds: 'ALL',
-            enableExplorer: true
           }
         }
       }) as any)
