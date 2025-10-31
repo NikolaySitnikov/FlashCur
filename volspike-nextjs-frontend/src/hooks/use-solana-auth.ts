@@ -22,7 +22,7 @@ interface UseSolanaAuthResult {
 
 export function useSolanaAuth(): UseSolanaAuthResult {
   const router = useRouter()
-  const { publicKey, signMessage, connected, connect, wallet, select } = useWallet()
+  const { publicKey, connected, wallet, select, wallets } = useWallet()
   const [isConnecting, setIsConnecting] = useState(false)
   const [isSigning, setIsSigning] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
@@ -51,36 +51,31 @@ export function useSolanaAuth(): UseSolanaAuthResult {
       if (!connected || !publicKey) {
         setIsConnecting(true)
         try {
-          // Select adapter: Mobile = Solana Mobile Wallet Adapter; Desktop = Phantom
-          if (!wallet || (isMobile && wallet.adapter.name !== SolanaMobileWalletAdapterWalletName) || (isDesktop && wallet.adapter.name !== PhantomWalletName)) {
-            const targetName = isMobile ? SolanaMobileWalletAdapterWalletName : (PhantomWalletName as any)
-            console.log('[SolanaAuth] Selecting adapter:', targetName)
-            select?.(targetName as any)
-            // Wait for selection to apply (avoid racing connect before adapter is set)
-            const selStart = Date.now()
-            while (Date.now() - selStart < 800) {
-              if (wallet?.adapter?.name === targetName) break
-              await new Promise(r => setTimeout(r, 50))
-            }
-          }
+          // Determine target adapter up front
+          const targetName = isMobile ? SolanaMobileWalletAdapterWalletName : (PhantomWalletName as any)
+          const targetEntry = wallets?.find((w: any) => w.adapter?.name === targetName)
+          const targetAdapter: any = targetEntry?.adapter || wallet?.adapter
 
-          console.log('[SolanaAuth] Attempting to connect with Phantom adapter...')
-          // Desktop: require installed extension; avoid calling connect() on a non-ready adapter
-          let readyState: WalletReadyState | undefined = wallet?.readyState || adapter?.readyState
+          // Desktop readiness gate
+          const readyState: WalletReadyState | undefined = targetEntry?.readyState || targetAdapter?.readyState
           if (isDesktop && readyState && readyState !== WalletReadyState.Installed) {
             throw new Error('Phantom extension not detected')
           }
 
-          await connect?.()
-
-          // Wait for adapter publicKey to populate to avoid double-click issue on desktop
-          const start = Date.now()
-          // Re-read adapter reference after connect
-          adapter = wallet?.adapter
-          while (!adapter?.publicKey && Date.now() - start < (isMobile ? 5000 : 1500)) {
-            await new Promise(r => setTimeout(r, 100))
-            adapter = wallet?.adapter
+          // Select target in provider for consistency, then connect directly on the adapter
+          if (targetName) {
+            select?.(targetName as any)
           }
+
+          console.log('[SolanaAuth] Connecting using adapter:', targetAdapter?.name)
+          await targetAdapter?.connect?.()
+
+          // Wait for adapter publicKey to populate
+          const start = Date.now()
+          while (!targetAdapter?.publicKey && Date.now() - start < (isMobile ? 5000 : 1500)) {
+            await new Promise(r => setTimeout(r, 100))
+          }
+          adapter = targetAdapter
 
           console.log('[SolanaAuth] Connect completed', {
             connected,
@@ -94,23 +89,22 @@ export function useSolanaAuth(): UseSolanaAuthResult {
             console.log('[SolanaAuth] Retrying mobile connect once...')
             try {
               await new Promise(r => setTimeout(r, 1200))
-              await connect?.()
+              await adapter?.connect?.()
               const start2 = Date.now()
-              adapter = wallet?.adapter
               while (!adapter?.publicKey && Date.now() - start2 < 4000) {
                 await new Promise(r => setTimeout(r, 100))
-                adapter = wallet?.adapter
               }
             } catch (_) {}
           }
 
           // If still not connected, fallback to WalletConnect (desktop only)
-          if (isDesktop && !wallet?.adapter?.publicKey && !publicKey) {
+          if (isDesktop && !adapter?.publicKey && !publicKey) {
             console.log('[SolanaAuth] Trying WalletConnect as fallback...')
             try {
               select?.(WalletConnectWalletName as any)
               await new Promise(resolve => setTimeout(resolve, 200))
-              await connect?.()
+              const wc = wallets?.find((w: any) => w.adapter?.name === WalletConnectWalletName)?.adapter
+              await wc?.connect?.()
               await new Promise(resolve => setTimeout(resolve, 300))
             } catch (fallbackError: any) {
               console.error('[SolanaAuth] WalletConnect fallback also failed:', fallbackError)
@@ -122,14 +116,15 @@ export function useSolanaAuth(): UseSolanaAuthResult {
         }
       }
 
-      const effectivePublicKey = wallet?.adapter?.publicKey || publicKey
+      const effectivePublicKey = adapter?.publicKey || wallet?.adapter?.publicKey || publicKey
       if (!effectivePublicKey) {
         console.error('[SolanaAuth] No public key after connection attempt')
         throw new Error('Please connect Phantom first')
       }
-      // Use the bound signMessage from useWallet (avoid unbound adapter method)
-      if (!signMessage) {
-        console.error('[SolanaAuth] Wallet does not support message signing')
+      // Prefer adapter.signMessage to avoid stale hook closure; ensure method exists
+      const canSign = typeof (adapter as any)?.signMessage === 'function'
+      if (!canSign) {
+        console.error('[SolanaAuth] Wallet does not support message signing (adapter)')
         throw new Error('Wallet does not support message signing')
       }
 
@@ -168,7 +163,7 @@ export function useSolanaAuth(): UseSolanaAuthResult {
       setIsSigning(true)
       let signature: Uint8Array
       try {
-        signature = await signMessage!(new TextEncoder().encode(message))
+        signature = await (adapter as any).signMessage(new TextEncoder().encode(message))
         console.log('[SolanaAuth] Signature received:', base58.encode(signature).substring(0, 20) + '...')
       } catch (signError: any) {
         console.error('[SolanaAuth] Sign error:', signError)
