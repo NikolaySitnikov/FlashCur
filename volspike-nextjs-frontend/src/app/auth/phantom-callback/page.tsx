@@ -46,7 +46,7 @@ export default function PhantomCallbackPage() {
         const handled = await tryHandleCallbackOnServer(merged)
         if (!handled) {
           // Provide more detailed error message
-          const missing = []
+          const missing: string[] = []
           if (!merged.get('phantom_encryption_public_key')) missing.push('phantom_encryption_public_key')
           if (!merged.get('payload') && !merged.get('data')) missing.push('payload/data')
           if (!merged.get('nonce')) missing.push('nonce')
