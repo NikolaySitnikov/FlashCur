@@ -171,26 +171,44 @@ export function UserMenu() {
                                 </span>
                             </div>
                         )}
-                        <div className="flex items-center gap-2">
-                            {identity.tier && (
-                                <Badge
-                                    variant="secondary"
-                                    className={`text-xs ${identity.tier === 'pro'
-                                        ? 'bg-blue-500 text-white'
-                                        : identity.tier === 'elite'
-                                            ? 'bg-amber-500 text-white'
-                                            : 'bg-gray-500 text-white'
-                                        }`}
-                                >
-                                    {identity.tier.charAt(0).toUpperCase() + identity.tier.slice(1)} Tier
+                        {/* Beautiful Tier Display */}
+                        {identity.tier && (
+                            <div className="flex items-center gap-2 pt-2 border-t border-border">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-muted-foreground mb-1.5">Current Plan</p>
+                                    <div className="flex items-center gap-2">
+                                        <Badge
+                                            variant="default"
+                                            className={`text-xs font-semibold px-3 py-1 ${
+                                                identity.tier === 'pro'
+                                                    ? 'bg-blue-600 dark:bg-blue-500 text-white border-0'
+                                                    : identity.tier === 'elite'
+                                                        ? 'bg-amber-600 dark:bg-amber-500 text-white border-0'
+                                                        : 'bg-gray-600 dark:bg-gray-500 text-white border-0'
+                                            }`}
+                                        >
+                                            {identity.tier === 'free' && '⚡'}
+                                            {identity.tier === 'pro' && '⭐'}
+                                            {identity.tier === 'elite' && '💎'}
+                                            {' '}
+                                            {identity.tier.charAt(0).toUpperCase() + identity.tier.slice(1)} Tier
+                                        </Badge>
+                                        {identity.tier === 'free' && (
+                                            <span className="text-xs text-muted-foreground">
+                                                Upgrade available
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {identity.role === 'ADMIN' && (
+                            <div className="pt-2 border-t border-border">
+                                <Badge variant="outline" className="text-xs border-red-500/50 text-red-600 dark:text-red-400 dark:border-red-400/50">
+                                    🔐 Admin
                                 </Badge>
-                            )}
-                            {identity.role === 'ADMIN' && (
-                                <Badge variant="outline" className="text-xs border-red-500 text-red-500">
-                                    Admin
-                                </Badge>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

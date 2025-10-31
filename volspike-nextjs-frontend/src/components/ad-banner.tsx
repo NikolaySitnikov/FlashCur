@@ -27,9 +27,9 @@ export function AdBanner({ userTier = 'free', className }: AdBannerProps) {
     return (
         <Card
             className={cn(
-                'relative overflow-hidden border-l-4 border-l-primary shadow-md',
+                'relative overflow-hidden border-l-4 border-l-green-500 dark:border-l-green-400 shadow-md',
                 'bg-card hover:shadow-lg transition-shadow duration-200',
-                'before:absolute before:inset-0 before:bg-gradient-to-r before:from-primary/5 before:via-primary/3 before:to-transparent before:pointer-events-none',
+                'before:absolute before:inset-0 before:bg-gradient-to-r before:from-green-500/5 before:via-green-500/3 before:to-transparent before:pointer-events-none dark:before:from-green-400/10 dark:before:via-green-400/5',
                 className
             )}
         >
@@ -38,8 +38,8 @@ export function AdBanner({ userTier = 'free', className }: AdBannerProps) {
                     <div className="flex items-start gap-4 flex-1">
                         {/* Icon */}
                         <div className="flex-shrink-0">
-                            <div className="w-12 h-12 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
-                                <Sparkles className="h-6 w-6 text-primary" />
+                            <div className="w-12 h-12 rounded-lg bg-green-500/10 dark:bg-green-400/20 flex items-center justify-center">
+                                <Sparkles className="h-6 w-6 text-green-600 dark:text-green-400" />
                             </div>
                         </div>
 
@@ -51,7 +51,7 @@ export function AdBanner({ userTier = 'free', className }: AdBannerProps) {
                                 </h3>
                                 <Badge
                                     variant="default"
-                                    className="bg-primary text-primary-foreground font-semibold"
+                                    className="bg-green-600 dark:bg-green-500 text-white font-semibold border-0"
                                 >
                                     $9/month
                                 </Badge>
@@ -63,20 +63,20 @@ export function AdBanner({ userTier = 'free', className }: AdBannerProps) {
 
                             <div className="flex flex-wrap items-center gap-4 pt-1">
                                 <div className="flex items-center gap-2 text-sm text-foreground">
-                                    <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 dark:bg-primary/20">
-                                        <Clock className="h-4 w-4 text-primary" />
+                                    <div className="flex items-center justify-center w-6 h-6 rounded-md bg-green-500/10 dark:bg-green-400/20">
+                                        <Clock className="h-4 w-4 text-green-600 dark:text-green-400" />
                                     </div>
                                     <span className="font-medium">5-minute updates</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-foreground">
-                                    <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 dark:bg-primary/20">
-                                        <Mail className="h-4 w-4 text-primary" />
+                                    <div className="flex items-center justify-center w-6 h-6 rounded-md bg-green-500/10 dark:bg-green-400/20">
+                                        <Mail className="h-4 w-4 text-green-600 dark:text-green-400" />
                                     </div>
                                     <span className="font-medium">Email alerts</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-foreground">
-                                    <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 dark:bg-primary/20">
-                                        <Zap className="h-4 w-4 text-primary" />
+                                    <div className="flex items-center justify-center w-6 h-6 rounded-md bg-green-500/10 dark:bg-green-400/20">
+                                        <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
                                     </div>
                                     <span className="font-medium">All symbols</span>
                                 </div>
@@ -89,7 +89,7 @@ export function AdBanner({ userTier = 'free', className }: AdBannerProps) {
                         <Button
                             onClick={handleUpgrade}
                             size="default"
-                            className="w-full lg:w-auto min-w-[160px] font-semibold shadow-sm hover:shadow-md transition-all"
+                            className="w-full lg:w-auto min-w-[160px] font-semibold shadow-sm hover:shadow-md transition-all bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white"
                         >
                             Upgrade to Pro
                             <ArrowRight className="ml-2 h-4 w-4" />
