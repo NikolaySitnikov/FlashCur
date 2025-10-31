@@ -31,7 +31,7 @@ export const SolanaProvider: FC<PropsWithChildren> = ({ children }) => {
       }) as any)
     }
     return list
-  }, [projectId])
+  }, [projectId, publicUrl])
 
   return (
     <ConnectionProvider endpoint={ENDPOINT}>

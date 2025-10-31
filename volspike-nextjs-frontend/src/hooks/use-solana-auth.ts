@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -26,51 +26,134 @@ export function useSolanaAuth(): UseSolanaAuthResult {
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Detect if we're in Phantom in-app browser (shouldn't happen, but handle gracefully)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isPhantomBrowser = /Phantom/i.test(navigator.userAgent)
+      if (isPhantomBrowser && window.location.pathname === '/auth') {
+        console.warn('[SolanaAuth] Detected Phantom in-app browser. User should use regular browser.')
+      }
+    }
+  }, [])
+
   const signInWithSolana = async () => {
     try {
       setError(null)
-      if (typeof window !== 'undefined') {
-        // Debug: surface environment
-        console.log('[SolanaAuth] UA:', navigator.userAgent)
-      }
+      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      
+      console.log('[SolanaAuth] Starting sign-in flow', { isMobile, connected, hasPublicKey: !!publicKey, walletName: wallet?.adapter?.name })
+
       if (!connected || !publicKey) {
         setIsConnecting(true)
-        // If no wallet is selected yet, prefer WalletConnect on mobile, Phantom on desktop
-        if (!wallet) {
-          const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-          try {
-            select?.(isMobile ? (WalletConnectWalletName as any) : (PhantomWalletName as any))
-          } catch {}
+        try {
+          const hasPhantomExtension = typeof window !== 'undefined' && !!(window as any)?.phantom?.solana?.isPhantom
+          
+          // On mobile, Phantom extension doesn't exist - use WalletConnect
+          // On desktop, prefer Phantom extension if available
+          let targetAdapter = PhantomWalletName
+          if (isMobile && !hasPhantomExtension) {
+            console.log('[SolanaAuth] Mobile detected without Phantom extension, using WalletConnect')
+            targetAdapter = WalletConnectWalletName as any
+          } else if (!isMobile && !hasPhantomExtension) {
+            console.log('[SolanaAuth] Desktop without Phantom extension, using WalletConnect')
+            targetAdapter = WalletConnectWalletName as any
+          }
+
+          if (!wallet || wallet.adapter.name !== targetAdapter) {
+            console.log('[SolanaAuth] Selecting adapter:', targetAdapter)
+            select?.(targetAdapter as any)
+            // Small delay to ensure selection takes effect
+            await new Promise(resolve => setTimeout(resolve, 200))
+          }
+
+          console.log('[SolanaAuth] Attempting to connect with', wallet?.adapter?.name || targetAdapter)
+          await connect?.()
+          
+          // Wait a bit for connection state to update
+          await new Promise(resolve => setTimeout(resolve, 300))
+          
+          console.log('[SolanaAuth] Connect completed', { 
+            connected, 
+            hasPublicKey: !!publicKey, 
+            walletName: wallet?.adapter?.name 
+          })
+        } catch (connectError: any) {
+          console.error('[SolanaAuth] Connect error:', connectError)
+          // If Phantom failed on mobile, try WalletConnect as fallback
+          if (isMobile && wallet?.adapter?.name === PhantomWalletName) {
+            console.log('[SolanaAuth] Phantom failed on mobile, trying WalletConnect fallback...')
+            try {
+              select?.(WalletConnectWalletName as any)
+              await new Promise(resolve => setTimeout(resolve, 200))
+              await connect?.()
+              await new Promise(resolve => setTimeout(resolve, 300))
+            } catch (fallbackError: any) {
+              console.error('[SolanaAuth] WalletConnect fallback also failed:', fallbackError)
+              throw new Error('Failed to connect wallet. Please ensure Phantom app is installed or try again.')
+            }
+          } else {
+            throw new Error(connectError?.message || 'Failed to connect Phantom. Please ensure Phantom is installed.')
+          }
+        } finally {
+          setIsConnecting(false)
         }
-        await connect?.()
-        setIsConnecting(false)
       }
-      if (!publicKey) throw new Error('Please connect Phantom first')
-      if (!signMessage) throw new Error('Wallet does not support message signing')
+
+      if (!publicKey) {
+        console.error('[SolanaAuth] No public key after connection attempt')
+        throw new Error('Please connect Phantom first')
+      }
+      if (!signMessage) {
+        console.error('[SolanaAuth] Wallet does not support message signing')
+        throw new Error('Wallet does not support message signing')
+      }
 
       const address = publicKey.toBase58()
+      console.log('[SolanaAuth] Wallet connected, address:', address)
 
       // 1) Nonce
+      console.log('[SolanaAuth] Fetching nonce...')
       const nonceRes = await fetch(`${API_URL}/auth/solana/nonce`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address })
       })
-      if (!nonceRes.ok) throw new Error('Failed to get nonce')
+      if (!nonceRes.ok) {
+        const errorText = await nonceRes.text().catch(() => 'Unknown error')
+        console.error('[SolanaAuth] Nonce fetch failed:', nonceRes.status, errorText)
+        throw new Error(`Failed to get nonce: ${errorText}`)
+      }
       const { nonce } = await nonceRes.json()
+      console.log('[SolanaAuth] Nonce received:', nonce)
 
       // 2) Prepare message
       const chainId = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet' ? '103' : '101'
+      console.log('[SolanaAuth] Preparing message...', { address, chainId, nonce })
       const prepRes = await fetch(`${API_URL}/auth/solana/prepare?address=${address}&chainId=${chainId}&nonce=${nonce}`)
-      if (!prepRes.ok) throw new Error('Failed to prepare message')
+      if (!prepRes.ok) {
+        const errorText = await prepRes.text().catch(() => 'Unknown error')
+        console.error('[SolanaAuth] Prepare message failed:', prepRes.status, errorText)
+        throw new Error(`Failed to prepare message: ${errorText}`)
+      }
       const { message } = await prepRes.json()
+      console.log('[SolanaAuth] Message prepared:', message.substring(0, 50) + '...')
 
       // 3) Sign
+      console.log('[SolanaAuth] Requesting signature...')
       setIsSigning(true)
-      const signature = await signMessage!(new TextEncoder().encode(message))
-      setIsSigning(false)
+      let signature: Uint8Array
+      try {
+        signature = await signMessage!(new TextEncoder().encode(message))
+        console.log('[SolanaAuth] Signature received:', base58.encode(signature).substring(0, 20) + '...')
+      } catch (signError: any) {
+        console.error('[SolanaAuth] Sign error:', signError)
+        throw new Error(signError?.message || 'Failed to sign message. Please approve in Phantom.')
+      } finally {
+        setIsSigning(false)
+      }
 
       // 4) Verify
+      console.log('[SolanaAuth] Verifying signature...')
       setIsAuthenticating(true)
       const verifyRes = await fetch(`${API_URL}/auth/solana/verify`, {
         method: 'POST',
@@ -80,20 +163,29 @@ export function useSolanaAuth(): UseSolanaAuthResult {
       setIsAuthenticating(false)
 
       if (!verifyRes.ok) {
-        const e = await verifyRes.json().catch(() => ({}))
-        throw new Error(e?.error || 'Authentication failed')
+        const e = await verifyRes.json().catch(() => ({ error: `HTTP ${verifyRes.status}` }))
+        console.error('[SolanaAuth] Verify failed:', verifyRes.status, e)
+        throw new Error(e?.error || `Authentication failed: ${verifyRes.status}`)
       }
 
       const { token, user } = await verifyRes.json()
+      console.log('[SolanaAuth] Verification successful, signing in with NextAuth...', { hasToken: !!token, walletAddress: user?.walletAddress })
+      
       const signInResult = await signIn('siwe', { redirect: false, token, walletAddress: user.walletAddress })
+      console.log('[SolanaAuth] NextAuth result:', signInResult)
 
       if ((signInResult as any)?.ok) {
+        console.log('[SolanaAuth] Sign-in successful, redirecting to dashboard')
         router.push('/dashboard')
       } else {
-        throw new Error((signInResult as any)?.error || 'NextAuth sign-in failed')
+        const errorMsg = (signInResult as any)?.error || 'NextAuth sign-in failed'
+        console.error('[SolanaAuth] NextAuth sign-in failed:', errorMsg)
+        throw new Error(errorMsg)
       }
     } catch (e: any) {
-      setError(e?.message || 'Failed to authenticate with Phantom')
+      const errorMessage = e?.message || 'Failed to authenticate with Phantom'
+      console.error('[SolanaAuth] Error in sign-in flow:', errorMessage, e)
+      setError(errorMessage)
       setIsConnecting(false)
       setIsSigning(false)
       setIsAuthenticating(false)
