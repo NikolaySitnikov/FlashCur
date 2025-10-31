@@ -837,10 +837,19 @@ auth.post('/phantom/dl/sign-url', async (c) => {
     try {
         cleanupPhantomStateStore()
         const { state, message, appUrl, redirect } = await c.req.json()
-        if (!state || !message) return c.json({ error: 'Invalid payload' }, 400)
+        if (!state || !message) {
+            logger.warn(`[PhantomDL] sign-url: missing state or message`)
+            return c.json({ error: 'Invalid payload' }, 400)
+        }
         const rec = phantomStateStore.get(state)
-        if (!rec) return c.json({ error: 'Invalid or expired state' }, 400)
-        if (!rec.session || !rec.phantomPubKey) return c.json({ error: 'Missing Phantom session' }, 400)
+        if (!rec) {
+            logger.warn(`[PhantomDL] sign-url: invalid or expired state=${state}`)
+            return c.json({ error: 'Invalid or expired state' }, 400)
+        }
+        if (!rec.session || !rec.phantomPubKey) {
+            logger.warn(`[PhantomDL] sign-url: missing session or phantomPubKey for state=${state}`)
+            return c.json({ error: 'Missing Phantom session' }, 400)
+        }
         const origin = appUrl || (process.env.FRONTEND_URL || 'http://localhost:3000')
         const redirectBase = redirect || `${origin}/auth/phantom-callback`
         const redirectLink = `${redirectBase}?state=${encodeURIComponent(state)}`
@@ -856,8 +865,10 @@ auth.post('/phantom/dl/sign-url', async (c) => {
             cluster: process.env.SOLANA_CLUSTER === 'devnet' ? 'devnet' : 'mainnet-beta'
         })
         const url = `https://phantom.app/ul/v1/signMessage?${params.toString()}`
+        logger.info(`[PhantomDL] sign-url built successfully for state=${state}, redirectLink=${redirectLink}`)
         return c.json({ url })
-    } catch (e) {
+    } catch (e: any) {
+        logger.error(`[PhantomDL] sign-url error:`, e)
         return c.json({ error: 'Failed to build sign url' }, 500)
     }
 })

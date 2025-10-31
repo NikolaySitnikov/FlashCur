@@ -39,40 +39,61 @@ export default function PhantomCallbackPage() {
           // After connect, start sign flow automatically using your backend prepare message
           const address = handled.result?.address as string
           if (!address) throw new Error('Missing wallet address')
+          
+          // Store address for later use
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('solana_address', address)
+          }
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('solana_address', address)
+          }
+          
           // 1) nonce
           const nonceRes = await fetch(`${API_URL}/auth/solana/nonce`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address })
           })
-          if (!nonceRes.ok) throw new Error('Failed to get nonce')
+          if (!nonceRes.ok) {
+            const errorData = await nonceRes.json().catch(() => ({}))
+            throw new Error(errorData.error || 'Failed to get nonce')
+          }
           const { nonce } = await nonceRes.json()
+          
           // 2) prepare
           const chainId = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet' ? '103' : '101'
           const prepRes = await fetch(`${API_URL}/auth/solana/prepare?address=${address}&chainId=${chainId}&nonce=${nonce}`)
-          if (!prepRes.ok) throw new Error('Failed to prepare message')
+          if (!prepRes.ok) {
+            const errorData = await prepRes.json().catch(() => ({}))
+            throw new Error(errorData.error || 'Failed to prepare message')
+          }
           const { message } = await prepRes.json()
+          
           // 3) deep-link to sign (return URL and navigate, with fallback button)
           const { url } = await continueIOSSignDeepLink(message)
-          // Prefer custom scheme in non-Safari browsers and require user gesture
-          const targetUrl = pickBestPhantomUrl(url)
-          // Try to navigate immediately
-          window.location.href = targetUrl
-          // Fallback: if we haven't left the page in 1200ms, show a manual button
-          setTimeout(() => {
-            if (document.visibilityState === 'visible') {
-              setError(`Tap to continue in Phantom`)
-              const a = document.createElement('a')
-              a.href = targetUrl
-              a.textContent = 'Open Phantom to sign'
-              a.className = 'text-green-400 underline'
-              const container = document.getElementById('phantom-cta')
-              if (container) {
-                container.innerHTML = ''
-                container.appendChild(a)
-              }
+          // For signMessage requests, always use universal links (not deep links)
+          // Deep links work for connect but can break sign flow redirect handling
+          const targetUrl = url // Use universal link directly for sign requests
+          
+          // On iOS third-party browsers, user interaction is required to open Phantom
+          // Show a prominent button that the user must click
+          const container = document.getElementById('phantom-cta')
+          if (container) {
+            container.innerHTML = ''
+            const button = document.createElement('button')
+            button.type = 'button'
+            button.onclick = () => {
+              window.location.href = targetUrl
             }
-          }, 1200)
+            button.textContent = 'Tap to sign in Phantom'
+            button.className = 'text-green-400 bg-transparent border-2 border-green-400/60 rounded-lg px-6 py-3 text-lg font-medium hover:bg-green-500/10 transition-colors cursor-pointer'
+            button.style.display = 'block'
+            button.style.marginTop = '1rem'
+            container.appendChild(button)
+          } else {
+            // Fallback: direct navigation (may not work on iOS third-party browsers)
+            window.location.href = targetUrl
+          }
           return
         }
 
