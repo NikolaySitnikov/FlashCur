@@ -15,10 +15,21 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/backend'
 
+type DebugInfo = {
+  search?: Record<string, string>
+  hash?: Record<string, string>
+  merged?: Record<string, string>
+  url?: string
+  hasStateInUrl?: boolean
+  stateFromStorage?: string | null
+  missingParams?: string[]
+  error?: string
+}
+
 export default function PhantomCallbackPage() {
   const router = useRouter()
   const [error, setError] = useState<string>('')
-  const [debugInfo, setDebugInfo] = useState<any>(null)
+  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
 
   useEffect(() => {
     (async () => {
