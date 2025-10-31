@@ -12,10 +12,29 @@ const SK_INTENT = 'phantom_intent' // 'connect' | 'sign'
 const SK_MESSAGE = 'phantom_message'
 const SK_ADDRESS = 'solana_address'
 
+// Cookie helpers (as last-resort cross-tab persistence on iOS)
+function setCookie(key: string, value: string, maxAgeSec = 300) {
+  try {
+    document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSec}; SameSite=Lax`;
+  } catch {}
+}
+function getCookie(key: string): string | null {
+  try {
+    const name = encodeURIComponent(key) + '='
+    const parts = (document.cookie || '').split(';')
+    for (const raw of parts) {
+      const c = raw.trim()
+      if (c.startsWith(name)) return decodeURIComponent(c.substring(name.length))
+    }
+  } catch {}
+  return null
+}
+
 // Robust storage helpers to survive iOS returning in a new tab
 function setKV(key: string, value: string) {
   try { localStorage.setItem(key, value) } catch {}
   try { sessionStorage.setItem(key, value) } catch {}
+  setCookie(key, value)
 }
 function getKV(key: string): string | null {
   try {
@@ -25,11 +44,13 @@ function getKV(key: string): string | null {
   try {
     return sessionStorage.getItem(key)
   } catch {}
-  return null
+  const fromCookie = getCookie(key)
+  return fromCookie
 }
 function removeKV(key: string) {
   try { localStorage.removeItem(key) } catch {}
   try { sessionStorage.removeItem(key) } catch {}
+  setCookie(key, '', -1)
 }
 
 export type PhantomIntent = 'connect' | 'sign'
