@@ -15,13 +15,9 @@ export const SolanaProvider: FC<PropsWithChildren> = ({ children }) => {
   // Use an https origin for mobile deep linking callbacks
   const publicUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://volspike.com')
   const wallets = useMemo(() => {
-    // Phantom adapter automatically handles mobile deep linking via universal links
-    // No configuration needed - it detects mobile and uses phantom:// or https://phantom.app/ul/
+    // Always provide both adapters. Phantom handles mobile deep link automatically; WC is a fallback
     const list: any[] = [new PhantomWalletAdapter()]
-
-    // Do NOT include WalletConnect on mobile to avoid showing the modal; Phantom handles deep link
-    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-    if (projectId && !isMobile) {
+    if (projectId) {
       list.push(new WalletConnectWalletAdapter({
         network: DEFAULT_CLUSTER as any,
         options: {

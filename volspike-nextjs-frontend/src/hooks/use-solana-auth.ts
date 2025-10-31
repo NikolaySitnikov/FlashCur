@@ -40,15 +40,14 @@ export function useSolanaAuth(): UseSolanaAuthResult {
     try {
       setError(null)
       const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      const isDesktop = !isMobile
       
       console.log('[SolanaAuth] Starting sign-in flow', { isMobile, connected, hasPublicKey: !!publicKey, walletName: wallet?.adapter?.name })
 
       if (!connected || !publicKey) {
         setIsConnecting(true)
         try {
-          // Always try Phantom adapter first - it handles mobile deep linking automatically
-          // Phantom adapter uses universal links on mobile (phantom:// or https://phantom.app/ul/)
-          // and extension on desktop
+          // Always try Phantom adapter first - it handles mobile deep linking on mobile, extension on desktop
           if (!wallet || wallet.adapter.name !== PhantomWalletName) {
             console.log('[SolanaAuth] Selecting Phantom adapter (handles mobile deep linking automatically)')
             select?.(PhantomWalletName as any)
@@ -57,6 +56,13 @@ export function useSolanaAuth(): UseSolanaAuthResult {
           }
 
           console.log('[SolanaAuth] Attempting to connect with Phantom adapter...')
+          const adapter: any = wallet?.adapter
+          // Desktop: require installed extension; avoid calling connect() on a non-ready adapter
+          const readyState: string | undefined = adapter?.readyState
+          if (isDesktop && readyState && readyState !== 'Installed') {
+            throw new Error('Phantom extension not detected')
+          }
+
           await connect?.()
 
           // Wait for adapter publicKey to populate to avoid double-click issue on desktop
