@@ -77,7 +77,7 @@ export function useSolanaAuth(): UseSolanaAuthResult {
             select?.(targetName as any)
           }
 
-          console.log('[SolanaAuth] Connecting using adapter:', targetAdapter?.name, { isIOS, isAndroid })
+          console.log('[SolanaAuth] Connecting using adapter:', targetAdapter?.name, { isiOS, isAndroid })
           await targetAdapter?.connect?.()
 
           // Wait for adapter publicKey to populate
@@ -142,8 +142,8 @@ export function useSolanaAuth(): UseSolanaAuthResult {
 
       const effectivePublicKey = adapter?.publicKey || wallet?.adapter?.publicKey || publicKey
       if (!effectivePublicKey) {
-        console.error('[SolanaAuth] No public key after connection attempt', { isIOS, isAndroid, adapterName: adapter?.name })
-        if (isIOS) {
+        console.error('[SolanaAuth] No public key after connection attempt', { isiOS, isAndroid, adapterName: adapter?.name })
+        if (isiOS) {
           throw new Error('Please approve the request in Phantom, then return here')
         }
         throw new Error('Please connect Phantom first')
