@@ -12,10 +12,14 @@ const ENDPOINT = DEFAULT_CLUSTER === 'devnet'
 
 export const SolanaProvider: FC<PropsWithChildren> = ({ children }) => {
   const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
-  // Use an https origin for WalletConnect metadata to improve mobile return behaviour
-  const publicUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://volspike.com'
+  // Use an https origin for mobile deep linking callbacks
+  const publicUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://volspike.com')
   const wallets = useMemo(() => {
+    // Phantom adapter automatically handles mobile deep linking via universal links
+    // No configuration needed - it detects mobile and uses phantom:// or https://phantom.app/ul/
     const list: any[] = [new PhantomWalletAdapter()]
+    
+    // WalletConnect only as fallback
     if (projectId) {
       list.push(new WalletConnectWalletAdapter({
         network: DEFAULT_CLUSTER as any,
