@@ -204,15 +204,13 @@ export async function startIOSConnectDeepLink(): Promise<void> {
 export async function continueIOSSignDeepLink(message: string): Promise<{ url: string }> {
   const origin = getPublicOrigin()
   const state = getKV('phantom_state')
-  const phantomPub58 = getKV(SK_PHANTOM_PUB)
-  const session = getKV(SK_SESSION)
-  if (!state || !phantomPub58 || !session) throw new Error('Missing Phantom session')
+  if (!state) throw new Error('Missing Phantom state')
   setIntent('sign')
   saveMessageToSign(message)
   const res = await fetch(`${API_URL}/auth/phantom/dl/sign-url`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ state, phantomPubKey58: phantomPub58, session, message, appUrl: origin, redirect: `${origin}/auth/phantom-callback` })
+    body: JSON.stringify({ state, message, appUrl: origin, redirect: `${origin}/auth/phantom-callback` })
   })
   const { url, error } = await res.json()
   if (error || !url) throw new Error(error || 'Failed to build sign link')

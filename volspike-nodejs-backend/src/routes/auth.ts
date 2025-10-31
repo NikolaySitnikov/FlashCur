@@ -756,7 +756,7 @@ export { auth as authRoutes }
 // Phantom Deep Link (iOS) Support
 // =============================
 
-type PhantomStateRecord = { secretKey: Uint8Array; publicKey: Uint8Array; createdAt: number }
+type PhantomStateRecord = { secretKey: Uint8Array; publicKey: Uint8Array; createdAt: number; session?: string; phantomPubKey?: Uint8Array }
 const phantomStateStore = new Map<string, PhantomStateRecord>()
 const PHANTOM_STATE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
@@ -836,16 +836,17 @@ auth.post('/phantom/dl/start', async (c) => {
 auth.post('/phantom/dl/sign-url', async (c) => {
     try {
         cleanupPhantomStateStore()
-        const { state, phantomPubKey58, session, message, appUrl, redirect } = await c.req.json()
-        if (!state || !phantomPubKey58 || !session || !message) return c.json({ error: 'Invalid payload' }, 400)
+        const { state, message, appUrl, redirect } = await c.req.json()
+        if (!state || !message) return c.json({ error: 'Invalid payload' }, 400)
         const rec = phantomStateStore.get(state)
         if (!rec) return c.json({ error: 'Invalid or expired state' }, 400)
+        if (!rec.session || !rec.phantomPubKey) return c.json({ error: 'Missing Phantom session' }, 400)
         const origin = appUrl || (process.env.FRONTEND_URL || 'http://localhost:3000')
         const redirectBase = redirect || `${origin}/auth/phantom-callback`
         const redirectLink = `${redirectBase}?state=${encodeURIComponent(state)}`
-        const shared = computeSharedSecret(bs58.decode(phantomPubKey58), rec.secretKey)
+        const shared = computeSharedSecret(rec.phantomPubKey, rec.secretKey)
         const messageBytes58 = bs58.encode(new TextEncoder().encode(message))
-        const { payload58, nonce58 } = encryptPayload(shared, { session, message: messageBytes58 })
+        const { payload58, nonce58 } = encryptPayload(shared, { session: rec.session, message: messageBytes58 })
         const params = new URLSearchParams({
             app_url: origin,
             dapp_encryption_public_key: bs58.encode(rec.publicKey),
@@ -876,6 +877,15 @@ auth.post('/phantom/dl/decrypt', async (c) => {
             return c.json({ error: 'Decryption failed' }, 400)
         }
         const stage = data.signature ? 'sign' : (data.session && data.public_key ? 'connect' : 'unknown')
+        // Persist session + phantom pubkey on connect stage
+        if (stage === 'connect') {
+            const rec = phantomStateStore.get(state)
+            if (rec) {
+                rec.session = data.session
+                try { rec.phantomPubKey = bs58.decode(phantom_encryption_public_key) } catch {}
+                phantomStateStore.set(state, rec)
+            }
+        }
         logger.info(`[PhantomDL] decrypt ok state=${state} stage=${stage}`)
         return c.json({ ok: true, data })
     } catch (e) {
