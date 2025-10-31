@@ -18,9 +18,10 @@ export const SolanaProvider: FC<PropsWithChildren> = ({ children }) => {
     // Phantom adapter automatically handles mobile deep linking via universal links
     // No configuration needed - it detects mobile and uses phantom:// or https://phantom.app/ul/
     const list: any[] = [new PhantomWalletAdapter()]
-    
-    // WalletConnect only as fallback
-    if (projectId) {
+
+    // Do NOT include WalletConnect on mobile to avoid showing the modal; Phantom handles deep link
+    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    if (projectId && !isMobile) {
       list.push(new WalletConnectWalletAdapter({
         network: DEFAULT_CLUSTER as any,
         options: {

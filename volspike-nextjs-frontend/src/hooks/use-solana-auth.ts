@@ -110,7 +110,9 @@ export function useSolanaAuth(): UseSolanaAuthResult {
         console.error('[SolanaAuth] No public key after connection attempt')
         throw new Error('Please connect Phantom first')
       }
-      if (!signMessage) {
+      // Use the adapter's signMessage after connect (prevents first-click undefined case)
+      const adapterSignMessage = (wallet?.adapter as any)?.signMessage || signMessage
+      if (!adapterSignMessage) {
         console.error('[SolanaAuth] Wallet does not support message signing')
         throw new Error('Wallet does not support message signing')
       }
@@ -150,7 +152,7 @@ export function useSolanaAuth(): UseSolanaAuthResult {
       setIsSigning(true)
       let signature: Uint8Array
       try {
-        signature = await signMessage!(new TextEncoder().encode(message))
+        signature = await adapterSignMessage!(new TextEncoder().encode(message))
         console.log('[SolanaAuth] Signature received:', base58.encode(signature).substring(0, 20) + '...')
       } catch (signError: any) {
         console.error('[SolanaAuth] Sign error:', signError)
