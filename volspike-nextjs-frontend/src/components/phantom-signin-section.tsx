@@ -6,10 +6,19 @@ import { useSolanaAuth } from '@/hooks/use-solana-auth'
 
 export function PhantomSignInSection() {
   const { isConnecting, isSigning, isAuthenticating, error, signInWithSolana } = useSolanaAuth()
+  const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
   return (
     <div className="space-y-2 mt-2">
-      {/* Always show button - WalletConnect handles mobile deep linking to Phantom app, not browser */}
+      {/* Desktop UX: if Phantom extension is not present, show Install link instead of a broken button */}
+      {!isMobile && typeof window !== 'undefined' && !(window as any)?.phantom?.solana?.isPhantom ? (
+        <p className="text-center text-xs text-muted-foreground">
+          Phantom not detected.{' '}
+          <a href="https://phantom.app/download" target="_blank" rel="noreferrer" className="underline">Install Phantom</a>
+          {' '}to use this option.
+        </p>
+      ) : (
+      /* Mobile: WalletConnect handles deep link to the Phantom app and returns to the browser */
       <Button
         onClick={signInWithSolana}
         disabled={isConnecting || isSigning || isAuthenticating}
@@ -25,6 +34,7 @@ export function PhantomSignInSection() {
           'Sign In with Phantom'
         )}
       </Button>
+      )}
       {error && (
         <p className="text-xs text-red-400 text-center">{error}</p>
       )}
