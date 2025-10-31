@@ -250,13 +250,15 @@ export async function tryHandleCallbackOnServer(params: URLSearchParams): Promis
   // Persist state in the current browser so the subsequent sign step can find it
   setKV('phantom_state', state)
 
+  // Phantom may send 'data' or 'payload' parameter - send both to backend for flexibility
   const res = await fetch(`${API_URL}/auth/phantom/dl/decrypt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ 
       state, 
       phantom_encryption_public_key: phantomPubKey58 || undefined, // Optional for sign stage
-      payload: payload58, 
+      payload: payload58 || undefined,
+      data: payload58 || undefined, // Some Phantom redirects use 'data' instead of 'payload'
       nonce: nonce58 
     })
   })

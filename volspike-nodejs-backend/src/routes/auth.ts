@@ -882,12 +882,17 @@ auth.post('/phantom/dl/decrypt', async (c) => {
         for (const [k, v] of phantomStateStore.entries()) {
             if (now - v.createdAt > PHANTOM_STATE_TTL_MS) phantomStateStore.delete(k)
         }
-        const { state, phantom_encryption_public_key, payload, nonce } = await c.req.json()
-        if (!state || !payload || !nonce) {
+        const body = await c.req.json()
+        const { state, phantom_encryption_public_key, payload, data, nonce } = body
+        // Phantom may send 'data' or 'payload' - accept both
+        const payloadValue = payload || data
+        if (!state || !payloadValue || !nonce) {
             logger.warn(`[PhantomDL] decrypt: missing required params`, { 
                 hasState: !!state, 
                 hasPubKey: !!phantom_encryption_public_key, 
-                hasPayload: !!payload, 
+                hasPayload: !!payload,
+                hasData: !!data,
+                hasPayloadValue: !!payloadValue,
                 hasNonce: !!nonce 
             })
             return c.json({ error: 'Invalid payload' }, 400)
@@ -911,27 +916,27 @@ auth.post('/phantom/dl/decrypt', async (c) => {
             return c.json({ error: 'Missing phantom encryption public key' }, 400)
         }
         const shared = computeSharedSecret(phantomPubKeyToUse, rec.secretKey)
-        const data = decryptPayload(shared, payload, nonce)
-        if (!data) {
+        const decryptedData = decryptPayload(shared, payloadValue, nonce)
+        if (!decryptedData) {
             logger.warn(`[PhantomDL] decrypt failed for state=${state}`)
             return c.json({ error: 'Decryption failed' }, 400)
         }
-        const stage = data.signature ? 'sign' : (data.session && data.public_key ? 'connect' : 'unknown')
+        const stage = decryptedData.signature ? 'sign' : (decryptedData.session && decryptedData.public_key ? 'connect' : 'unknown')
         // Persist session + phantom pubkey on connect stage
         if (stage === 'connect') {
             const rec = phantomStateStore.get(state)
             if (rec) {
-                rec.session = data.session
-                try { rec.phantomPubKey = bs58.decode(phantom_encryption_public_key) } catch {}
+                rec.session = decryptedData.session
+                try { rec.phantomPubKey = bs58.decode(phantom_encryption_public_key || '') } catch {}
                 phantomStateStore.set(state, rec)
             }
         }
         logger.info(`[PhantomDL] decrypt ok state=${state} stage=${stage}`, { 
-            hasSignature: !!data.signature, 
-            hasSession: !!data.session, 
-            hasPublicKey: !!data.public_key 
+            hasSignature: !!decryptedData.signature, 
+            hasSession: !!decryptedData.session, 
+            hasPublicKey: !!decryptedData.public_key 
         })
-        return c.json({ ok: true, data })
+        return c.json({ ok: true, data: decryptedData })
     } catch (e: any) {
         logger.error(`[PhantomDL] decrypt error:`, e)
         return c.json({ error: 'Failed to decrypt' }, 500)
