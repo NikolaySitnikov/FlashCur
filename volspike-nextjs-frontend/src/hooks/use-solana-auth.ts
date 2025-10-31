@@ -46,31 +46,21 @@ export function useSolanaAuth(): UseSolanaAuthResult {
       if (!connected || !publicKey) {
         setIsConnecting(true)
         try {
-          const hasPhantomExtension = typeof window !== 'undefined' && !!(window as any)?.phantom?.solana?.isPhantom
-          
-          // On mobile, Phantom extension doesn't exist - use WalletConnect
-          // On desktop, prefer Phantom extension if available
-          let targetAdapter = PhantomWalletName
-          if (isMobile && !hasPhantomExtension) {
-            console.log('[SolanaAuth] Mobile detected without Phantom extension, using WalletConnect')
-            targetAdapter = WalletConnectWalletName as any
-          } else if (!isMobile && !hasPhantomExtension) {
-            console.log('[SolanaAuth] Desktop without Phantom extension, using WalletConnect')
-            targetAdapter = WalletConnectWalletName as any
-          }
-
-          if (!wallet || wallet.adapter.name !== targetAdapter) {
-            console.log('[SolanaAuth] Selecting adapter:', targetAdapter)
-            select?.(targetAdapter as any)
+          // Always try Phantom adapter first - it handles mobile deep linking automatically
+          // Phantom adapter uses universal links on mobile (phantom:// or https://phantom.app/ul/)
+          // and extension on desktop
+          if (!wallet || wallet.adapter.name !== PhantomWalletName) {
+            console.log('[SolanaAuth] Selecting Phantom adapter (handles mobile deep linking automatically)')
+            select?.(PhantomWalletName as any)
             // Small delay to ensure selection takes effect
             await new Promise(resolve => setTimeout(resolve, 200))
           }
 
-          console.log('[SolanaAuth] Attempting to connect with', wallet?.adapter?.name || targetAdapter)
+          console.log('[SolanaAuth] Attempting to connect with Phantom adapter...')
           await connect?.()
           
-          // Wait a bit for connection state to update
-          await new Promise(resolve => setTimeout(resolve, 300))
+          // Wait a bit for connection state to update (longer on mobile for deep link navigation)
+          await new Promise(resolve => setTimeout(resolve, isMobile ? 1000 : 300))
           
           console.log('[SolanaAuth] Connect completed', { 
             connected, 
@@ -78,21 +68,18 @@ export function useSolanaAuth(): UseSolanaAuthResult {
             walletName: wallet?.adapter?.name 
           })
         } catch (connectError: any) {
-          console.error('[SolanaAuth] Connect error:', connectError)
-          // If Phantom failed on mobile, try WalletConnect as fallback
-          if (isMobile && wallet?.adapter?.name === PhantomWalletName) {
-            console.log('[SolanaAuth] Phantom failed on mobile, trying WalletConnect fallback...')
-            try {
-              select?.(WalletConnectWalletName as any)
-              await new Promise(resolve => setTimeout(resolve, 200))
-              await connect?.()
-              await new Promise(resolve => setTimeout(resolve, 300))
-            } catch (fallbackError: any) {
-              console.error('[SolanaAuth] WalletConnect fallback also failed:', fallbackError)
-              throw new Error('Failed to connect wallet. Please ensure Phantom app is installed or try again.')
-            }
-          } else {
-            throw new Error(connectError?.message || 'Failed to connect Phantom. Please ensure Phantom is installed.')
+          console.error('[SolanaAuth] Phantom adapter connect error:', connectError)
+          // Only fall back to WalletConnect if Phantom explicitly fails
+          // This should rarely happen - Phantom adapter handles mobile deep links natively
+          console.log('[SolanaAuth] Trying WalletConnect as fallback...')
+          try {
+            select?.(WalletConnectWalletName as any)
+            await new Promise(resolve => setTimeout(resolve, 200))
+            await connect?.()
+            await new Promise(resolve => setTimeout(resolve, 300))
+          } catch (fallbackError: any) {
+            console.error('[SolanaAuth] WalletConnect fallback also failed:', fallbackError)
+            throw new Error('Failed to connect wallet. Please ensure Phantom app is installed or try again.')
           }
         } finally {
           setIsConnecting(false)
