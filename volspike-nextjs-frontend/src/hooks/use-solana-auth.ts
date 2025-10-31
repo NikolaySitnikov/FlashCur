@@ -58,35 +58,55 @@ export function useSolanaAuth(): UseSolanaAuthResult {
 
           console.log('[SolanaAuth] Attempting to connect with Phantom adapter...')
           await connect?.()
-          
-          // Wait a bit for connection state to update (longer on mobile for deep link navigation)
-          await new Promise(resolve => setTimeout(resolve, isMobile ? 1000 : 300))
-          
-          console.log('[SolanaAuth] Connect completed', { 
-            connected, 
-            hasPublicKey: !!publicKey, 
-            walletName: wallet?.adapter?.name 
+
+          // Wait for adapter publicKey to populate to avoid double-click issue on desktop
+          const start = Date.now()
+          while (!wallet?.adapter?.publicKey && Date.now() - start < (isMobile ? 3000 : 1200)) {
+            await new Promise(r => setTimeout(r, 100))
+          }
+
+          console.log('[SolanaAuth] Connect completed', {
+            connected,
+            hasPublicKey: !!(wallet?.adapter?.publicKey || publicKey),
+            walletName: wallet?.adapter?.name
           })
         } catch (connectError: any) {
           console.error('[SolanaAuth] Phantom adapter connect error:', connectError)
           // Only fall back to WalletConnect if Phantom explicitly fails
           // This should rarely happen - Phantom adapter handles mobile deep links natively
-          console.log('[SolanaAuth] Trying WalletConnect as fallback...')
-          try {
-            select?.(WalletConnectWalletName as any)
-            await new Promise(resolve => setTimeout(resolve, 200))
-            await connect?.()
-            await new Promise(resolve => setTimeout(resolve, 300))
-          } catch (fallbackError: any) {
-            console.error('[SolanaAuth] WalletConnect fallback also failed:', fallbackError)
-            throw new Error('Failed to connect wallet. Please ensure Phantom app is installed or try again.')
+          // Mobile: one timed retry with Phantom (user might still be switching apps)
+          if (isMobile) {
+            console.log('[SolanaAuth] Retrying Phantom connect once (mobile deep link)...')
+            try {
+              await new Promise(r => setTimeout(r, 1000))
+              await connect?.()
+              const start2 = Date.now()
+              while (!wallet?.adapter?.publicKey && Date.now() - start2 < 3000) {
+                await new Promise(r => setTimeout(r, 100))
+              }
+            } catch (_) {}
+          }
+
+          // If still not connected, fallback to WalletConnect
+          if (!wallet?.adapter?.publicKey && !publicKey) {
+            console.log('[SolanaAuth] Trying WalletConnect as fallback...')
+            try {
+              select?.(WalletConnectWalletName as any)
+              await new Promise(resolve => setTimeout(resolve, 200))
+              await connect?.()
+              await new Promise(resolve => setTimeout(resolve, 300))
+            } catch (fallbackError: any) {
+              console.error('[SolanaAuth] WalletConnect fallback also failed:', fallbackError)
+              throw new Error('Failed to connect wallet. Please ensure Phantom app is installed or try again.')
+            }
           }
         } finally {
           setIsConnecting(false)
         }
       }
 
-      if (!publicKey) {
+      const effectivePublicKey = wallet?.adapter?.publicKey || publicKey
+      if (!effectivePublicKey) {
         console.error('[SolanaAuth] No public key after connection attempt')
         throw new Error('Please connect Phantom first')
       }
@@ -95,7 +115,7 @@ export function useSolanaAuth(): UseSolanaAuthResult {
         throw new Error('Wallet does not support message signing')
       }
 
-      const address = publicKey.toBase58()
+      const address = effectivePublicKey.toBase58()
       console.log('[SolanaAuth] Wallet connected, address:', address)
 
       // 1) Nonce
