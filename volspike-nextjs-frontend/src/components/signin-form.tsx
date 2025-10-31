@@ -116,7 +116,8 @@ export function SigninForm({ onSuccess, isAdminMode = false, nextUrl = '/dashboa
                 console.log('[SigninForm] Sign in failed, error:', result?.error)
                 // Fallback: query backend for precise reason (e.g., oauthOnly)
                 try {
-                    const resp = await fetch(`${API_URL}/auth/signin`, {
+                    console.log('[SigninForm] Fallback: Calling backend:', `${API_URL}/api/auth/signin`)
+                    const resp = await fetch(`${API_URL}/api/auth/signin`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email: data.email, password: data.password }),

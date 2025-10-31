@@ -8,6 +8,7 @@ import { Header } from '@/components/header'
 import { MarketTable } from '@/components/market-table'
 import { AlertPanel } from '@/components/alert-panel'
 import { TierUpgrade } from '@/components/tier-upgrade'
+import { AdBanner } from '@/components/ad-banner'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -192,6 +193,10 @@ export function Dashboard() {
 
             <main className="container mx-auto px-4 py-8">
                 <div className="space-y-6">
+                    {/* Advertisement Banner for Free Tier Users */}
+                    {userTier === 'free' && (
+                        <AdBanner userTier={userTier} />
+                    )}
                     <div className="lg:hidden">
                         <Tabs defaultValue="market" className="w-full">
                             <TabsList className="grid grid-cols-2">

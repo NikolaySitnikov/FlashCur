@@ -104,15 +104,21 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
 auth.post('/signin', async (c) => {
     try {
         const body = await c.req.json()
+        logger.info(`[AUTH] /signin request received for: ${body.email}`)
+        
         const { email, password } = signInSchema.parse(body)
+        logger.info(`[AUTH] Schema validation passed for: ${email}`)
 
         const user = await prisma.user.findUnique({
             where: { email },
         })
 
         if (!user) {
+            logger.warn(`[AUTH] User not found: ${email}`)
             return c.json({ error: 'Invalid credentials' }, 401)
         }
+
+        logger.info(`[AUTH] User found: ${user.email}, hasPassword: ${!!user.passwordHash}, emailVerified: ${!!user.emailVerified}, walletAddress: ${!!user.walletAddress}`)
 
         // Check if email is verified (allow wallet users to bypass)
         if (!user.emailVerified && !user.walletAddress) {
@@ -133,11 +139,16 @@ auth.post('/signin', async (c) => {
             }, 401)
         }
 
+        logger.info(`[AUTH] Verifying password for: ${email}`)
         const isValidPassword = await verifyPassword(password, user.passwordHash)
+        logger.info(`[AUTH] Password verification result: ${isValidPassword ? 'VALID' : 'INVALID'}`)
+        
         if (!isValidPassword) {
             logger.warn(`Invalid password attempt for ${email}`)
             return c.json({ error: 'Invalid email or password' }, 401)
         }
+        
+        logger.info(`[AUTH] Password valid, generating token for: ${email}`)
 
         const token = await generateToken(user.id)
 

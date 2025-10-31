@@ -18,6 +18,14 @@ const nextConfig = {
             '@react-native-async-storage/async-storage': false,
             'react-native': false,
         };
+        // Ensure tweetnacl is resolved correctly (CommonJS module)
+        config.resolve.alias = {
+            ...config.resolve.alias,
+        };
+        // Mark tweetnacl as external for client-side only (it's a browser-compatible module)
+        if (!config.resolve.extensionAlias) {
+            config.resolve.extensionAlias = {};
+        }
         return config;
     },
     async headers() {

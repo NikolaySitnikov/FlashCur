@@ -32,7 +32,10 @@ export const authConfig: NextAuthConfig = {
                 }
 
                 try {
-                    const response = await fetch(`${BACKEND_API_URL}/auth/signin`, {
+                    console.log('[NextAuth] Calling backend:', `${BACKEND_API_URL}/api/auth/signin`)
+                    console.log('[NextAuth] Credentials:', { email: credentials.email, hasPassword: !!credentials.password })
+                    
+                    const response = await fetch(`${BACKEND_API_URL}/api/auth/signin`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -42,6 +45,8 @@ export const authConfig: NextAuthConfig = {
                             password: credentials.password,
                         }),
                     })
+                    
+                    console.log('[NextAuth] Response status:', response.status, response.statusText)
 
                     if (!response.ok) {
                         console.error('[NextAuth] Backend signin failed', response.status)
@@ -166,7 +171,8 @@ export const authConfig: NextAuthConfig = {
             if (account?.provider === 'google' && user?.email) {
                 try {
                     // Check if user exists in our database
-                    const response = await fetch(`${BACKEND_API_URL}/auth/oauth-link`, {
+                    console.log('[NextAuth] OAuth linking to:', `${BACKEND_API_URL}/api/auth/oauth-link`)
+                    const response = await fetch(`${BACKEND_API_URL}/api/auth/oauth-link`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
