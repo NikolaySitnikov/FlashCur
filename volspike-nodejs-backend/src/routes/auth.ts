@@ -835,7 +835,8 @@ auth.post('/phantom/dl/start', async (c) => {
 // Build signMessage URL on the server (uses stored ephemeral secret)
 auth.post('/phantom/dl/sign-url', async (c) => {
     try {
-        cleanupPhantomStateStore()
+        // Don't cleanup before checking - we need the state to exist
+        // cleanupPhantomStateStore()
         const { state, message, appUrl, redirect } = await c.req.json()
         if (!state || !message) {
             logger.warn(`[PhantomDL] sign-url: missing state or message`)
@@ -876,11 +877,30 @@ auth.post('/phantom/dl/sign-url', async (c) => {
 // Decrypt payload on the server (works even if different browser handles the redirect)
 auth.post('/phantom/dl/decrypt', async (c) => {
     try {
-        cleanupPhantomStateStore()
+        // Only cleanup expired entries, don't remove active states
+        const now = Date.now()
+        for (const [k, v] of phantomStateStore.entries()) {
+            if (now - v.createdAt > PHANTOM_STATE_TTL_MS) phantomStateStore.delete(k)
+        }
         const { state, phantom_encryption_public_key, payload, nonce } = await c.req.json()
-        if (!state || !phantom_encryption_public_key || !payload || !nonce) return c.json({ error: 'Invalid payload' }, 400)
+        if (!state || !phantom_encryption_public_key || !payload || !nonce) {
+            logger.warn(`[PhantomDL] decrypt: missing required params`, { 
+                hasState: !!state, 
+                hasPubKey: !!phantom_encryption_public_key, 
+                hasPayload: !!payload, 
+                hasNonce: !!nonce 
+            })
+            return c.json({ error: 'Invalid payload' }, 400)
+        }
         const rec = phantomStateStore.get(state)
-        if (!rec) return c.json({ error: 'Invalid or expired state' }, 400)
+        if (!rec) {
+            logger.warn(`[PhantomDL] decrypt: state not found or expired`, { 
+                state, 
+                storeSize: phantomStateStore.size,
+                storeKeys: Array.from(phantomStateStore.keys()).slice(0, 5)
+            })
+            return c.json({ error: 'Invalid or expired state' }, 400)
+        }
         const shared = computeSharedSecret(bs58.decode(phantom_encryption_public_key), rec.secretKey)
         const data = decryptPayload(shared, payload, nonce)
         if (!data) {
@@ -897,9 +917,14 @@ auth.post('/phantom/dl/decrypt', async (c) => {
                 phantomStateStore.set(state, rec)
             }
         }
-        logger.info(`[PhantomDL] decrypt ok state=${state} stage=${stage}`)
+        logger.info(`[PhantomDL] decrypt ok state=${state} stage=${stage}`, { 
+            hasSignature: !!data.signature, 
+            hasSession: !!data.session, 
+            hasPublicKey: !!data.public_key 
+        })
         return c.json({ ok: true, data })
-    } catch (e) {
+    } catch (e: any) {
+        logger.error(`[PhantomDL] decrypt error:`, e)
         return c.json({ error: 'Failed to decrypt' }, 500)
     }
 })

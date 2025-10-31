@@ -29,9 +29,26 @@ export default function PhantomCallbackPage() {
         const merged = new URLSearchParams()
         searchParams.forEach((v, k) => merged.set(k, v))
         hashParams.forEach((v, k) => merged.set(k, v))
+        
+        // Debug: log what parameters we received
+        console.log('[PhantomCallback] Received params:', {
+          search: Object.fromEntries(searchParams),
+          hash: Object.fromEntries(hashParams),
+          merged: Object.fromEntries(merged),
+          url: window.location.href
+        })
+        
         const handled = await tryHandleCallbackOnServer(merged)
         if (!handled) {
-          setError('Invalid Phantom callback payload')
+          // Provide more detailed error message
+          const missing = []
+          if (!merged.get('phantom_encryption_public_key')) missing.push('phantom_encryption_public_key')
+          if (!merged.get('payload') && !merged.get('data')) missing.push('payload/data')
+          if (!merged.get('nonce')) missing.push('nonce')
+          const state = merged.get('state') || (typeof localStorage !== 'undefined' ? localStorage.getItem('phantom_state') : null) || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('phantom_state') : null)
+          if (!state) missing.push('state')
+          setError(`Invalid Phantom callback payload. Missing: ${missing.join(', ')}`)
+          console.error('[PhantomCallback] Missing params:', missing, 'All params:', Object.fromEntries(merged))
           return
         }
 

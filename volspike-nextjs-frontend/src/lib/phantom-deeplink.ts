@@ -221,8 +221,30 @@ export async function tryHandleCallbackOnServer(params: URLSearchParams): Promis
   const phantomPubKey58 = params.get('phantom_encryption_public_key') || ''
   const payload58 = params.get('payload') || params.get('data') || ''
   const nonce58 = params.get('nonce') || ''
-  const state = params.get('state') || getKV('phantom_state') || ''
-  if (!phantomPubKey58 || !payload58 || !nonce58 || !state) return null
+  // Try multiple sources for state: URL param, localStorage, sessionStorage, cookies
+  const stateFromUrl = params.get('state')
+  const stateFromStorage = getKV('phantom_state')
+  const state = stateFromUrl || stateFromStorage || ''
+  
+  console.log('[tryHandleCallbackOnServer] Checking params:', {
+    hasPhantomPubKey: !!phantomPubKey58,
+    hasPayload: !!payload58,
+    hasNonce: !!nonce58,
+    stateFromUrl,
+    stateFromStorage,
+    finalState: state,
+    allParams: Object.fromEntries(params)
+  })
+  
+  if (!phantomPubKey58 || !payload58 || !nonce58 || !state) {
+    console.warn('[tryHandleCallbackOnServer] Missing required params:', {
+      phantomPubKey58: !!phantomPubKey58,
+      payload58: !!payload58,
+      nonce58: !!nonce58,
+      state: !!state
+    })
+    return null
+  }
   // Persist state in the current browser so the subsequent sign step can find it
   setKV('phantom_state', state)
 
