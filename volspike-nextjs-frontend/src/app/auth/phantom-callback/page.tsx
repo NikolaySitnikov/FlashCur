@@ -20,8 +20,14 @@ export default function PhantomCallbackPage() {
   useEffect(() => {
     (async () => {
       try {
-        const params = new URLSearchParams(window.location.search)
-        const handled = await tryHandleCallbackOnServer(params)
+        // Merge query and hash params (Phantom may return via URL fragment)
+        const searchParams = new URLSearchParams(window.location.search)
+        const hash = (window.location.hash || '').replace(/^#/, '')
+        const hashParams = new URLSearchParams(hash)
+        const merged = new URLSearchParams()
+        for (const [k, v] of searchParams.entries()) merged.set(k, v)
+        for (const [k, v] of hashParams.entries()) merged.set(k, v)
+        const handled = await tryHandleCallbackOnServer(merged)
         if (!handled) {
           setError('Invalid Phantom callback payload')
           return

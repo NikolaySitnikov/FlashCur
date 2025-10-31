@@ -784,12 +784,25 @@ function encryptPayload(shared: Uint8Array, obj: unknown) {
 }
 
 function decryptPayload(shared: Uint8Array, payload58: string, nonce58: string) {
-    const payload = bs58.decode(payload58)
-    const nonce = bs58.decode(nonce58)
+    const payload = tryDecode(payload58)
+    const nonce = tryDecode(nonce58)
     const opened = nacl.box.open.after(payload, nonce, shared)
     if (!opened) return null
     const text = new TextDecoder().decode(opened)
     return JSON.parse(text)
+}
+
+// Accept base58, base64, base64url encodings
+function tryDecode(input: string): Uint8Array {
+    try { return bs58.decode(input) } catch { /* fall through */ }
+    try { return Uint8Array.from(Buffer.from(input, 'base64')) } catch { /* fall through */ }
+    // base64url -> base64
+    try {
+        const b64 = input.replace(/-/g, '+').replace(/_/g, '/')
+        return Uint8Array.from(Buffer.from(b64, 'base64'))
+    } catch {
+        throw new Error('Unsupported encoding')
+    }
 }
 
 // Start: returns server-managed ephemeral pubkey and ready-to-use connect URL
