@@ -8,6 +8,9 @@ import {
   getMessageToSign,
   continueIOSSignDeepLink,
   clearIntent,
+  isSafari,
+  pickBestPhantomUrl,
+  isThirdPartyIOSBrowser,
 } from '@/lib/phantom-deeplink'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/backend'
@@ -51,11 +54,8 @@ export default function PhantomCallbackPage() {
           const { message } = await prepRes.json()
           // 3) deep-link to sign (return URL and navigate, with fallback button)
           const { url } = await continueIOSSignDeepLink(message)
-          // Prefer custom scheme in non-Safari browsers to avoid universal link fallback to website
-          const ua = navigator.userAgent || ''
-          const isSafari = /Safari\//.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua)
-          const schemeUrl = url.replace(/^https:\/\/phantom\.app/, 'phantom://')
-          const targetUrl = isSafari ? url : schemeUrl
+          // Prefer custom scheme in non-Safari browsers and require user gesture
+          const targetUrl = pickBestPhantomUrl(url)
           // Try to navigate immediately
           window.location.href = targetUrl
           // Fallback: if we haven't left the page in 1200ms, show a manual button

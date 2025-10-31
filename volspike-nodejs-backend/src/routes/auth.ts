@@ -825,7 +825,8 @@ auth.post('/phantom/dl/start', async (c) => {
             cluster,
         })
         const connectUrl = `https://phantom.app/ul/v1/connect?${params.toString()}`
-        return c.json({ state, dappPublicKey58: dappPub58, connectUrl })
+        const connectDeepLink = connectUrl.replace('https://phantom.app/ul/', 'phantom://ul/')
+        return c.json({ ok: true, state, dappPublicKey58: dappPub58, connectUrl, connectDeepLink })
     } catch (e) {
         return c.json({ error: 'Failed to start deep link' }, 500)
     }

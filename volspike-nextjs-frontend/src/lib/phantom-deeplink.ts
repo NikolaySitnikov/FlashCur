@@ -59,8 +59,28 @@ export type PhantomIntent = 'connect' | 'sign'
 
 export function isIOS(): boolean {
   if (typeof navigator === 'undefined') return false
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
+  const ua = navigator.userAgent
+  const platform = (navigator as any).platform
+  const touch = (navigator as any).maxTouchPoints
+  return /iP(hone|od|ad)/i.test(ua) || (platform === 'MacIntel' && touch > 1)
 }
+
+export function isSafari(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  const hasSafari = /Safari\//i.test(ua)
+  const isChromeiOS = /CriOS/i.test(ua)
+  const isFirefoxiOS = /FxiOS/i.test(ua)
+  const isBraveiOS = /Brave/i.test(ua)
+  const isEdgiOS = /EdgiOS/i.test(ua)
+  return hasSafari && !isChromeiOS && !isFirefoxiOS && !isBraveiOS && !isEdgiOS
+}
+
+export const isThirdPartyIOSBrowser = () => isIOS() && !isSafari()
+
+export const toDeepLink = (universalUrl: string) => universalUrl.replace('https://phantom.app/ul/', 'phantom://ul/')
+
+export const pickBestPhantomUrl = (universalUrl: string) => (isThirdPartyIOSBrowser() ? toDeepLink(universalUrl) : universalUrl)
 
 export function getPublicOrigin(): string {
   if (typeof window !== 'undefined') return window.location.origin
