@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { base58 } from '@scure/base'
 import { signIn } from 'next-auth/react'
 import {
-  tryHandleCallback,
+  tryHandleCallbackOnServer,
   getMessageToSign,
   continueIOSSignDeepLink,
   clearIntent,
@@ -21,7 +21,7 @@ export default function PhantomCallbackPage() {
     (async () => {
       try {
         const params = new URLSearchParams(window.location.search)
-        const handled = tryHandleCallback(params)
+        const handled = await tryHandleCallbackOnServer(params)
         if (!handled) {
           setError('Invalid Phantom callback payload')
           return

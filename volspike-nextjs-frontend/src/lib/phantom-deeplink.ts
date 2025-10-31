@@ -3,6 +3,8 @@
 import nacl from 'tweetnacl'
 import { base58 } from '@scure/base'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/backend'
+
 // sessionStorage keys
 const SK_EPHEM = 'phantom_ephem_secret'
 const SK_EPHEM_PUB = 'phantom_ephem_public'
@@ -164,42 +166,55 @@ export function buildSignUrl({ appUrl, dappPubKey58, redirect, phantomPubKey, se
   return { url: `https://phantom.app/ul/v1/signMessage?${params.toString()}` }
 }
 
-export function startIOSConnectDeepLink(): void {
+export async function startIOSConnectDeepLink(): Promise<void> {
   const origin = getPublicOrigin()
-  const appUrl = origin
-  const redirect = `${origin}/auth/phantom-callback`
-  const { publicKey58 } = generateEphemeralKeys()
   setIntent('connect')
-  const url = buildConnectUrl({ appUrl, dappPubKey58: publicKey58, redirect })
-  window.location.href = url
+  // Ask backend to generate ephemeral keys and a connect URL so return can land in any browser
+  const res = await fetch(`${API_URL}/auth/phantom/dl/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ appUrl: origin, redirect: `${origin}/auth/phantom-callback` })
+  })
+  const { state, connectUrl, error } = await res.json()
+  if (error || !state || !connectUrl) throw new Error(error || 'Failed to init Phantom connect')
+  setKV('phantom_state', state)
+  window.location.href = connectUrl
 }
 
-export function continueIOSSignDeepLink(message: string): void {
+export async function continueIOSSignDeepLink(message: string): Promise<void> {
   const origin = getPublicOrigin()
-  const appUrl = origin
-  const redirect = `${origin}/auth/phantom-callback`
-  const dappPubKey58 = getKV(SK_EPHEM_PUB)
+  const state = getKV('phantom_state')
   const phantomPub58 = getKV(SK_PHANTOM_PUB)
   const session = getKV(SK_SESSION)
-  if (!dappPubKey58 || !phantomPub58 || !session) throw new Error('Missing Phantom session')
-  const { url } = buildSignUrl({ appUrl, dappPubKey58, redirect, phantomPubKey: base58.decode(phantomPub58), session, message })
+  if (!state || !phantomPub58 || !session) throw new Error('Missing Phantom session')
   setIntent('sign')
   saveMessageToSign(message)
+  const res = await fetch(`${API_URL}/auth/phantom/dl/sign-url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state, phantomPubKey58: phantomPub58, session, message, appUrl: origin, redirect: `${origin}/auth/phantom-callback` })
+  })
+  const { url, error } = await res.json()
+  if (error || !url) throw new Error(error || 'Failed to build sign link')
   window.location.href = url
 }
 
-export function tryHandleCallback(params: URLSearchParams): { stage: 'connect' | 'sign'; result?: any } | null {
+export async function tryHandleCallbackOnServer(params: URLSearchParams): Promise<{ stage: 'connect' | 'sign'; result?: any } | null> {
   const intent = getIntent()
   const phantomPubKey58 = params.get('phantom_encryption_public_key') || ''
   const payload58 = params.get('payload') || params.get('data') || ''
   const nonce58 = params.get('nonce') || ''
-  if (!phantomPubKey58 || !payload58 || !nonce58) return null
+  const state = params.get('state') || getKV('phantom_state') || ''
+  if (!phantomPubKey58 || !payload58 || !nonce58 || !state) return null
 
-  const dappSecret = getEphemeralSecret()
-  if (!dappSecret) throw new Error('Missing ephemeral secret key')
-  const shared = computeSharedSecret(base58.decode(phantomPubKey58), dappSecret)
-  const data = decryptPayload(shared, payload58, nonce58)
-  if (!data) throw new Error('Failed to decrypt Phantom payload')
+  const res = await fetch(`${API_URL}/auth/phantom/dl/decrypt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state, phantom_encryption_public_key: phantomPubKey58, payload: payload58, nonce: nonce58 })
+  })
+  const json = await res.json()
+  if (!json?.ok || !json?.data) throw new Error(json?.error || 'Failed to decrypt')
+  const data = json.data
 
   if (intent === 'connect' && data.session && data.public_key) {
     storeSession(data.session, phantomPubKey58)

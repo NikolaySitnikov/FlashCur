@@ -752,3 +752,114 @@ auth.get('/me', async (c) => {
 })
 
 export { auth as authRoutes }
+// =============================
+// Phantom Deep Link (iOS) Support
+// =============================
+
+type PhantomStateRecord = { secretKey: Uint8Array; publicKey: Uint8Array; createdAt: number }
+const phantomStateStore = new Map<string, PhantomStateRecord>()
+const PHANTOM_STATE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+function cleanupPhantomStateStore() {
+    const now = Date.now()
+    for (const [k, v] of phantomStateStore.entries()) {
+        if (now - v.createdAt > PHANTOM_STATE_TTL_MS) phantomStateStore.delete(k)
+    }
+}
+
+function generateEphemeralKeypair() {
+    const pair = nacl.box.keyPair()
+    return { publicKey: pair.publicKey, secretKey: pair.secretKey }
+}
+
+function computeSharedSecret(phantomPubKey: Uint8Array, dappSecretKey: Uint8Array): Uint8Array {
+    return nacl.box.before(phantomPubKey, dappSecretKey)
+}
+
+function encryptPayload(shared: Uint8Array, obj: unknown) {
+    const nonce = nacl.randomBytes(24)
+    const data = new TextEncoder().encode(JSON.stringify(obj))
+    const payload = nacl.box.after(data, nonce, shared)
+    return { payload58: bs58.encode(payload), nonce58: bs58.encode(nonce) }
+}
+
+function decryptPayload(shared: Uint8Array, payload58: string, nonce58: string) {
+    const payload = bs58.decode(payload58)
+    const nonce = bs58.decode(nonce58)
+    const opened = nacl.box.open.after(payload, nonce, shared)
+    if (!opened) return null
+    const text = new TextDecoder().decode(opened)
+    return JSON.parse(text)
+}
+
+// Start: returns server-managed ephemeral pubkey and ready-to-use connect URL
+auth.post('/phantom/dl/start', async (c) => {
+    try {
+        cleanupPhantomStateStore()
+        const body = await c.req.json().catch(() => ({})) as { appUrl?: string; redirect?: string }
+        const origin = body.appUrl || (process.env.FRONTEND_URL || 'http://localhost:3000')
+        const redirectBase = body.redirect || `${origin}/auth/phantom-callback`
+        const { publicKey, secretKey } = generateEphemeralKeypair()
+        const state = crypto.randomUUID()
+        phantomStateStore.set(state, { publicKey, secretKey, createdAt: Date.now() })
+        const dappPub58 = bs58.encode(publicKey)
+        const cluster = (process.env.NODE_ENV === 'development' && c.req.query('cluster') === 'devnet') || process.env.SOLANA_CLUSTER === 'devnet' ? 'devnet' : 'mainnet-beta'
+        const redirectLink = `${redirectBase}?state=${encodeURIComponent(state)}`
+        const params = new URLSearchParams({
+            app_url: origin,
+            dapp_encryption_public_key: dappPub58,
+            redirect_link: redirectLink,
+            cluster,
+        })
+        const connectUrl = `https://phantom.app/ul/v1/connect?${params.toString()}`
+        return c.json({ state, dappPublicKey58: dappPub58, connectUrl })
+    } catch (e) {
+        return c.json({ error: 'Failed to start deep link' }, 500)
+    }
+})
+
+// Build signMessage URL on the server (uses stored ephemeral secret)
+auth.post('/phantom/dl/sign-url', async (c) => {
+    try {
+        cleanupPhantomStateStore()
+        const { state, phantomPubKey58, session, message, appUrl, redirect } = await c.req.json()
+        if (!state || !phantomPubKey58 || !session || !message) return c.json({ error: 'Invalid payload' }, 400)
+        const rec = phantomStateStore.get(state)
+        if (!rec) return c.json({ error: 'Invalid or expired state' }, 400)
+        const origin = appUrl || (process.env.FRONTEND_URL || 'http://localhost:3000')
+        const redirectBase = redirect || `${origin}/auth/phantom-callback`
+        const redirectLink = `${redirectBase}?state=${encodeURIComponent(state)}`
+        const shared = computeSharedSecret(bs58.decode(phantomPubKey58), rec.secretKey)
+        const messageBytes58 = bs58.encode(new TextEncoder().encode(message))
+        const { payload58, nonce58 } = encryptPayload(shared, { session, message: messageBytes58 })
+        const params = new URLSearchParams({
+            app_url: origin,
+            dapp_encryption_public_key: bs58.encode(rec.publicKey),
+            redirect_link: redirectLink,
+            nonce: nonce58,
+            payload: payload58,
+            cluster: process.env.SOLANA_CLUSTER === 'devnet' ? 'devnet' : 'mainnet-beta'
+        })
+        const url = `https://phantom.app/ul/v1/signMessage?${params.toString()}`
+        return c.json({ url })
+    } catch (e) {
+        return c.json({ error: 'Failed to build sign url' }, 500)
+    }
+})
+
+// Decrypt payload on the server (works even if different browser handles the redirect)
+auth.post('/phantom/dl/decrypt', async (c) => {
+    try {
+        cleanupPhantomStateStore()
+        const { state, phantom_encryption_public_key, payload, nonce } = await c.req.json()
+        if (!state || !phantom_encryption_public_key || !payload || !nonce) return c.json({ error: 'Invalid payload' }, 400)
+        const rec = phantomStateStore.get(state)
+        if (!rec) return c.json({ error: 'Invalid or expired state' }, 400)
+        const shared = computeSharedSecret(bs58.decode(phantom_encryption_public_key), rec.secretKey)
+        const data = decryptPayload(shared, payload, nonce)
+        if (!data) return c.json({ error: 'Decryption failed' }, 400)
+        return c.json({ ok: true, data })
+    } catch (e) {
+        return c.json({ error: 'Failed to decrypt' }, 500)
+    }
+})
