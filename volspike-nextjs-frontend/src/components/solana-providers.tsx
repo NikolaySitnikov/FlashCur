@@ -37,9 +37,11 @@ export const SolanaProvider: FC<PropsWithChildren> = ({ children }) => {
     return list
   }, [projectId, publicUrl])
 
+  // Disable autoConnect - we'll connect manually when user clicks "Sign In with Phantom"
+  // autoConnect can interfere with mobile deep linking flow
   return (
     <ConnectionProvider endpoint={ENDPOINT}>
-      <WalletProvider wallets={wallets} autoConnect>
+      <WalletProvider wallets={wallets} autoConnect={false}>
         {children}
       </WalletProvider>
     </ConnectionProvider>
