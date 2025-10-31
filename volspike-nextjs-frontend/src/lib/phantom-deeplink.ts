@@ -200,7 +200,6 @@ export async function continueIOSSignDeepLink(message: string): Promise<void> {
 }
 
 export async function tryHandleCallbackOnServer(params: URLSearchParams): Promise<{ stage: 'connect' | 'sign'; result?: any } | null> {
-  const intent = getIntent()
   const phantomPubKey58 = params.get('phantom_encryption_public_key') || ''
   const payload58 = params.get('payload') || params.get('data') || ''
   const nonce58 = params.get('nonce') || ''
@@ -216,12 +215,13 @@ export async function tryHandleCallbackOnServer(params: URLSearchParams): Promis
   if (!json?.ok || !json?.data) throw new Error(json?.error || 'Failed to decrypt')
   const data = json.data
 
-  if (intent === 'connect' && data.session && data.public_key) {
+  // Infer stage from data rather than relying on intent (which may be missing if a different browser handled the return)
+  if (data.session && data.public_key) {
     storeSession(data.session, phantomPubKey58)
     setKV(SK_ADDRESS, data.public_key)
     return { stage: 'connect', result: { address: data.public_key } }
   }
-  if (intent === 'sign' && data.signature) {
+  if (data.signature) {
     return { stage: 'sign', result: { signature58: data.signature } }
   }
   return null
