@@ -51,7 +51,7 @@ export default function PhantomCallbackPage() {
 
         if (handled.stage === 'sign') {
           const message = getMessageToSign()
-          const address = sessionStorage.getItem('solana_address') || ''
+          const address = (typeof localStorage !== 'undefined' ? localStorage.getItem('solana_address') : null) || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('solana_address') : null) || ''
           if (!message) throw new Error('Missing signed message')
           if (!address) throw new Error('Missing wallet address')
           const chainId = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet' ? '103' : '101'

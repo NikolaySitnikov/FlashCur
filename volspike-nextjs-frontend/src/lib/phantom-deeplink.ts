@@ -12,6 +12,26 @@ const SK_INTENT = 'phantom_intent' // 'connect' | 'sign'
 const SK_MESSAGE = 'phantom_message'
 const SK_ADDRESS = 'solana_address'
 
+// Robust storage helpers to survive iOS returning in a new tab
+function setKV(key: string, value: string) {
+  try { localStorage.setItem(key, value) } catch {}
+  try { sessionStorage.setItem(key, value) } catch {}
+}
+function getKV(key: string): string | null {
+  try {
+    const v = localStorage.getItem(key)
+    if (v != null) return v
+  } catch {}
+  try {
+    return sessionStorage.getItem(key)
+  } catch {}
+  return null
+}
+function removeKV(key: string) {
+  try { localStorage.removeItem(key) } catch {}
+  try { sessionStorage.removeItem(key) } catch {}
+}
+
 export type PhantomIntent = 'connect' | 'sign'
 
 export function isIOS(): boolean {
@@ -28,47 +48,47 @@ export function generateEphemeralKeys(): { publicKey58: string; secretKey58: str
   const { publicKey, secretKey } = nacl.box.keyPair()
   const publicKey58 = base58.encode(publicKey)
   const secretKey58 = base58.encode(secretKey)
-  sessionStorage.setItem(SK_EPHEM, secretKey58)
-  sessionStorage.setItem(SK_EPHEM_PUB, publicKey58)
+  setKV(SK_EPHEM, secretKey58)
+  setKV(SK_EPHEM_PUB, publicKey58)
   return { publicKey58, secretKey58 }
 }
 
 export function getEphemeralSecret(): Uint8Array | null {
-  const secretKey58 = sessionStorage.getItem(SK_EPHEM)
+  const secretKey58 = getKV(SK_EPHEM)
   if (!secretKey58) return null
   return base58.decode(secretKey58)
 }
 
 export function storeSession(session: string, phantomPubKey58: string) {
-  sessionStorage.setItem(SK_SESSION, session)
-  sessionStorage.setItem(SK_PHANTOM_PUB, phantomPubKey58)
+  setKV(SK_SESSION, session)
+  setKV(SK_PHANTOM_PUB, phantomPubKey58)
 }
 
 export function getSession(): { session: string | null; phantomPubKey: Uint8Array | null } {
-  const s = sessionStorage.getItem(SK_SESSION)
-  const pk58 = sessionStorage.getItem(SK_PHANTOM_PUB)
+  const s = getKV(SK_SESSION)
+  const pk58 = getKV(SK_PHANTOM_PUB)
   return { session: s, phantomPubKey: pk58 ? base58.decode(pk58) : null }
 }
 
 export function setIntent(i: PhantomIntent) {
-  sessionStorage.setItem(SK_INTENT, i)
+  setKV(SK_INTENT, i)
 }
 
 export function getIntent(): PhantomIntent | null {
-  const i = sessionStorage.getItem(SK_INTENT)
+  const i = getKV(SK_INTENT)
   return (i === 'connect' || i === 'sign') ? i : null
 }
 
 export function clearIntent() {
-  sessionStorage.removeItem(SK_INTENT)
+  removeKV(SK_INTENT)
 }
 
 export function saveMessageToSign(message: string) {
-  sessionStorage.setItem(SK_MESSAGE, message)
+  setKV(SK_MESSAGE, message)
 }
 
 export function getMessageToSign(): string | null {
-  return sessionStorage.getItem(SK_MESSAGE)
+  return getKV(SK_MESSAGE)
 }
 
 function computeSharedSecret(phantomPubKey: Uint8Array, dappSecretKey: Uint8Array): Uint8Array {
@@ -137,9 +157,9 @@ export function continueIOSSignDeepLink(message: string): void {
   const origin = getPublicOrigin()
   const appUrl = origin
   const redirect = `${origin}/auth/phantom-callback`
-  const dappPubKey58 = sessionStorage.getItem(SK_EPHEM_PUB)
-  const phantomPub58 = sessionStorage.getItem(SK_PHANTOM_PUB)
-  const session = sessionStorage.getItem(SK_SESSION)
+  const dappPubKey58 = getKV(SK_EPHEM_PUB)
+  const phantomPub58 = getKV(SK_PHANTOM_PUB)
+  const session = getKV(SK_SESSION)
   if (!dappPubKey58 || !phantomPub58 || !session) throw new Error('Missing Phantom session')
   const { url } = buildSignUrl({ appUrl, dappPubKey58, redirect, phantomPubKey: base58.decode(phantomPub58), session, message })
   setIntent('sign')
@@ -162,7 +182,7 @@ export function tryHandleCallback(params: URLSearchParams): { stage: 'connect' |
 
   if (intent === 'connect' && data.session && data.public_key) {
     storeSession(data.session, phantomPubKey58)
-    sessionStorage.setItem(SK_ADDRESS, data.public_key)
+    setKV(SK_ADDRESS, data.public_key)
     return { stage: 'connect', result: { address: data.public_key } }
   }
   if (intent === 'sign' && data.signature) {
