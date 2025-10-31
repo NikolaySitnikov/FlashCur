@@ -43,14 +43,14 @@ export function useSolanaAuth(): UseSolanaAuthResult {
       setError(null)
       const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
       const isDesktop = !isMobile
+      // Adapter reference used across connect/retry paths (must be outside try/catch blocks)
+      let adapter: any = wallet?.adapter
       
       console.log('[SolanaAuth] Starting sign-in flow', { isMobile, connected, hasPublicKey: !!publicKey, walletName: wallet?.adapter?.name })
 
       if (!connected || !publicKey) {
         setIsConnecting(true)
         try {
-          // Adapter reference used across connect/retry paths
-          let adapter: any = wallet?.adapter
           // Select adapter: Mobile = Solana Mobile Wallet Adapter; Desktop = Phantom
           if (!wallet || (isMobile && wallet.adapter.name !== SolanaMobileWalletAdapterWalletName) || (isDesktop && wallet.adapter.name !== PhantomWalletName)) {
             const targetName = isMobile ? SolanaMobileWalletAdapterWalletName : (PhantomWalletName as any)
