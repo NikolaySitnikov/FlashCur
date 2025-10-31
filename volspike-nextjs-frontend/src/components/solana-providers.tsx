@@ -15,9 +15,12 @@ export const SolanaProvider: FC<PropsWithChildren> = ({ children }) => {
   // Use an https origin for mobile deep linking callbacks
   const publicUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://volspike.com')
   const wallets = useMemo(() => {
-    // Always provide both adapters. Phantom handles mobile deep link automatically; WC is a fallback
+    // Conditional adapter loading per expert guidance
+    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     const list: any[] = [new PhantomWalletAdapter()]
-    if (projectId) {
+    // On mobile: Phantom only (avoid WC modal interference)
+    // On desktop: include WC as fallback
+    if (!isMobile && projectId) {
       list.push(new WalletConnectWalletAdapter({
         network: DEFAULT_CLUSTER as any,
         options: {
@@ -38,11 +41,16 @@ export const SolanaProvider: FC<PropsWithChildren> = ({ children }) => {
   // autoConnect can interfere with mobile deep linking flow
   return (
     <ConnectionProvider endpoint={ENDPOINT}>
-      <WalletProvider wallets={wallets} autoConnect={false}>
+      <WalletProvider
+        wallets={wallets}
+        autoConnect={false}
+        onError={(err, adapter) => {
+          console.error('[SolanaProvider] Wallet error:', err?.message || err, 'adapter:', adapter?.name)
+        }}
+      >
         {children}
       </WalletProvider>
     </ConnectionProvider>
   )
 }
-
 
