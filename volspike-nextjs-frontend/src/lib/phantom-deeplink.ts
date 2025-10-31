@@ -205,6 +205,8 @@ export async function tryHandleCallbackOnServer(params: URLSearchParams): Promis
   const nonce58 = params.get('nonce') || ''
   const state = params.get('state') || getKV('phantom_state') || ''
   if (!phantomPubKey58 || !payload58 || !nonce58 || !state) return null
+  // Persist state in the current browser so the subsequent sign step can find it
+  setKV('phantom_state', state)
 
   const res = await fetch(`${API_URL}/auth/phantom/dl/decrypt`, {
     method: 'POST',
