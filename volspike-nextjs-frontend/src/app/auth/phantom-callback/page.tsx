@@ -147,17 +147,25 @@ export default function PhantomCallbackPage() {
           // Verify - clear any previous errors during verification
           setError('')
           setIsProcessing(true)
+          
+          // Small delay to prevent error flash if there's a race condition
+          await new Promise(resolve => setTimeout(resolve, 50))
+          
           const verifyRes = await fetch(`${API_URL}/auth/solana/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message, signature: handled.result?.signature58, address, chainId })
           })
+          
           if (!verifyRes.ok) {
             const errorData = await verifyRes.json().catch(() => ({ error: 'Authentication failed' }))
             const errorMsg = errorData.error || `Authentication failed (${verifyRes.status})`
-            setError(errorMsg)
-            setIsProcessing(false)
-            clearIntent()
+            // Only set error if we're still processing (not redirected yet)
+            if (document.visibilityState === 'visible') {
+              setError(errorMsg)
+              setIsProcessing(false)
+              clearIntent()
+            }
             return
           }
           const { token, user } = await verifyRes.json()

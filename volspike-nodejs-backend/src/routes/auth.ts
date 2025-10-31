@@ -652,10 +652,23 @@ auth.post('/solana/verify', async (c) => {
         const { message, signature, address, chainId } = await c.req.json()
         if (!message || !signature || !address) return c.json({ error: 'Invalid payload' }, 400)
 
-        const expectedNonceMatch = message.match(/Nonce: (.*)/)
+        // Extract nonce more precisely - match nonce line but stop before next field
+        // Format: "Nonce: <nonce>\n" or "Nonce: <nonce>" at end
+        const expectedNonceMatch = message.match(/Nonce:\s+([^\n]+)/)
         const expectedNonce = expectedNonceMatch ? expectedNonceMatch[1]?.trim() : ''
-        const nonceData = nonceManager.validate(expectedNonce || '')
-        if (!nonceData) return c.json({ error: 'Invalid nonce' }, 401)
+        
+        if (!expectedNonce) {
+            logger.warn(`[Solana Verify] No nonce found in message`)
+            return c.json({ error: 'No nonce found in message' }, 400)
+        }
+        
+        const nonceData = nonceManager.validate(expectedNonce)
+        if (!nonceData) {
+            logger.warn(`[Solana Verify] Invalid nonce: ${expectedNonce.substring(0, 8)}...`)
+            return c.json({ error: 'Invalid or expired nonce' }, 401)
+        }
+        
+        logger.info(`[Solana Verify] Nonce validated for address: ${address.substring(0, 6)}...`)
 
         // Verify signature
         const pubkey = bs58.decode(address)
