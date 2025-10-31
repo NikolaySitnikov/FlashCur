@@ -8,6 +8,7 @@ import { WalletReadyState } from '@solana/wallet-adapter-base'
 import { PhantomWalletName } from '@solana/wallet-adapter-phantom'
 import { WalletConnectWalletName } from '@solana/wallet-adapter-walletconnect'
 import { SolanaMobileWalletAdapterWalletName } from '@solana-mobile/wallet-adapter-mobile'
+import { isIOS, startIOSConnectDeepLink } from '@/lib/phantom-deeplink'
 import { base58 } from '@scure/base'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/backend'
@@ -41,7 +42,10 @@ export function useSolanaAuth(): UseSolanaAuthResult {
   const signInWithSolana = async () => {
     try {
       setError(null)
-      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+      const isiOS = isIOS()
+      const isAndroid = /Android/i.test(ua)
+      const isMobile = isiOS || isAndroid
       const isDesktop = !isMobile
       // Adapter reference used across connect/retry paths (must be outside try/catch blocks)
       let adapter: any = wallet?.adapter
@@ -51,8 +55,14 @@ export function useSolanaAuth(): UseSolanaAuthResult {
       if (!connected || !publicKey) {
         setIsConnecting(true)
         try {
+          // iOS: use Phantom deep link flow to avoid in-app browser
+          if (isiOS) {
+            console.log('[SolanaAuth] iOS detected: starting Phantom deep link connect')
+            startIOSConnectDeepLink()
+            return
+          }
           // Determine target adapter up front
-          const targetName = isMobile ? SolanaMobileWalletAdapterWalletName : (PhantomWalletName as any)
+          const targetName = isAndroid ? SolanaMobileWalletAdapterWalletName : (PhantomWalletName as any)
           const targetEntry = wallets?.find((w: any) => w.adapter?.name === targetName)
           const targetAdapter: any = targetEntry?.adapter || wallet?.adapter
 
@@ -67,13 +77,27 @@ export function useSolanaAuth(): UseSolanaAuthResult {
             select?.(targetName as any)
           }
 
-          console.log('[SolanaAuth] Connecting using adapter:', targetAdapter?.name)
+          console.log('[SolanaAuth] Connecting using adapter:', targetAdapter?.name, { isIOS, isAndroid })
           await targetAdapter?.connect?.()
 
           // Wait for adapter publicKey to populate
           const start = Date.now()
-          while (!targetAdapter?.publicKey && Date.now() - start < (isMobile ? 5000 : 1500)) {
-            await new Promise(r => setTimeout(r, 100))
+          // On mobile, allow more time and also wait across tab visibility changes
+          const mobileBudget = 20000
+          while (!targetAdapter?.publicKey && Date.now() - start < (isMobile ? mobileBudget : 1500)) {
+            await new Promise(r => setTimeout(r, 150))
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+              // Wait until user returns from wallet
+              await new Promise<void>((resolve) => {
+                const onVis = () => {
+                  if (document.visibilityState === 'visible') {
+                    document.removeEventListener('visibilitychange', onVis)
+                    resolve()
+                  }
+                }
+                document.addEventListener('visibilitychange', onVis)
+              })
+            }
           }
           adapter = targetAdapter
 
@@ -85,7 +109,7 @@ export function useSolanaAuth(): UseSolanaAuthResult {
         } catch (connectError: any) {
           console.error('[SolanaAuth] Phantom adapter connect error:', connectError)
           // Mobile: allow one more retry to let user switch apps
-          if (isMobile) {
+          if (isAndroid) {
             console.log('[SolanaAuth] Retrying mobile connect once...')
             try {
               await new Promise(r => setTimeout(r, 1200))
@@ -118,7 +142,10 @@ export function useSolanaAuth(): UseSolanaAuthResult {
 
       const effectivePublicKey = adapter?.publicKey || wallet?.adapter?.publicKey || publicKey
       if (!effectivePublicKey) {
-        console.error('[SolanaAuth] No public key after connection attempt')
+        console.error('[SolanaAuth] No public key after connection attempt', { isIOS, isAndroid, adapterName: adapter?.name })
+        if (isIOS) {
+          throw new Error('Please approve the request in Phantom, then return here')
+        }
         throw new Error('Please connect Phantom first')
       }
       // Prefer adapter.signMessage to avoid stale hook closure; ensure method exists
