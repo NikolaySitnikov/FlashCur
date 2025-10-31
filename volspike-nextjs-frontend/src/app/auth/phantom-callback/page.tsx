@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { base58 } from '@scure/base'
 import { signIn } from 'next-auth/react'
 import {
   tryHandleCallbackOnServer,
@@ -50,8 +49,25 @@ export default function PhantomCallbackPage() {
           const prepRes = await fetch(`${API_URL}/auth/solana/prepare?address=${address}&chainId=${chainId}&nonce=${nonce}`)
           if (!prepRes.ok) throw new Error('Failed to prepare message')
           const { message } = await prepRes.json()
-          // 3) deep-link to sign
-          continueIOSSignDeepLink(message)
+          // 3) deep-link to sign (return URL and navigate, with fallback button)
+          const { url } = await continueIOSSignDeepLink(message)
+          // Try to navigate immediately
+          window.location.href = url
+          // Fallback: if we haven't left the page in 1200ms, show a manual button
+          setTimeout(() => {
+            if (document.visibilityState === 'visible') {
+              setError(`Tap to continue in Phantom`)
+              const a = document.createElement('a')
+              a.href = url
+              a.textContent = 'Open Phantom to sign'
+              a.className = 'text-green-400 underline'
+              const container = document.getElementById('phantom-cta')
+              if (container) {
+                container.innerHTML = ''
+                container.appendChild(a)
+              }
+            }
+          }, 1200)
           return
         }
 
@@ -85,8 +101,9 @@ export default function PhantomCallbackPage() {
   }, [router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center text-gray-200">
+    <div className="min-h-screen flex flex-col items-center justify-center text-gray-200 gap-2">
       {error ? <p>{error}</p> : <p>Continuing with Phantom…</p>}
+      <div id="phantom-cta" />
     </div>
   )
 }

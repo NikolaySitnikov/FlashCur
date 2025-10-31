@@ -181,7 +181,7 @@ export async function startIOSConnectDeepLink(): Promise<void> {
   window.location.href = connectUrl
 }
 
-export async function continueIOSSignDeepLink(message: string): Promise<void> {
+export async function continueIOSSignDeepLink(message: string): Promise<{ url: string }> {
   const origin = getPublicOrigin()
   const state = getKV('phantom_state')
   const phantomPub58 = getKV(SK_PHANTOM_PUB)
@@ -196,7 +196,7 @@ export async function continueIOSSignDeepLink(message: string): Promise<void> {
   })
   const { url, error } = await res.json()
   if (error || !url) throw new Error(error || 'Failed to build sign link')
-  window.location.href = url
+  return { url }
 }
 
 export async function tryHandleCallbackOnServer(params: URLSearchParams): Promise<{ stage: 'connect' | 'sign'; result?: any } | null> {
