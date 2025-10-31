@@ -12,6 +12,8 @@ const ENDPOINT = DEFAULT_CLUSTER === 'devnet'
 
 export const SolanaProvider: FC<PropsWithChildren> = ({ children }) => {
   const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+  // Use an https origin for WalletConnect metadata to improve mobile return behaviour
+  const publicUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://volspike.com'
   const wallets = useMemo(() => {
     const list: any[] = [new PhantomWalletAdapter()]
     if (projectId) {
@@ -22,7 +24,7 @@ export const SolanaProvider: FC<PropsWithChildren> = ({ children }) => {
           metadata: {
             name: 'VolSpike',
             description: 'VolSpike Auth',
-            url: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
+            url: publicUrl,
             icons: ['https://volspike.com/favicon.ico']
           }
         }

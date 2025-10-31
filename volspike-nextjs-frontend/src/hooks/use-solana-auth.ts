@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { useWallet } from '@solana/wallet-adapter-react'
-import bs58 from 'bs58'
+import { PhantomWalletName } from '@solana/wallet-adapter-phantom'
+import { WalletConnectWalletName } from '@solana/wallet-adapter-walletconnect'
+import { base58 } from '@scure/base'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/backend'
 
@@ -18,7 +20,7 @@ interface UseSolanaAuthResult {
 
 export function useSolanaAuth(): UseSolanaAuthResult {
   const router = useRouter()
-  const { publicKey, signMessage, connected, connect } = useWallet()
+  const { publicKey, signMessage, connected, connect, wallet, select } = useWallet()
   const [isConnecting, setIsConnecting] = useState(false)
   const [isSigning, setIsSigning] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
@@ -27,8 +29,19 @@ export function useSolanaAuth(): UseSolanaAuthResult {
   const signInWithSolana = async () => {
     try {
       setError(null)
+      if (typeof window !== 'undefined') {
+        // Debug: surface environment
+        console.log('[SolanaAuth] UA:', navigator.userAgent)
+      }
       if (!connected || !publicKey) {
         setIsConnecting(true)
+        // If no wallet is selected yet, prefer WalletConnect on mobile, Phantom on desktop
+        if (!wallet) {
+          const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+          try {
+            select?.(isMobile ? (WalletConnectWalletName as any) : (PhantomWalletName as any))
+          } catch {}
+        }
         await connect?.()
         setIsConnecting(false)
       }
@@ -62,7 +75,7 @@ export function useSolanaAuth(): UseSolanaAuthResult {
       const verifyRes = await fetch(`${API_URL}/auth/solana/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, signature: bs58.encode(signature), address, chainId })
+        body: JSON.stringify({ message, signature: base58.encode(signature), address, chainId })
       })
       setIsAuthenticating(false)
 
