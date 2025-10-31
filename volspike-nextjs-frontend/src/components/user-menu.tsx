@@ -164,31 +164,31 @@ export function UserMenu() {
                         </div>
                         
                         {/* Tier Display - Prominent, Right Below Email */}
+                        {/* Always show tier, default to 'free' if not available */}
                         <div className="pt-2 pb-1">
-                            {identity.tier ? (
-                                <div className="flex items-center gap-2">
-                                    <Badge
-                                        variant="default"
-                                        className={`text-xs font-semibold px-2.5 py-1 ${
-                                            identity.tier === 'pro'
-                                                ? 'bg-blue-600 dark:bg-blue-500 text-white border-0'
-                                                : identity.tier === 'elite'
-                                                    ? 'bg-amber-600 dark:bg-amber-500 text-white border-0'
-                                                    : 'bg-gray-600 dark:bg-gray-500 text-white border-0'
-                                        }`}
-                                    >
-                                        {identity.tier === 'free' && '⚡'}
-                                        {identity.tier === 'pro' && '⭐'}
-                                        {identity.tier === 'elite' && '💎'}
-                                        {' '}
-                                        {identity.tier.charAt(0).toUpperCase() + identity.tier.slice(1)} Tier
-                                    </Badge>
-                                </div>
-                            ) : (
-                                <Badge variant="secondary" className="text-xs">
-                                    Free Tier
-                                </Badge>
-                            )}
+                            {(() => {
+                                const tier = identity.tier || 'free'
+                                return (
+                                    <div className="flex items-center gap-2">
+                                        <Badge
+                                            variant="default"
+                                            className={`text-xs font-semibold px-2.5 py-1 ${
+                                                tier === 'pro'
+                                                    ? 'bg-blue-600 dark:bg-blue-500 text-white border-0'
+                                                    : tier === 'elite'
+                                                        ? 'bg-amber-600 dark:bg-amber-500 text-white border-0'
+                                                        : 'bg-gray-600 dark:bg-gray-500 text-white border-0'
+                                            }`}
+                                        >
+                                            {tier === 'free' && '⚡'}
+                                            {tier === 'pro' && '⭐'}
+                                            {tier === 'elite' && '💎'}
+                                            {' '}
+                                            {tier.charAt(0).toUpperCase() + tier.slice(1)} Tier
+                                        </Badge>
+                                    </div>
+                                )
+                            })()}
                         </div>
                         
                         {/* Show wallet address if available */}
