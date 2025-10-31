@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react'
-import { isThirdPartyIOSBrowser } from '@/lib/phantom-deeplink'
+import { isThirdPartyIOSBrowser, isIOS } from '@/lib/phantom-deeplink'
 
 type StartRes = { ok?: boolean; state?: string; connectUrl?: string; connectDeepLink?: string; error?: string }
 
@@ -36,7 +36,8 @@ export function usePhantomConnect() {
   const clickToConnect = () => {
     const universal = connectUrlRef.current
     const deep = connectDeepLinkRef.current || (universal ? universal.replace('https://phantom.app/ul/', 'phantom://ul/') : null)
-    const target = isThirdPartyIOSBrowser() ? (deep ?? universal) : (universal ?? deep)
+    // For CONNECT: always prefer the universal link on iOS (Safari and third‑party)
+    const target = isIOS() ? (universal ?? deep) : (universal ?? deep)
     if (!target) return
     try {
       window.location.assign(target)
@@ -47,4 +48,3 @@ export function usePhantomConnect() {
 
   return { ready, error, clickToConnect }
 }
-

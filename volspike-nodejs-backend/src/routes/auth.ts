@@ -871,7 +871,12 @@ auth.post('/phantom/dl/decrypt', async (c) => {
         if (!rec) return c.json({ error: 'Invalid or expired state' }, 400)
         const shared = computeSharedSecret(bs58.decode(phantom_encryption_public_key), rec.secretKey)
         const data = decryptPayload(shared, payload, nonce)
-        if (!data) return c.json({ error: 'Decryption failed' }, 400)
+        if (!data) {
+            logger.warn(`[PhantomDL] decrypt failed for state=${state}`)
+            return c.json({ error: 'Decryption failed' }, 400)
+        }
+        const stage = data.signature ? 'sign' : (data.session && data.public_key ? 'connect' : 'unknown')
+        logger.info(`[PhantomDL] decrypt ok state=${state} stage=${stage}`)
         return c.json({ ok: true, data })
     } catch (e) {
         return c.json({ error: 'Failed to decrypt' }, 500)
