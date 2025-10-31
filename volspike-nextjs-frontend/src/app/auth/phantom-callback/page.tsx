@@ -25,8 +25,8 @@ export default function PhantomCallbackPage() {
         const hash = (window.location.hash || '').replace(/^#/, '')
         const hashParams = new URLSearchParams(hash)
         const merged = new URLSearchParams()
-        for (const [k, v] of searchParams.entries()) merged.set(k, v)
-        for (const [k, v] of hashParams.entries()) merged.set(k, v)
+        searchParams.forEach((v, k) => merged.set(k, v))
+        hashParams.forEach((v, k) => merged.set(k, v))
         const handled = await tryHandleCallbackOnServer(merged)
         if (!handled) {
           setError('Invalid Phantom callback payload')
