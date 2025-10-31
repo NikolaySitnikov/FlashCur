@@ -51,14 +51,19 @@ export default function PhantomCallbackPage() {
           const { message } = await prepRes.json()
           // 3) deep-link to sign (return URL and navigate, with fallback button)
           const { url } = await continueIOSSignDeepLink(message)
+          // Prefer custom scheme in non-Safari browsers to avoid universal link fallback to website
+          const ua = navigator.userAgent || ''
+          const isSafari = /Safari\//.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua)
+          const schemeUrl = url.replace(/^https:\/\/phantom\.app/, 'phantom://')
+          const targetUrl = isSafari ? url : schemeUrl
           // Try to navigate immediately
-          window.location.href = url
+          window.location.href = targetUrl
           // Fallback: if we haven't left the page in 1200ms, show a manual button
           setTimeout(() => {
             if (document.visibilityState === 'visible') {
               setError(`Tap to continue in Phantom`)
               const a = document.createElement('a')
-              a.href = url
+              a.href = targetUrl
               a.textContent = 'Open Phantom to sign'
               a.className = 'text-green-400 underline'
               const container = document.getElementById('phantom-cta')
