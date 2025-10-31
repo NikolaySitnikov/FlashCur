@@ -49,6 +49,8 @@ export function useSolanaAuth(): UseSolanaAuthResult {
       if (!connected || !publicKey) {
         setIsConnecting(true)
         try {
+          // Adapter reference used across connect/retry paths
+          let adapter: any = wallet?.adapter
           // Select adapter: Mobile = Solana Mobile Wallet Adapter; Desktop = Phantom
           if (!wallet || (isMobile && wallet.adapter.name !== SolanaMobileWalletAdapterWalletName) || (isDesktop && wallet.adapter.name !== PhantomWalletName)) {
             const targetName = isMobile ? SolanaMobileWalletAdapterWalletName : (PhantomWalletName as any)
@@ -63,7 +65,6 @@ export function useSolanaAuth(): UseSolanaAuthResult {
           }
 
           console.log('[SolanaAuth] Attempting to connect with Phantom adapter...')
-          let adapter: any = wallet?.adapter
           // Desktop: require installed extension; avoid calling connect() on a non-ready adapter
           let readyState: WalletReadyState | undefined = wallet?.readyState || adapter?.readyState
           if (isDesktop && readyState && readyState !== WalletReadyState.Installed) {
