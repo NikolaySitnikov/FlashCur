@@ -236,7 +236,9 @@ export async function tryHandleCallbackOnServer(params: URLSearchParams): Promis
     allParams: Object.fromEntries(params)
   })
   
-  if (!phantomPubKey58 || !payload58 || !nonce58 || !state) {
+  // For sign stage, Phantom may not include phantom_encryption_public_key in the redirect URL
+  // The backend will use the stored one from the connect stage
+  if (!payload58 || !nonce58 || !state) {
     console.warn('[tryHandleCallbackOnServer] Missing required params:', {
       phantomPubKey58: !!phantomPubKey58,
       payload58: !!payload58,
@@ -251,7 +253,12 @@ export async function tryHandleCallbackOnServer(params: URLSearchParams): Promis
   const res = await fetch(`${API_URL}/auth/phantom/dl/decrypt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ state, phantom_encryption_public_key: phantomPubKey58, payload: payload58, nonce: nonce58 })
+    body: JSON.stringify({ 
+      state, 
+      phantom_encryption_public_key: phantomPubKey58 || undefined, // Optional for sign stage
+      payload: payload58, 
+      nonce: nonce58 
+    })
   })
   const json = await res.json()
   if (!json?.ok || !json?.data) throw new Error(json?.error || 'Failed to decrypt')

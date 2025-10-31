@@ -883,7 +883,7 @@ auth.post('/phantom/dl/decrypt', async (c) => {
             if (now - v.createdAt > PHANTOM_STATE_TTL_MS) phantomStateStore.delete(k)
         }
         const { state, phantom_encryption_public_key, payload, nonce } = await c.req.json()
-        if (!state || !phantom_encryption_public_key || !payload || !nonce) {
+        if (!state || !payload || !nonce) {
             logger.warn(`[PhantomDL] decrypt: missing required params`, { 
                 hasState: !!state, 
                 hasPubKey: !!phantom_encryption_public_key, 
@@ -901,7 +901,16 @@ auth.post('/phantom/dl/decrypt', async (c) => {
             })
             return c.json({ error: 'Invalid or expired state' }, 400)
         }
-        const shared = computeSharedSecret(bs58.decode(phantom_encryption_public_key), rec.secretKey)
+        // For sign stage, Phantom may not include phantom_encryption_public_key in redirect
+        // Use the stored one from the connect stage if available
+        const phantomPubKeyToUse = phantom_encryption_public_key 
+            ? bs58.decode(phantom_encryption_public_key)
+            : (rec.phantomPubKey || null)
+        if (!phantomPubKeyToUse) {
+            logger.warn(`[PhantomDL] decrypt: missing phantom_encryption_public_key and not stored in state`)
+            return c.json({ error: 'Missing phantom encryption public key' }, 400)
+        }
+        const shared = computeSharedSecret(phantomPubKeyToUse, rec.secretKey)
         const data = decryptPayload(shared, payload, nonce)
         if (!data) {
             logger.warn(`[PhantomDL] decrypt failed for state=${state}`)

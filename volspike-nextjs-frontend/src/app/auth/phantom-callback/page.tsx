@@ -58,7 +58,8 @@ export default function PhantomCallbackPage() {
         if (!handled) {
           // Provide more detailed error message
           const missing: string[] = []
-          if (!merged.get('phantom_encryption_public_key')) missing.push('phantom_encryption_public_key')
+          // phantom_encryption_public_key is optional for sign stage (backend uses stored one)
+          // So we don't check for it here
           if (!merged.get('payload') && !merged.get('data')) missing.push('payload/data')
           if (!merged.get('nonce')) missing.push('nonce')
           const state = merged.get('state') || (typeof localStorage !== 'undefined' ? localStorage.getItem('phantom_state') : null) || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('phantom_state') : null)
