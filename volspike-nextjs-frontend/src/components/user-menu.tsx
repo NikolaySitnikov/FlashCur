@@ -183,11 +183,6 @@ export function UserMenu() {
                                         {' '}
                                         {identity.tier.charAt(0).toUpperCase() + identity.tier.slice(1)} Tier
                                     </Badge>
-                                    {identity.tier === 'free' && (
-                                        <span className="text-xs text-muted-foreground ml-1">
-                                            (Upgrade available)
-                                        </span>
-                                    )}
                                 </div>
                             ) : (
                                 <Badge variant="secondary" className="text-xs">
