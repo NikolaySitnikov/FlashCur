@@ -162,44 +162,47 @@ export function UserMenu() {
                                 })()}
                             </div>
                         </div>
+                        
+                        {/* Tier Display - Prominent, Right Below Email */}
+                        <div className="pt-2 pb-1">
+                            {identity.tier ? (
+                                <div className="flex items-center gap-2">
+                                    <Badge
+                                        variant="default"
+                                        className={`text-xs font-semibold px-2.5 py-1 ${
+                                            identity.tier === 'pro'
+                                                ? 'bg-blue-600 dark:bg-blue-500 text-white border-0'
+                                                : identity.tier === 'elite'
+                                                    ? 'bg-amber-600 dark:bg-amber-500 text-white border-0'
+                                                    : 'bg-gray-600 dark:bg-gray-500 text-white border-0'
+                                        }`}
+                                    >
+                                        {identity.tier === 'free' && '⚡'}
+                                        {identity.tier === 'pro' && '⭐'}
+                                        {identity.tier === 'elite' && '💎'}
+                                        {' '}
+                                        {identity.tier.charAt(0).toUpperCase() + identity.tier.slice(1)} Tier
+                                    </Badge>
+                                    {identity.tier === 'free' && (
+                                        <span className="text-xs text-muted-foreground ml-1">
+                                            (Upgrade available)
+                                        </span>
+                                    )}
+                                </div>
+                            ) : (
+                                <Badge variant="secondary" className="text-xs">
+                                    Free Tier
+                                </Badge>
+                            )}
+                        </div>
+                        
                         {/* Show wallet address if available */}
                         {identity.address && (
-                            <div className="flex items-center gap-2 px-2 py-1">
+                            <div className="flex items-center gap-2 px-2 py-1 border-t border-border pt-2">
                                 <Wallet className="h-3 w-3 text-muted-foreground" />
                                 <span className="text-xs font-mono text-muted-foreground">
                                     {identity.address.slice(0, 6)}...{identity.address.slice(-4)}
                                 </span>
-                            </div>
-                        )}
-                        {/* Beautiful Tier Display */}
-                        {identity.tier && (
-                            <div className="flex items-center gap-2 pt-2 border-t border-border">
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-muted-foreground mb-1.5">Current Plan</p>
-                                    <div className="flex items-center gap-2">
-                                        <Badge
-                                            variant="default"
-                                            className={`text-xs font-semibold px-3 py-1 ${
-                                                identity.tier === 'pro'
-                                                    ? 'bg-blue-600 dark:bg-blue-500 text-white border-0'
-                                                    : identity.tier === 'elite'
-                                                        ? 'bg-amber-600 dark:bg-amber-500 text-white border-0'
-                                                        : 'bg-gray-600 dark:bg-gray-500 text-white border-0'
-                                            }`}
-                                        >
-                                            {identity.tier === 'free' && '⚡'}
-                                            {identity.tier === 'pro' && '⭐'}
-                                            {identity.tier === 'elite' && '💎'}
-                                            {' '}
-                                            {identity.tier.charAt(0).toUpperCase() + identity.tier.slice(1)} Tier
-                                        </Badge>
-                                        {identity.tier === 'free' && (
-                                            <span className="text-xs text-muted-foreground">
-                                                Upgrade available
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
                         )}
                         {identity.role === 'ADMIN' && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, Zap, Mail, Clock, Sparkles } from 'lucide-react'
+import { ArrowRight, Zap, Mail, Clock } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -36,10 +36,10 @@ export function AdBanner({ userTier = 'free', className }: AdBannerProps) {
             <CardContent className="p-5 md:p-6">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
                     <div className="flex items-start gap-4 flex-1">
-                        {/* Icon */}
+                        {/* Icon - Lightning Bolt (Brand Icon) */}
                         <div className="flex-shrink-0">
-                            <div className="w-12 h-12 rounded-lg bg-green-500/10 dark:bg-green-400/20 flex items-center justify-center">
-                                <Sparkles className="h-6 w-6 text-green-600 dark:text-green-400" />
+                            <div className="w-12 h-12 rounded-lg bg-green-500/10 dark:bg-green-400/20 flex items-center justify-center border border-green-500/20 dark:border-green-400/30">
+                                <Zap className="h-6 w-6 text-green-600 dark:text-green-400 fill-green-600 dark:fill-green-400" />
                             </div>
                         </div>
 
@@ -50,8 +50,8 @@ export function AdBanner({ userTier = 'free', className }: AdBannerProps) {
                                     Unlock Pro Features
                                 </h3>
                                 <Badge
-                                    variant="default"
-                                    className="bg-green-600 dark:bg-green-500 text-white font-semibold border-0"
+                                    variant="outline"
+                                    className="bg-white dark:bg-gray-900 text-green-600 dark:text-green-400 border-green-600/30 dark:border-green-400/30 font-semibold"
                                 >
                                     $9/month
                                 </Badge>
