@@ -652,23 +652,10 @@ auth.post('/solana/verify', async (c) => {
         const { message, signature, address, chainId } = await c.req.json()
         if (!message || !signature || !address) return c.json({ error: 'Invalid payload' }, 400)
 
-        // Extract nonce more precisely - match nonce line but stop before next field
-        // Format: "Nonce: <nonce>\n" or "Nonce: <nonce>" at end
-        const expectedNonceMatch = message.match(/Nonce:\s+([^\n]+)/)
+        const expectedNonceMatch = message.match(/Nonce: (.*)/)
         const expectedNonce = expectedNonceMatch ? expectedNonceMatch[1]?.trim() : ''
-        
-        if (!expectedNonce) {
-            logger.warn(`[Solana Verify] No nonce found in message`)
-            return c.json({ error: 'No nonce found in message' }, 400)
-        }
-        
-        const nonceData = nonceManager.validate(expectedNonce)
-        if (!nonceData) {
-            logger.warn(`[Solana Verify] Invalid nonce: ${expectedNonce.substring(0, 8)}...`)
-            return c.json({ error: 'Invalid or expired nonce' }, 401)
-        }
-        
-        logger.info(`[Solana Verify] Nonce validated for address: ${address.substring(0, 6)}...`)
+        const nonceData = nonceManager.validate(expectedNonce || '')
+        if (!nonceData) return c.json({ error: 'Invalid nonce' }, 401)
 
         // Verify signature
         const pubkey = bs58.decode(address)
@@ -771,7 +758,7 @@ export { auth as authRoutes }
 
 type PhantomStateRecord = { secretKey: Uint8Array; publicKey: Uint8Array; createdAt: number; session?: string; phantomPubKey?: Uint8Array }
 const phantomStateStore = new Map<string, PhantomStateRecord>()
-const PHANTOM_STATE_TTL_MS = 10 * 60 * 1000 // 10 minutes - longer TTL for cross-browser scenarios
+const PHANTOM_STATE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 function cleanupPhantomStateStore() {
     const now = Date.now()
@@ -821,11 +808,7 @@ function tryDecode(input: string): Uint8Array {
 // Start: returns server-managed ephemeral pubkey and ready-to-use connect URL
 auth.post('/phantom/dl/start', async (c) => {
     try {
-        // Only cleanup expired entries, don't remove active states
-        const now = Date.now()
-        for (const [k, v] of phantomStateStore.entries()) {
-            if (now - v.createdAt > PHANTOM_STATE_TTL_MS) phantomStateStore.delete(k)
-        }
+        cleanupPhantomStateStore()
         const body = await c.req.json().catch(() => ({})) as { appUrl?: string; redirect?: string }
         const origin = body.appUrl || (process.env.FRONTEND_URL || 'http://localhost:3000')
         const redirectBase = body.redirect || `${origin}/auth/phantom-callback`
@@ -834,7 +817,6 @@ auth.post('/phantom/dl/start', async (c) => {
         phantomStateStore.set(state, { publicKey, secretKey, createdAt: Date.now() })
         const dappPub58 = bs58.encode(publicKey)
         const cluster = (process.env.NODE_ENV === 'development' && c.req.query('cluster') === 'devnet') || process.env.SOLANA_CLUSTER === 'devnet' ? 'devnet' : 'mainnet-beta'
-        // Always include state in redirect URL - this works across browsers
         const redirectLink = `${redirectBase}?state=${encodeURIComponent(state)}`
         const params = new URLSearchParams({
             app_url: origin,
@@ -844,10 +826,8 @@ auth.post('/phantom/dl/start', async (c) => {
         })
         const connectUrl = `https://phantom.app/ul/v1/connect?${params.toString()}`
         const connectDeepLink = connectUrl.replace('https://phantom.app/ul/', 'phantom://ul/')
-        logger.info(`[PhantomDL] start: created state=${state}, redirectLink=${redirectLink}`)
         return c.json({ ok: true, state, dappPublicKey58: dappPub58, connectUrl, connectDeepLink })
     } catch (e) {
-        logger.error(`[PhantomDL] start error:`, e)
         return c.json({ error: 'Failed to start deep link' }, 500)
     }
 })
@@ -919,20 +899,10 @@ auth.post('/phantom/dl/decrypt', async (c) => {
         }
         const rec = phantomStateStore.get(state)
         if (!rec) {
-            const allStates = Array.from(phantomStateStore.keys())
-            const expiredStates = Array.from(phantomStateStore.entries())
-                .filter(([_, v]) => now - v.createdAt > PHANTOM_STATE_TTL_MS)
-                .map(([k, _]) => k)
             logger.warn(`[PhantomDL] decrypt: state not found or expired`, { 
-                requestedState: state,
-                stateExists: phantomStateStore.has(state),
+                state, 
                 storeSize: phantomStateStore.size,
-                allStates: allStates.slice(0, 10),
-                expiredStates: expiredStates.slice(0, 5),
-                ageCheck: allStates.map(k => {
-                    const v = phantomStateStore.get(k)
-                    return v ? { state: k, age: now - v.createdAt, expired: now - v.createdAt > PHANTOM_STATE_TTL_MS } : null
-                }).filter(Boolean).slice(0, 5)
+                storeKeys: Array.from(phantomStateStore.keys()).slice(0, 5)
             })
             return c.json({ error: 'Invalid or expired state' }, 400)
         }
@@ -942,7 +912,7 @@ auth.post('/phantom/dl/decrypt', async (c) => {
             ? bs58.decode(phantom_encryption_public_key)
             : (rec.phantomPubKey || null)
         if (!phantomPubKeyToUse) {
-            logger.warn(`[PhantomDL] decrypt: missing phantom_encryption_public_key and not stored in state for state=${state}`)
+            logger.warn(`[PhantomDL] decrypt: missing phantom_encryption_public_key and not stored in state`)
             return c.json({ error: 'Missing phantom encryption public key' }, 400)
         }
         const shared = computeSharedSecret(phantomPubKeyToUse, rec.secretKey)

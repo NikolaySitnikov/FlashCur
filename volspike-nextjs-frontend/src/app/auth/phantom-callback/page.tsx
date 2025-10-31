@@ -30,7 +30,6 @@ export default function PhantomCallbackPage() {
   const router = useRouter()
   const [error, setError] = useState<string>('')
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
-  const [isProcessing, setIsProcessing] = useState(true)
 
   useEffect(() => {
     (async () => {
@@ -75,8 +74,6 @@ export default function PhantomCallbackPage() {
 
         if (handled.stage === 'connect') {
           // After connect, start sign flow automatically using your backend prepare message
-          setError('') // Clear any errors
-          setIsProcessing(true)
           const address = handled.result?.address as string
           if (!address) throw new Error('Missing wallet address')
           
@@ -117,9 +114,9 @@ export default function PhantomCallbackPage() {
           
           // On iOS third-party browsers, user interaction is required to open Phantom
           // Show a prominent button that the user must click
-          const container = document.getElementById('phantom-cta')
-          if (container) {
-            container.innerHTML = ''
+              const container = document.getElementById('phantom-cta')
+              if (container) {
+                container.innerHTML = ''
             const button = document.createElement('button')
             button.type = 'button'
             button.onclick = () => {
@@ -134,7 +131,6 @@ export default function PhantomCallbackPage() {
             // Fallback: direct navigation (may not work on iOS third-party browsers)
             window.location.href = targetUrl
           }
-          setIsProcessing(false) // User needs to interact, so not processing
           return
         }
 
@@ -144,34 +140,18 @@ export default function PhantomCallbackPage() {
           if (!message) throw new Error('Missing signed message')
           if (!address) throw new Error('Missing wallet address')
           const chainId = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet' ? '103' : '101'
-          // Verify - clear any previous errors during verification
-          setError('')
-          setIsProcessing(true)
-          
-          // Small delay to prevent error flash if there's a race condition
-          await new Promise(resolve => setTimeout(resolve, 50))
-          
+          // Verify
           const verifyRes = await fetch(`${API_URL}/auth/solana/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message, signature: handled.result?.signature58, address, chainId })
           })
-          
           if (!verifyRes.ok) {
-            const errorData = await verifyRes.json().catch(() => ({ error: 'Authentication failed' }))
-            const errorMsg = errorData.error || `Authentication failed (${verifyRes.status})`
-            // Only set error if we're still processing (not redirected yet)
-            if (document.visibilityState === 'visible') {
-              setError(errorMsg)
-              setIsProcessing(false)
-              clearIntent()
-            }
+            setError('Authentication failed')
+            clearIntent()
             return
           }
           const { token, user } = await verifyRes.json()
-          // Success - proceed with sign-in without showing error
-          setError('')
-          setIsProcessing(true) // Keep processing state while signing in
           await signIn('siwe', { redirect: false, token, walletAddress: user?.walletAddress || address })
           clearIntent()
           router.replace('/dashboard')
@@ -179,16 +159,13 @@ export default function PhantomCallbackPage() {
         }
       } catch (e: any) {
         setError(e?.message || 'Phantom callback error')
-        setIsProcessing(false)
-      } finally {
-        setIsProcessing(false)
       }
     })()
   }, [router])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-gray-200 gap-4 p-4">
-      {error && !isProcessing ? (
+      {error ? (
         <div className="text-red-400 text-center">
           <p className="font-semibold text-lg mb-2">{error}</p>
           {debugInfo && (
@@ -200,8 +177,6 @@ export default function PhantomCallbackPage() {
             </details>
           )}
         </div>
-      ) : isProcessing ? (
-        <p>Authenticating…</p>
       ) : (
         <p>Continuing with Phantom…</p>
       )}
