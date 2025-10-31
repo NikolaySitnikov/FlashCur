@@ -58,7 +58,7 @@ export function useSolanaAuth(): UseSolanaAuthResult {
           // iOS: use Phantom deep link flow to avoid in-app browser
           if (isiOS) {
             console.log('[SolanaAuth] iOS detected: starting Phantom deep link connect')
-            startIOSConnectDeepLink()
+            await startIOSConnectDeepLink()
             return
           }
           // Determine target adapter up front
