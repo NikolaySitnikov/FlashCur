@@ -18,6 +18,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || '/backend'
 export default function PhantomCallbackPage() {
   const router = useRouter()
   const [error, setError] = useState<string>('')
+  const [debugInfo, setDebugInfo] = useState<any>(null)
 
   useEffect(() => {
     (async () => {
@@ -31,12 +32,16 @@ export default function PhantomCallbackPage() {
         hashParams.forEach((v, k) => merged.set(k, v))
         
         // Debug: log what parameters we received
-        console.log('[PhantomCallback] Received params:', {
+        const debugData = {
           search: Object.fromEntries(searchParams),
           hash: Object.fromEntries(hashParams),
           merged: Object.fromEntries(merged),
-          url: window.location.href
-        })
+          url: window.location.href,
+          hasStateInUrl: !!merged.get('state'),
+          stateFromStorage: typeof localStorage !== 'undefined' ? localStorage.getItem('phantom_state') : null
+        }
+        console.log('[PhantomCallback] Received params:', debugData)
+        setDebugInfo(debugData)
         
         const handled = await tryHandleCallbackOnServer(merged)
         if (!handled) {
@@ -47,8 +52,11 @@ export default function PhantomCallbackPage() {
           if (!merged.get('nonce')) missing.push('nonce')
           const state = merged.get('state') || (typeof localStorage !== 'undefined' ? localStorage.getItem('phantom_state') : null) || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('phantom_state') : null)
           if (!state) missing.push('state')
-          setError(`Invalid Phantom callback payload. Missing: ${missing.join(', ')}`)
+          const errorMsg = `Invalid Phantom callback payload. Missing: ${missing.join(', ')}`
+          setError(errorMsg)
           console.error('[PhantomCallback] Missing params:', missing, 'All params:', Object.fromEntries(merged))
+          // Update debug info with missing params
+          setDebugInfo(prev => ({ ...prev, missingParams: missing, error: errorMsg }))
           return
         }
 
@@ -144,9 +152,31 @@ export default function PhantomCallbackPage() {
   }, [router])
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center text-gray-200 gap-2">
-      {error ? <p>{error}</p> : <p>Continuing with Phantom…</p>}
+    <div className="min-h-screen flex flex-col items-center justify-center text-gray-200 gap-4 p-4">
+      {error ? (
+        <div className="text-red-400 text-center">
+          <p className="font-semibold text-lg mb-2">{error}</p>
+          {debugInfo && (
+            <details className="mt-4 text-left bg-gray-900/50 p-4 rounded-lg max-w-md overflow-auto">
+              <summary className="cursor-pointer text-yellow-400 mb-2">Debug Info (Tap to expand)</summary>
+              <pre className="text-xs mt-2 whitespace-pre-wrap break-all">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </details>
+          )}
+        </div>
+      ) : (
+        <p>Continuing with Phantom…</p>
+      )}
       <div id="phantom-cta" />
+      {debugInfo && !error && (
+        <details className="mt-4 text-left bg-gray-900/30 p-3 rounded-lg max-w-md overflow-auto text-sm">
+          <summary className="cursor-pointer text-blue-400">Debug Info</summary>
+          <pre className="text-xs mt-2 whitespace-pre-wrap break-all">
+            {JSON.stringify(debugInfo, null, 2)}
+          </pre>
+        </details>
+      )}
     </div>
   )
 }
