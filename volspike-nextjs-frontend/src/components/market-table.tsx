@@ -289,14 +289,16 @@ export function MarketTable({
                             const changeValue = item.change24h ?? item.volumeChange ?? 0
                             const isHovered = hoveredRow === item.symbol
 
-                            const rowClasses = ['border-b border-border/40 transition-all duration-150 cursor-pointer group relative']
-                            if (fundingRate >= FUNDING_ALERT_THRESHOLD) {
-                                rowClasses.push('bg-brand-500/5 hover:bg-brand-500/10 border-l-2 border-l-brand-500/30')
-                            } else if (fundingRate <= -FUNDING_ALERT_THRESHOLD) {
-                                rowClasses.push('bg-danger-500/5 hover:bg-danger-500/10 border-l-2 border-l-danger-500/30')
-                            } else {
-                                rowClasses.push('hover:bg-muted/50')
-                            }
+            const rowClasses = ['border-b border-border/40 transition-all duration-150 cursor-pointer group relative']
+            if (fundingRate >= FUNDING_ALERT_THRESHOLD) {
+                // Make positive funding highlights more prominent
+                rowClasses.push('bg-brand-500/15 hover:bg-brand-500/25 border-l-4 border-l-brand-500/60')
+            } else if (fundingRate <= -FUNDING_ALERT_THRESHOLD) {
+                // Make negative funding highlights more prominent
+                rowClasses.push('bg-danger-500/15 hover:bg-danger-500/25 border-l-4 border-l-danger-500/60')
+            } else {
+                rowClasses.push('hover:bg-muted/50')
+            }
 
                             const fundingClass = exceedsThreshold
                                 ? fundingRate > 0
