@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Bell, TrendingUp, BellRing, Plus, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
+import { AlertBuilder } from '@/components/alert-builder'
 
 interface Alert {
     id: string
@@ -18,6 +20,7 @@ interface Alert {
 interface AlertPanelProps {
     alerts: Alert[]
     isLoading?: boolean
+    userTier?: 'free' | 'pro' | 'elite'
 }
 
 // Skeleton loader for alerts
@@ -47,7 +50,7 @@ function AlertSkeleton() {
 }
 
 // Beautiful empty state
-function EmptyState() {
+function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
     return (
         <div className="text-center py-12 px-4">
             {/* Animated icon */}
@@ -70,6 +73,7 @@ function EmptyState() {
             <Button 
                 variant="outline" 
                 size="sm"
+                onClick={onCreateClick}
                 className="group transition-all duration-200 hover:border-brand-500/50 hover:bg-brand-500/5"
             >
                 <Plus className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
@@ -97,28 +101,46 @@ function EmptyState() {
     )
 }
 
-export function AlertPanel({ alerts, isLoading = false }: AlertPanelProps) {
+export function AlertPanel({ alerts, isLoading = false, userTier = 'free' }: AlertPanelProps) {
+    const [showBuilder, setShowBuilder] = useState(false)
+
     return (
-        <Card className="h-full flex flex-col">
-            <CardHeader className="pb-3">
-                <CardTitle className="flex items-center text-h3">
-                    <Bell className="h-5 w-5 mr-2 text-brand-500" />
-                    Volume Alerts
-                </CardTitle>
-                <CardDescription>
-                    Real-time volume spike notifications
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1">
-                {isLoading ? (
-                    <div className="space-y-3">
-                        <AlertSkeleton />
-                        <AlertSkeleton />
-                        <AlertSkeleton />
+        <>
+            <Card className="h-full flex flex-col">
+                <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center text-h3">
+                                <Bell className="h-5 w-5 mr-2 text-brand-500" />
+                                Volume Alerts
+                            </CardTitle>
+                            <CardDescription>
+                                Real-time volume spike notifications
+                            </CardDescription>
+                        </div>
+                        {alerts.length > 0 && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setShowBuilder(true)}
+                                className="hover:border-brand-500/50 hover:bg-brand-500/5"
+                            >
+                                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                                New
+                            </Button>
+                        )}
                     </div>
-                ) : alerts.length === 0 ? (
-                    <EmptyState />
-                ) : (
+                </CardHeader>
+                <CardContent className="flex-1">
+                    {isLoading ? (
+                        <div className="space-y-3">
+                            <AlertSkeleton />
+                            <AlertSkeleton />
+                            <AlertSkeleton />
+                        </div>
+                    ) : alerts.length === 0 ? (
+                        <EmptyState onCreateClick={() => setShowBuilder(true)} />
+                    ) : (
                     <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                         {alerts.map((alert, index) => {
                             // Determine severity by reason
@@ -188,5 +210,13 @@ export function AlertPanel({ alerts, isLoading = false }: AlertPanelProps) {
                 )}
             </CardContent>
         </Card>
+
+        {/* Alert Builder Drawer */}
+        <AlertBuilder 
+            open={showBuilder} 
+            onOpenChange={setShowBuilder}
+            userTier={userTier}
+        />
+        </>
     )
 }

@@ -28,9 +28,10 @@ import { signOut } from 'next-auth/react'
 
 interface CommandPaletteProps {
     userTier?: 'free' | 'pro' | 'elite'
+    onCreateAlert?: () => void
 }
 
-export function CommandPalette({ userTier = 'free' }: CommandPaletteProps) {
+export function CommandPalette({ userTier = 'free', onCreateAlert }: CommandPaletteProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
 
@@ -98,8 +99,9 @@ export function CommandPalette({ userTier = 'free' }: CommandPaletteProps) {
                 <CommandGroup heading="Actions">
                     <CommandItem
                         onSelect={() => runCommand(() => {
-                            // TODO: Implement create alert modal
-                            console.log('Create alert')
+                            if (onCreateAlert) {
+                                onCreateAlert()
+                            }
                         })}
                     >
                         <Bell className="mr-2 h-4 w-4" />

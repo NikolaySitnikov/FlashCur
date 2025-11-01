@@ -43,6 +43,7 @@ interface MarketTableProps {
     withContainer?: boolean
     lastUpdate?: number
     isConnected?: boolean
+    onCreateAlert?: (symbol: string) => void
 }
 
 // Optimized number formatters
@@ -58,7 +59,8 @@ export function MarketTable({
     userTier = 'free', 
     withContainer = true,
     lastUpdate,
-    isConnected = true 
+    isConnected = true,
+    onCreateAlert 
 }: MarketTableProps) {
     const [sortBy, setSortBy] = useState<'symbol' | 'volume' | 'change' | 'price' | 'funding'>('volume')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -172,8 +174,9 @@ export function MarketTable({
 
     const handleCreateAlert = (e: React.MouseEvent, item: MarketData) => {
         e.stopPropagation()
-        // TODO: Implement alert creation
-        console.log('Create alert for:', formatSymbol(item.symbol))
+        if (onCreateAlert) {
+            onCreateAlert(item.symbol)
+        }
     }
 
     const tableContent = (
@@ -433,7 +436,12 @@ export function MarketTable({
                                     </Button>
                                     <Button 
                                         className="w-full bg-sec-600 hover:bg-sec-700 text-white"
-                                        onClick={(e) => handleCreateAlert(e, selectedSymbol)}
+                                        onClick={() => {
+                                            if (onCreateAlert) {
+                                                onCreateAlert(selectedSymbol.symbol)
+                                                setSelectedSymbol(null)
+                                            }
+                                        }}
                                     >
                                         <Bell className="h-4 w-4 mr-2" />
                                         Create Alert

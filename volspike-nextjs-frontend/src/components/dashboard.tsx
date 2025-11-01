@@ -9,6 +9,7 @@ import { MarketTable } from '@/components/market-table'
 import { AlertPanel } from '@/components/alert-panel'
 import { TierUpgrade } from '@/components/tier-upgrade'
 import { AdBanner } from '@/components/ad-banner'
+import { AlertBuilder } from '@/components/alert-builder'
 import { CommandPalette } from '@/components/command-palette'
 import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -183,13 +184,22 @@ export function Dashboard() {
                         withContainer={false}
                         lastUpdate={lastUpdate}
                         isConnected={!hasError && !isConnecting}
+                        onCreateAlert={handleCreateAlert}
                     />
                 )}
             </CardContent>
         </Card>
     )
 
-    const alertsCard = <AlertPanel alerts={alerts} />
+    const [alertBuilderOpen, setAlertBuilderOpen] = useState(false)
+    const [alertBuilderSymbol, setAlertBuilderSymbol] = useState('')
+
+    const handleCreateAlert = (symbol: string) => {
+        setAlertBuilderSymbol(symbol.replace(/USDT$/i, ''))
+        setAlertBuilderOpen(true)
+    }
+
+    const alertsCard = <AlertPanel alerts={alerts} userTier={userTier as 'free' | 'pro' | 'elite'} />
 
     return (
         <div className="flex-1 bg-background">
@@ -228,8 +238,22 @@ export function Dashboard() {
             </main>
 
             {/* Command Palette & Keyboard Shortcuts */}
-            <CommandPalette userTier={userTier as 'free' | 'pro' | 'elite'} />
+            <CommandPalette 
+                userTier={userTier as 'free' | 'pro' | 'elite'}
+                onCreateAlert={() => {
+                    setAlertBuilderSymbol('')
+                    setAlertBuilderOpen(true)
+                }}
+            />
             <KeyboardShortcuts />
+
+            {/* Global Alert Builder (triggered from table) */}
+            <AlertBuilder
+                open={alertBuilderOpen}
+                onOpenChange={setAlertBuilderOpen}
+                symbol={alertBuilderSymbol}
+                userTier={userTier as 'free' | 'pro' | 'elite'}
+            />
         </div>
     )
 }
