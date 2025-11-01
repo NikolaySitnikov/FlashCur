@@ -170,3 +170,84 @@ interface DropdownMenuSeparatorProps {
 export function DropdownMenuSeparator({ className }: DropdownMenuSeparatorProps) {
     return <div className={cn('-mx-1 my-1 h-px bg-muted', className)} />
 }
+
+// Submenu support
+interface DropdownMenuSubProps {
+    children: React.ReactNode
+}
+
+const DropdownMenuSubContext = createContext<{ open: boolean; setOpen: (open: boolean) => void } | null>(null)
+
+export function DropdownMenuSub({ children }: DropdownMenuSubProps) {
+    const [open, setOpen] = useState(false)
+
+    return (
+        <DropdownMenuSubContext.Provider value={{ open, setOpen }}>
+            <div className="relative">
+                {children}
+            </div>
+        </DropdownMenuSubContext.Provider>
+    )
+}
+
+interface DropdownMenuSubTriggerProps {
+    children: React.ReactNode
+    className?: string
+}
+
+export function DropdownMenuSubTrigger({ children, className }: DropdownMenuSubTriggerProps) {
+    const context = useContext(DropdownMenuSubContext)
+    if (!context) throw new Error('DropdownMenuSubTrigger must be used within DropdownMenuSub')
+
+    return (
+        <button
+            className={cn(
+                'relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
+                className
+            )}
+            onClick={() => context.setOpen(!context.open)}
+            onMouseEnter={() => context.setOpen(true)}
+            role="menuitem"
+            aria-haspopup="menu"
+            aria-expanded={context.open}
+        >
+            {children}
+            <svg className="ml-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+    )
+}
+
+interface DropdownMenuSubContentProps {
+    children: React.ReactNode
+    className?: string
+}
+
+export function DropdownMenuSubContent({ children, className }: DropdownMenuSubContentProps) {
+    const context = useContext(DropdownMenuSubContext)
+    if (!context) throw new Error('DropdownMenuSubContent must be used within DropdownMenuSub')
+
+    if (!context.open) return null
+
+    return (
+        <div
+            className={cn(
+                'absolute left-full top-0 ml-1 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md z-50',
+                className
+            )}
+            role="menu"
+        >
+            {children}
+        </div>
+    )
+}
+
+// Portal component (for compatibility with Radix-style usage)
+interface DropdownMenuPortalProps {
+    children: React.ReactNode
+}
+
+export function DropdownMenuPortal({ children }: DropdownMenuPortalProps) {
+    return <>{children}</>
+}
