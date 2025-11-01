@@ -22,6 +22,8 @@ export function Dashboard() {
     const { socket, isConnected } = useSocket()
     const [alerts, setAlerts] = useState<any[]>([])
     const [countdownDisplay, setCountdownDisplay] = useState<string>('')
+    const [alertBuilderOpen, setAlertBuilderOpen] = useState(false)
+    const [alertBuilderSymbol, setAlertBuilderSymbol] = useState('')
 
     // Debug session status
     console.log('[Dashboard] useSession status:', status)
@@ -191,9 +193,6 @@ export function Dashboard() {
             </CardContent>
         </Card>
     )
-
-    const [alertBuilderOpen, setAlertBuilderOpen] = useState(false)
-    const [alertBuilderSymbol, setAlertBuilderSymbol] = useState('')
 
     const handleCreateAlert = (symbol: string) => {
         setAlertBuilderSymbol(symbol.replace(/USDT$/i, ''))

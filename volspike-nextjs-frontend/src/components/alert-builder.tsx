@@ -292,7 +292,7 @@ export function AlertBuilder({ open, onOpenChange, symbol = '', userTier = 'free
                         <div>
                             <p className="font-medium text-foreground mb-1">How it works</p>
                             <p>
-                                When the {currentPreset?.name.toLowerCase()} condition is met, you'll receive a notification
+                                When the {currentPreset?.name.toLowerCase()} condition is met, you&apos;ll receive a notification
                                 via your selected delivery method. Alerts are checked in real-time for Elite tier,
                                 every 5 minutes for Pro, and every 15 minutes for Free tier.
                             </p>
