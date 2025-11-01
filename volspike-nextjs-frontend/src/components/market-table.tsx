@@ -151,6 +151,14 @@ export function MarketTable({
         if (sortBy !== column) {
             return <ArrowUpDown className="h-3 w-3 opacity-40" />
         }
+        // For symbol/ticker column, reverse the arrow direction
+        // A-Z (asc) shows down arrow, Z-A (desc) shows up arrow
+        if (column === 'symbol') {
+            return sortOrder === 'asc' ? 
+                <ArrowDown className="h-3 w-3 text-brand-500" /> : 
+                <ArrowUp className="h-3 w-3 text-brand-500" />
+        }
+        // For numeric columns, normal direction
         return sortOrder === 'desc' ? 
             <ArrowDown className="h-3 w-3 text-brand-500" /> : 
             <ArrowUp className="h-3 w-3 text-brand-500" />
