@@ -12,6 +12,7 @@ import { AdBanner } from '@/components/ad-banner'
 import { AlertBuilder } from '@/components/alert-builder'
 import { CommandPalette } from '@/components/command-palette'
 import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
+import { BackgroundPattern } from '@/components/ui/background-pattern'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -168,7 +169,7 @@ export function Dashboard() {
             </CardHeader>
             <CardContent>
                 {isConnecting ? (
-                    <LoadingSpinner />
+                    <LoadingSpinner variant="brand" text="Connecting to Binance WebSocket..." />
                 ) : hasError ? (
                     <div className="text-red-500">
                         Connection failed. Please refresh the page.
@@ -202,7 +203,8 @@ export function Dashboard() {
     const alertsCard = <AlertPanel alerts={alerts} userTier={userTier as 'free' | 'pro' | 'elite'} />
 
     return (
-        <div className="flex-1 bg-background">
+        <div className="flex-1 bg-background relative">
+            <BackgroundPattern />
             <Header />
 
             <main className="container mx-auto px-4 py-8">
