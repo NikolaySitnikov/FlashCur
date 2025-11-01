@@ -80,16 +80,25 @@ CommandEmpty.displayName = "CommandEmpty"
 
 const CommandGroup = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & {
+    heading?: string
+  }
+>(({ className, heading, children, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+      "overflow-hidden p-1 text-foreground",
       className
     )}
     {...props}
-  />
+  >
+    {heading && (
+      <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground" cmdk-group-heading="">
+        {heading}
+      </div>
+    )}
+    {children}
+  </div>
 ))
 CommandGroup.displayName = "CommandGroup"
 
