@@ -86,14 +86,14 @@ export function AdBanner({ userTier = 'free', className }: AdBannerProps) {
 
                     {/* CTA Button */}
                     <div className="flex-shrink-0 w-full lg:w-auto">
-                        <Button
+                    <Button
                             onClick={handleUpgrade}
                             size="default"
                             className="w-full lg:w-auto min-w-[160px] font-semibold shadow-sm hover:shadow-md transition-all bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white"
                         >
                             Upgrade to Pro
                             <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
+                    </Button>
                     </div>
                 </div>
             </CardContent>

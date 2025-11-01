@@ -199,14 +199,14 @@ export function UserMenu() {
                                     {identity.address.slice(0, 6)}...{identity.address.slice(-4)}
                                 </span>
                             </div>
-                        )}
-                        {identity.role === 'ADMIN' && (
+                            )}
+                            {identity.role === 'ADMIN' && (
                             <div className="pt-2 border-t border-border">
                                 <Badge variant="outline" className="text-xs border-red-500/50 text-red-600 dark:text-red-400 dark:border-red-400/50">
                                     🔐 Admin
                                 </Badge>
                             </div>
-                        )}
+                            )}
                     </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

@@ -4,48 +4,141 @@
 
 @layer base {
     :root {
-        --background: 0 0% 100%;
-        --foreground: 222.2 84% 4.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 222.2 84% 4.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 222.2 84% 4.9%;
-        --primary: 221.2 83.2% 53.3%;
-        --primary-foreground: 210 40% 98%;
-        --secondary: 210 40% 96%;
-        --secondary-foreground: 222.2 84% 4.9%;
-        --muted: 210 40% 96%;
-        --muted-foreground: 215.4 16.3% 46.9%;
-        --accent: 210 40% 96%;
-        --accent-foreground: 222.2 84% 4.9%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 210 40% 98%;
-        --border: 214.3 31.8% 91.4%;
-        --input: 214.3 31.8% 91.4%;
-        --ring: 221.2 83.2% 53.3%;
-        --radius: 0.5rem;
+        /* ==================== Brand Colors (Light Mode) ==================== */
+        /* Brand Green (Lightning) - Full Scale */
+        --brand-50: 152 100% 96%;
+        --brand-100: 149 91% 91%;
+        --brand-200: 150 84% 81%;
+        --brand-300: 150 80% 69%;
+        --brand-400: 150 77% 56%;
+        --brand-500: 150 100% 42%; /* Primary: #00D563 */
+        --brand-600: 150 100% 35%;
+        --brand-700: 150 90% 29%;
+        --brand-800: 151 80% 23%;
+        --brand-900: 152 72% 19%;
+        --brand-950: 155 85% 10%;
+        --brand-glow: 150 100% 42% / 0.18;
+
+        /* Secondary Blue/Cyan (Pro/Highlights) */
+        --secondary-50: 200 100% 97%;
+        --secondary-100: 199 100% 93%;
+        --secondary-200: 200 97% 85%;
+        --secondary-300: 199 96% 74%;
+        --secondary-400: 199 94% 61%;
+        --secondary-500: 199 89% 48%; /* #19B5FF */
+        --secondary-600: 199 100% 46%; /* #0EA5E9 */
+        --secondary-700: 200 98% 39%;
+        --secondary-800: 200 84% 33%;
+        --secondary-900: 201 77% 28%;
+        --secondary-950: 202 87% 19%;
+
+        /* Tertiary Purple (Elite) */
+        --tertiary-50: 250 100% 97%;
+        --tertiary-100: 251 91% 95%;
+        --tertiary-200: 251 95% 92%;
+        --tertiary-300: 252 95% 85%;
+        --tertiary-400: 252 91% 76%;
+        --tertiary-500: 252 83% 67%; /* #8B5CF6 */
+        --tertiary-600: 252 71% 60%;
+        --tertiary-700: 252 61% 51%;
+        --tertiary-800: 253 56% 41%;
+        --tertiary-900: 253 51% 35%;
+        --tertiary-950: 254 60% 23%;
+
+        /* Warning/Alert */
+        --warning-50: 33 100% 96%;
+        --warning-100: 34 100% 92%;
+        --warning-200: 32 98% 83%;
+        --warning-300: 31 97% 72%;
+        --warning-400: 27 96% 61%;
+        --warning-500: 25 95% 71%; /* #FDBA74 */
+        --warning-600: 21 90% 48%;
+        --warning-700: 17 88% 40%;
+        --warning-800: 15 79% 34%;
+        --warning-900: 15 75% 28%;
+        --warning-950: 13 81% 15%;
+
+        /* Danger/Negative */
+        --danger-50: 0 86% 97%;
+        --danger-100: 0 93% 94%;
+        --danger-200: 0 96% 89%;
+        --danger-300: 0 94% 82%;
+        --danger-400: 0 91% 71%;
+        --danger-500: 0 84% 60%; /* #EF4444 */
+        --danger-600: 0 72% 51%;
+        --danger-700: 0 74% 42%;
+        --danger-800: 0 70% 35%;
+        --danger-900: 0 63% 31%;
+        --danger-950: 0 75% 16%;
+
+        /* Background Layers (Light) */
+        --bg-base: 210 20% 98%; /* #F8FAFB */
+        --bg-surface: 0 0% 100%; /* #FFFFFF */
+        --bg-elevated: 0 0% 100%;
+        --bg-hover: 210 20% 95%; /* #F0F4F7 */
+
+        /* Shadcn compatible tokens (mapped to new system) */
+        --background: var(--bg-base);
+        --foreground: 222 47% 11%;
+        --card: var(--bg-surface);
+        --card-foreground: 222 47% 11%;
+        --popover: var(--bg-elevated);
+        --popover-foreground: 222 47% 11%;
+        --primary: var(--brand-500);
+        --primary-foreground: 0 0% 100%;
+        --secondary: var(--secondary-500);
+        --secondary-foreground: 0 0% 100%;
+        --muted: 210 20% 96%;
+        --muted-foreground: 215 16% 47%;
+        --accent: 210 20% 96%;
+        --accent-foreground: 222 47% 11%;
+        --destructive: var(--danger-500);
+        --destructive-foreground: 0 0% 100%;
+        --border: 214 32% 91%;
+        --input: 214 32% 91%;
+        --ring: var(--brand-500);
+        --radius: 0.75rem;
+        
+        /* Motion (durations in ms) */
+        --motion-micro: 150ms;
+        --motion-fast: 200ms;
+        --motion-normal: 250ms;
+        --motion-slow: 300ms;
+        --motion-overlay: 400ms;
+        --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .dark {
-        --background: 222.2 84% 4.9%;
+        /* ==================== Brand Colors (Dark Mode) ==================== */
+        /* Brand stays similar but slightly adjusted for dark */
+        --brand-glow: 150 100% 42% / 0.22;
+
+        /* Background Layers (Dark) - Financial Terminal Dark Blue-Black */
+        --bg-base: 222 47% 4%; /* #0A0E1A */
+        --bg-surface: 221 39% 8%; /* #121829 */
+        --bg-elevated: 219 32% 12%; /* #1A2138 */
+        --bg-hover: 218 28% 15%; /* #222B47 */
+
+        /* Shadcn tokens for dark mode */
+        --background: var(--bg-base);
         --foreground: 210 40% 98%;
-        --card: 222.2 84% 4.9%;
+        --card: var(--bg-surface);
         --card-foreground: 210 40% 98%;
-        --popover: 222.2 84% 4.9%;
+        --popover: var(--bg-elevated);
         --popover-foreground: 210 40% 98%;
-        --primary: 217.2 91.2% 59.8%;
-        --primary-foreground: 222.2 84% 4.9%;
-        --secondary: 217.2 32.6% 17.5%;
-        --secondary-foreground: 210 40% 98%;
-        --muted: 217.2 32.6% 17.5%;
-        --muted-foreground: 215 20.2% 65.1%;
-        --accent: 217.2 32.6% 17.5%;
+        --primary: var(--brand-500);
+        --primary-foreground: 220 50% 6%;
+        --secondary: var(--secondary-500);
+        --secondary-foreground: 220 50% 6%;
+        --muted: 217 33% 18%;
+        --muted-foreground: 215 20% 65%;
+        --accent: 217 33% 18%;
         --accent-foreground: 210 40% 98%;
-        --destructive: 0 62.8% 30.6%;
+        --destructive: var(--danger-500);
         --destructive-foreground: 210 40% 98%;
-        --border: 217.2 32.6% 17.5%;
-        --input: 217.2 32.6% 17.5%;
-        --ring: 224.3 76.3% 94.1%;
+        --border: 217 33% 18%;
+        --input: 217 33% 18%;
+        --ring: var(--brand-500);
     }
 }
 
@@ -56,5 +149,24 @@
 
     body {
         @apply bg-background text-foreground;
+        font-feature-settings: 'cv11', 'ss01';
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Typography Utilities */
+    .font-mono-tabular {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: 'tnum';
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
     }
 }
