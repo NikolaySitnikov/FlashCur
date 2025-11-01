@@ -39,6 +39,12 @@ export function Dashboard() {
     // Determine user tier
     const userTier = session?.user?.tier || 'free'
 
+    // Alert builder handlers (defined early to avoid hoisting issues)
+    const handleCreateAlert = (symbol: string) => {
+        setAlertBuilderSymbol(symbol.replace(/USDT$/i, ''))
+        setAlertBuilderOpen(true)
+    }
+
     // Stable callback to avoid reconnect loops
     const handleDataUpdate = useCallback((data: any[]) => {
         console.log(`📊 Market data updated: ${data.length} symbols`)
@@ -193,11 +199,6 @@ export function Dashboard() {
             </CardContent>
         </Card>
     )
-
-    const handleCreateAlert = (symbol: string) => {
-        setAlertBuilderSymbol(symbol.replace(/USDT$/i, ''))
-        setAlertBuilderOpen(true)
-    }
 
     const alertsCard = <AlertPanel alerts={alerts} userTier={userTier as 'free' | 'pro' | 'elite'} />
 
