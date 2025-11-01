@@ -9,6 +9,8 @@ import { MarketTable } from '@/components/market-table'
 import { AlertPanel } from '@/components/alert-panel'
 import { TierUpgrade } from '@/components/tier-upgrade'
 import { AdBanner } from '@/components/ad-banner'
+import { CommandPalette } from '@/components/command-palette'
+import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -224,6 +226,10 @@ export function Dashboard() {
                     </div>
                 </div>
             </main>
+
+            {/* Command Palette & Keyboard Shortcuts */}
+            <CommandPalette userTier={userTier as 'free' | 'pro' | 'elite'} />
+            <KeyboardShortcuts />
         </div>
     )
 }
