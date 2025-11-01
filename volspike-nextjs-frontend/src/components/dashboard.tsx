@@ -179,6 +179,8 @@ export function Dashboard() {
                         data={marketData}
                         userTier={userTier as 'free' | 'pro' | 'elite'}
                         withContainer={false}
+                        lastUpdate={lastUpdate}
+                        isConnected={!hasError && !isConnecting}
                     />
                 )}
             </CardContent>
