@@ -56,6 +56,9 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
     const fundingRef = useRef<Map<string, any>>(new Map());
     const lastRenderRef = useRef<number>(0);
     const firstPaintDoneRef = useRef<boolean>(false);
+    const connectedAtRef = useRef<number>(0);
+    const bootstrapWindowMs = 2500; // gather symbols before first paint
+    const minBootstrapSymbols = 50; // wait for at least this many if possible
     const reconnectAttemptsRef = useRef<number>(0);
     const renderPendingRef = useRef<boolean>(false);
 
@@ -159,6 +162,40 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
         }
     }, [buildSnapshot, render, tier, CADENCE]);
 
+    // Optionally seed tickers map with a one-shot 24h ticker REST call to avoid
+    // missing symbols right after connect (some browsers may not process the
+    // first !ticker@arr payload fast enough and tier throttling would freeze it).
+    const primeTickersSnapshot = useCallback(async () => {
+        try {
+            const response = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+            if (!response.ok) return;
+            const payload = await response.json();
+            if (!Array.isArray(payload)) return;
+
+            let seeded = 0;
+            for (const entry of payload) {
+                const sym = entry?.symbol;
+                if (typeof sym !== 'string' || !sym.endsWith('USDT')) continue;
+                tickersRef.current.set(sym, entry);
+                seeded++;
+            }
+
+            if (seeded > 0) {
+                const snapshot = buildSnapshot();
+                // Only render if we are still within the bootstrap window and before first paint
+                const now = Date.now();
+                if (!firstPaintDoneRef.current && (now - connectedAtRef.current <= bootstrapWindowMs)) {
+                    render(snapshot);
+                    // Do NOT mark first paint done here; allow WebSocket to refine within window
+                }
+            }
+        } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+                console.warn('Failed to seed tickers from REST:', error);
+            }
+        }
+    }, [buildSnapshot, render]);
+
     const geofenceFallback = useCallback(() => {
         console.log('Region may be blocked, trying localStorage fallback');
 
@@ -191,6 +228,8 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                 reconnectAttemptsRef.current = 0;
                 setStatus('live');
                 console.log('✅ Binance WebSocket connected');
+                connectedAtRef.current = Date.now();
+                firstPaintDoneRef.current = false; // reset on each connect
 
                 // Initialize countdown for non-elite tiers
                 if (tier !== 'elite') {
@@ -200,6 +239,8 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                 }
 
                 void primeFundingSnapshot();
+                // Warm start: try to seed from REST in parallel (best-effort)
+                void primeTickersSnapshot();
             };
 
             wsRef.current.onmessage = (ev) => {
@@ -238,12 +279,22 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
                     const snapshot = buildSnapshot();
                     const now = Date.now();
 
-                    // First paint - render immediately
-                    if (!firstPaintDoneRef.current && snapshot.length > 0) {
-                        render(snapshot);
-                        firstPaintDoneRef.current = true;
-                        lastRenderRef.current = now;
-                        return;
+                    // Bootstrap: before first paint, gather a fuller set to avoid missing symbols
+                    if (!firstPaintDoneRef.current) {
+                        const elapsed = now - connectedAtRef.current;
+                        // If enough symbols collected OR bootstrap window elapsed, paint
+                        if (snapshot.length >= minBootstrapSymbols || elapsed >= bootstrapWindowMs) {
+                            render(snapshot);
+                            firstPaintDoneRef.current = true;
+                            lastRenderRef.current = now;
+                            // For non-elite tiers, next update schedule begins now
+                            if (tier !== 'elite') {
+                                const nextUpdateTime = lastRenderRef.current + CADENCE;
+                                setNextUpdate(nextUpdateTime);
+                            }
+                            return;
+                        }
+                        // Otherwise keep accumulating without rendering
                     }
 
                     // Elite tier - render with debouncing
@@ -319,7 +370,7 @@ export function useClientOnlyMarketData({ tier, onDataUpdate }: UseClientOnlyMar
             }
             setStatus('error');
         }
-    }, [tier, CADENCE, geofenceFallback, primeFundingSnapshot, render]);
+    }, [tier, CADENCE, geofenceFallback, primeFundingSnapshot, primeTickersSnapshot, render]);
 
     useEffect(() => {
         connect();
